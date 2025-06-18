@@ -1,14 +1,15 @@
 package api
 
 import (
-	"fmt"
-	"reflect"
 	"time"
+
+	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
 
 	model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	. "github.com/onsi/gomega"
 )
 
+// MatchPipelines - Deep compare 2 pipelines
 func MatchPipelines(actual *model.V2beta1Pipeline, expected *model.V2beta1Pipeline) {
 	Expect(actual.PipelineID).To(Not(BeEmpty()), "Pipeline ID is empty")
 	actualTime := time.Time(actual.CreatedAt).UTC()
@@ -20,6 +21,7 @@ func MatchPipelines(actual *model.V2beta1Pipeline, expected *model.V2beta1Pipeli
 
 }
 
+// MatchPipelineVersions - Deep compare 2 pipeline versions - even with deep comparison of pipeline specs
 func MatchPipelineVersions(actual *model.V2beta1PipelineVersion, expected *model.V2beta1PipelineVersion) {
 	Expect(actual.PipelineVersionID).To(Not(Equal(expected.PipelineVersionID)), "Pipeline Version ID is empty")
 	actualTime := time.Time(actual.CreatedAt).UTC()
@@ -30,10 +32,17 @@ func MatchPipelineVersions(actual *model.V2beta1PipelineVersion, expected *model
 	MatchMaps(actual.PipelineSpec, expected.PipelineSpec, "Pipeline Spec")
 }
 
-func MatchPipelineVersionSpec(actual any, expected map[string]interface{}) {
-	if reflect.TypeOf(actual).Kind() == reflect.Map {
-		for key, value := range expected {
-			Expect(actual).To(HaveKeyWithValue(key, value), fmt.Sprintf("%s value not matching", key))
-		}
-	}
+// MatchPipelineRunShallow - Shallow match 2 pipeline runs i.e. match only the fields that you do add to the payload when creating a run
+func MatchPipelineRunShallow(actual *run_model.V2beta1Run, expected *run_model.V2beta1Run) {
+	Expect(actual.RunID).To(Not(BeEmpty()), "Run ID is empty")
+	actualTime := time.Time(actual.CreatedAt).UTC()
+	expectedTime := time.Time(expected.CreatedAt).UTC()
+	Expect(actualTime.After(expectedTime)).To(BeTrue(), "Actual Run time is not before the expected time")
+	Expect(actual.DisplayName).To(Equal(expected.DisplayName), "Run Name is not matching")
+	Expect(actual.ExperimentID).To(Not(BeEmpty()), "Experiment Id associated with the run is empty")
+	Expect(actual.PipelineVersionID).To(Equal(expected.PipelineVersionID), "Pipeline Version Id is not matching")
+	MatchMaps(actual.PipelineSpec, expected.PipelineSpec, "Pipeline Spec")
+	Expect(actual.PipelineVersionReference.PipelineVersionID).To(Equal(expected.PipelineVersionReference.PipelineVersionID), "Referred Pipeline Version Idis not matching")
+	Expect(actual.PipelineVersionReference.PipelineID).To(Equal(expected.PipelineVersionReference.PipelineID), "Referred Pipeline Id is not matching")
+	Expect(actual.ServiceAccount).To(Equal(expected.ServiceAccount), "Service Account is not matching")
 }
