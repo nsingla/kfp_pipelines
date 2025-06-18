@@ -15,15 +15,9 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 
-	"github.com/go-openapi/strfmt"
 	upload_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_client/pipeline_upload_service"
 	model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	. "github.com/kubeflow/pipelines/backend/test/v2/api/constants"
@@ -38,40 +32,16 @@ import (
 // ################################################################### CLASS VARIABLES ################################################################################
 // ####################################################################################################################################################################
 
-const (
-	helloWorldPipelineFileName = "hello-world.yaml"
-	pipelineWithArgsFileName   = "arguments-parameters.yaml"
-)
-
-var pipelineGeneratedName string
 var expectedPipeline *model.V2beta1Pipeline
-var createdPipelines []*model.V2beta1Pipeline
-var testStartTime strfmt.DateTime
-var uploadParams *upload_params.UploadPipelineParams
-var pipelineFilesRootDir = utils.GetPipelineFilesDir()
 
 // ####################################################################################################################################################################
 // ################################################################### SET AND TEARDOWN ################################################################################
 // ####################################################################################################################################################################
 
 var _ = BeforeEach(func() {
-	logger.Log("################### Setup before each test #####################")
-	testStartTime, _ = strfmt.ParseDateTime(time.Now().Format(time.DateTime))
-	createdPipelines = []*model.V2beta1Pipeline{}
+	logger.Log("################### Setup before each Pipeline Upload test #####################")
 	expectedPipeline = new(model.V2beta1Pipeline)
 	expectedPipeline.CreatedAt = testStartTime
-	pipelineGeneratedName = "apitest-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	uploadParams = upload_params.NewUploadPipelineParams()
-	//expectedPipeline.Namespace = *namespace
-})
-
-var _ = AfterEach(func() {
-	// Delete pipelines created during the test
-	logger.Log("################### Cleanup after each test #####################")
-	logger.Log("Deleting %d pipeline(s)", len(createdPipelines))
-	for _, pipeline := range createdPipelines {
-		utils.DeletePipeline(pipelineClient, pipeline.PipelineID)
-	}
 })
 
 // ####################################################################################################################################################################
@@ -96,7 +66,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 
 		It(fmt.Sprintf("Upload %s pipeline file with custom name and description", helloWorldPipelineFileName), func() {
 			description := "Some pipeline description"
-			uploadParams.SetDescription(&description)
+			pipelineUploadParams.SetDescription(&description)
 			expectedPipeline.Description = description
 			uploadPipelineAndVerify(pipelineDir, helloWorldPipelineFileName, &pipelineGeneratedName)
 		})
@@ -214,10 +184,9 @@ func uploadPipelineAndChangePipelineVersion(pipelineDir string, pipelineFileName
 
 func uploadPipeline(pipelineDir string, pipelineFileName string, pipelineName *string) (*model.V2beta1Pipeline, error) {
 	pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDir, pipelineFileName)
-	uploadParams.SetName(pipelineName)
-	expectedPipeline.DisplayName = *pipelineName
+	pipelineUploadParams.SetName(pipelineName)
 	logger.Log("Uploading pipeline with name=%s, from file %s", *pipelineName, pipelineFile)
-	return pipelineUploadClient.UploadFile(pipelineFile, uploadParams)
+	return pipelineUploadClient.UploadFile(pipelineFile, pipelineUploadParams)
 }
 
 func uploadPipelineAndVerify(pipelineDir string, pipelineFileName string, pipelineName *string) *model.V2beta1Pipeline {
@@ -225,26 +194,14 @@ func uploadPipelineAndVerify(pipelineDir string, pipelineFileName string, pipeli
 	logger.Log("Verifying that NO error was returned in the response to confirm that the pipeline was successfully uploaded")
 	Expect(err).NotTo(HaveOccurred())
 	createdPipelines = append(createdPipelines, createdPipeline)
-
+	expectedPipeline.DisplayName = *pipelineName
 	createdPipelineFromDB := utils.GetPipeline(pipelineClient, createdPipeline.PipelineID)
 	Expect(createdPipelineFromDB).To(Equal(*createdPipeline))
 	matcher.MatchPipelines(&createdPipelineFromDB, expectedPipeline)
 
 	// Validate the created pipeline spec (by API server) matches the input file
-	pipelineVersionFilePath := filepath.Join(pipelineFilesRootDir, pipelineDir, pipelineFileName)
-	validatePipelineSpecs := false
-	var expectedPipelineSpec map[string]interface{}
-	if strings.Contains(pipelineFileName, ".yaml") {
-		validatePipelineSpecs = true
-		expectedPipelineSpec = utils.ReadYamlFile(pipelineVersionFilePath).(map[string]interface{})
-	} else if strings.Contains(pipelineFileName, ".json") {
-		validatePipelineSpecs = true
-		specFromFile, err := os.ReadFile(pipelineVersionFilePath)
-		Expect(err).NotTo(HaveOccurred())
-		err = json.Unmarshal(specFromFile, &expectedPipelineSpec)
-		Expect(err).NotTo(HaveOccurred())
-	}
-	if validatePipelineSpecs {
+	expectedPipelineSpec := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFileName)
+	if len(expectedPipelineSpec) > 0 {
 		logger.Log("Verifying that the generated pipeline spec matches the input yaml file")
 		versions := utils.GetSortedPipelineVersionsByCreatedAt(pipelineClient, createdPipeline.PipelineID, nil)
 		actualPipelineSpec := versions[0].PipelineSpec
