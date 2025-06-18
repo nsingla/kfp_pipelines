@@ -78,7 +78,11 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", S1.St
 			expectedPipelineRun := createPipelineRunPayload(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
 			expectedPipelineRun.PipelineSpec = &createPipelineVersions[0].PipelineSpec
 			matcher.MatchPipelineRunShallow(createdPipelineRun, expectedPipelineRun)
-
+			createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
+				RunID: createdPipelineRun.RunID,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(createdPipelineRunFromDB).To(Equal(createdPipelineRun))
 		})
 	})
 })
