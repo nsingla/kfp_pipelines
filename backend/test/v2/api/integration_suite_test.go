@@ -4,18 +4,40 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 
+	"github.com/go-openapi/strfmt"
+	upload_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_client/pipeline_upload_service"
+
+	upload_model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	api_server "github.com/kubeflow/pipelines/backend/src/common/client/api_server/v2"
 	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
-	test "github.com/kubeflow/pipelines/backend/test/v2/api/utils"
+	utils "github.com/kubeflow/pipelines/backend/test/v2/api/utils"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 )
 
+const (
+	helloWorldPipelineFileName = "hello-world.yaml"
+	pipelineWithArgsFileName   = "arguments-parameters.yaml"
+)
+
+// API Clients declaration to make API calls
 var pipelineUploadClient *api_server.PipelineUploadClient
 var pipelineClient *api_server.PipelineClient
+var experimentClient *api_server.ExperimentClient
+var runClient *api_server.RunClient
+
+// Common test variables
+var testStartTime strfmt.DateTime
+var randomName string
+var pipelineFilesRootDir = utils.GetPipelineFilesDir()
+var createdPipelines []*upload_model.V2beta1Pipeline
+var pipelineUploadParams *upload_params.UploadPipelineParams
+var pipelineGeneratedName string
 var testLogsDirectory = "logs"
 var testReportDirectory = "reports"
 var junitReportFilename = "junit.xml"
@@ -34,6 +56,8 @@ var _ = BeforeSuite(func() {
 	}
 	var newPipelineUploadClient func() (*api_server.PipelineUploadClient, error)
 	var newPipelineClient func() (*api_server.PipelineClient, error)
+	var newRunClient func() (*api_server.RunClient, error)
+	var newExperimentClient func() (*api_server.ExperimentClient, error)
 
 	if *isKubeflowMode {
 		newPipelineUploadClient = func() (*api_server.PipelineUploadClient, error) {
@@ -42,14 +66,26 @@ var _ = BeforeSuite(func() {
 		newPipelineClient = func() (*api_server.PipelineClient, error) {
 			return api_server.NewKubeflowInClusterPipelineClient(*namespace, *isDebugMode)
 		}
+		newExperimentClient = func() (*api_server.ExperimentClient, error) {
+			return api_server.NewKubeflowInClusterExperimentClient(*namespace, *isDebugMode)
+		}
+		newRunClient = func() (*api_server.RunClient, error) {
+			return api_server.NewKubeflowInClusterRunClient(*namespace, *isDebugMode)
+		}
 	} else {
-		clientConfig := test.GetClientConfig(*namespace)
+		clientConfig := utils.GetClientConfig(*namespace)
 
 		newPipelineUploadClient = func() (*api_server.PipelineUploadClient, error) {
 			return api_server.NewPipelineUploadClient(clientConfig, *isDebugMode)
 		}
 		newPipelineClient = func() (*api_server.PipelineClient, error) {
 			return api_server.NewPipelineClient(clientConfig, *isDebugMode)
+		}
+		newExperimentClient = func() (*api_server.ExperimentClient, error) {
+			return api_server.NewExperimentClient(clientConfig, *isDebugMode)
+		}
+		newRunClient = func() (*api_server.RunClient, error) {
+			return api_server.NewRunClient(clientConfig, *isDebugMode)
 		}
 	}
 
@@ -60,6 +96,32 @@ var _ = BeforeSuite(func() {
 	pipelineClient, err = newPipelineClient()
 	if err != nil {
 		logger.Log("Failed to get pipeline client. Error: %s", err.Error())
+	}
+	experimentClient, err = newExperimentClient()
+	if err != nil {
+		logger.Log("Failed to get experiment client. Error: %v", err)
+	}
+	runClient, err = newRunClient()
+	if err != nil {
+		logger.Log("Failed to get run client. Error: %s", err.Error())
+	}
+})
+
+var _ = BeforeEach(func() {
+	logger.Log("################### Global Setup before each test #####################")
+	testStartTime, _ = strfmt.ParseDateTime(time.Now().Format(time.DateTime))
+	createdPipelines = []*upload_model.V2beta1Pipeline{}
+	randomName = strconv.FormatInt(time.Now().UnixNano(), 10)
+	pipelineGeneratedName = "apitest-pipeline-" + randomName
+	pipelineUploadParams = upload_params.NewUploadPipelineParams()
+})
+
+var _ = AfterEach(func() {
+	// Delete pipelines created during the test
+	logger.Log("################### Global Cleanup after each test #####################")
+	logger.Log("Deleting %d pipeline(s)", len(createdPipelines))
+	for _, pipeline := range createdPipelines {
+		utils.DeletePipeline(pipelineClient, pipeline.PipelineID)
 	}
 })
 
