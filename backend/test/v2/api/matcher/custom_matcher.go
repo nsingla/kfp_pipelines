@@ -22,6 +22,8 @@ import (
 )
 
 // MatchMaps - Iterate over 2 maps and compare if they are same or not
+//
+// param mapType - string value to append to the assertion error message
 func MatchMaps(actual interface{}, expected interface{}, mapType string) {
 	expectedMap, _ := expected.(map[any]interface{})
 	actualMap, _ := actual.(map[any]interface{})

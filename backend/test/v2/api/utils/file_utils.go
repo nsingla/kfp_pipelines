@@ -16,6 +16,7 @@ package test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -83,4 +84,28 @@ func ReadYamlFile(pipelineFilePath string) interface{} {
 		}
 	}
 	return finalYamlData
+}
+
+func PipelineSpecFromFile(pipelineFilesRootDir string, pipelineDir string, pipelineFileName string) map[string]interface{} {
+	pipelineSpecFilePath := filepath.Join(pipelineFilesRootDir, pipelineDir, pipelineFileName)
+	logger.Log("Unmarshalling %s spec file", pipelineSpecFilePath)
+	var unmarshalledPipelineSpec map[string]interface{}
+	switch filepath.Ext(pipelineFileName) {
+	case ".yaml":
+		{
+			unmarshalledPipelineSpec = ReadYamlFile(pipelineSpecFilePath).(map[string]interface{})
+		}
+	case ".json":
+		{
+			specFromFile, err := os.ReadFile(pipelineSpecFilePath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			err = json.Unmarshal(specFromFile, &unmarshalledPipelineSpec)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		}
+	default:
+		{
+			panic("Unknown pipeline file format, supported format: yaml, json")
+		}
+	}
+	return unmarshalledPipelineSpec
 }
