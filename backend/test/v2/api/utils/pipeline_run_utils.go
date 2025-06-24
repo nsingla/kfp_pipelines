@@ -53,8 +53,9 @@ func getTaskDetailsForComponent(runID string, tasks map[string]interface{}, comp
 		parsedTaskDetails = append(parsedTaskDetails, createTaskDetail(runID, taskName, taskMap, "", components))
 		parsedTaskDetails = append(parsedTaskDetails, createTaskDetail(runID, taskName+"-driver", taskMap, "", components))
 		// Process nested tasks if this is a DAG component
-		if component, exists := taskMap["componentRef"].(map[string]interface{}); exists && component["dag"] != nil {
-			nestedTasks := processNestedTasks(runID, taskMap, "", components)
+		componentName := taskMap["componentInfo"].(map[string]interface{})["name"].(string)
+		if component, exists := components[componentName].(map[string]interface{}); exists && component["dag"] != nil {
+			nestedTasks := getTaskDetailsForComponent(runID, component["tasks"].(map[string]interface{}), make(map[string]interface{}))
 			parsedTaskDetails = append(parsedTaskDetails, nestedTasks...)
 		}
 	}
@@ -72,7 +73,6 @@ func createTaskDetail(runID string, taskName string, task map[string]interface{}
 		ParentTaskID: parentTaskID,
 		CreateTime:   strfmt.DateTime(now),
 		StartTime:    strfmt.DateTime(now),
-		State:        run_model.V2beta1RuntimeState("RUNNING"), // Default state
 		StateHistory: []*run_model.V2beta1RuntimeStatus{},
 		Inputs:       make(map[string]run_model.V2beta1ArtifactList),
 		Outputs:      make(map[string]run_model.V2beta1ArtifactList),
