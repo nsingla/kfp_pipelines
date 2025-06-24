@@ -16,7 +16,10 @@ package api
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
+	experiment_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_client/experiment_service"
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	run_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_client/run_service"
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
@@ -26,6 +29,7 @@ import (
 	utils "github.com/kubeflow/pipelines/backend/test/v2/api/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v2"
 )
 
 // ####################################################################################################################################################################
@@ -47,8 +51,8 @@ var _ = BeforeEach(func() {
 	runDescription = "API Test Run"
 	logger.Log("Setting up Pipeline Run Tests")
 	logger.Log("Create a hello-world pipeline")
-	var pipelineDir = "valid/critical"
-	createdPipeline, err = uploadPipeline(pipelineDir, helloWorldPipelineFileName, &pipelineGeneratedName)
+	var pipelineDir = "valid"
+	createdPipeline, err = uploadPipeline(pipelineDir, "parameters_simple.yaml", &pipelineGeneratedName)
 	Expect(err).NotTo(HaveOccurred())
 	createdPipelines = append(createdPipelines, createdPipeline)
 })
@@ -66,23 +70,54 @@ var _ = AfterEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", S1.String()), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", S1), func() {
 
 	/* Critical Positive Scenarios of uploading a pipeline file */
-	Context("Create a pipeline run and verify created argo workflows >", Label(SMOKE.String()), func() {
+	Context("Create a pipeline run and verify created argo workflows >", Label(Smoke), func() {
 
 		It(fmt.Sprintf("Create a run for '%s' pipeline and verify the argo workflow", helloWorldPipelineFileName), func() {
 			createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
 			Expect(err).NotTo(HaveOccurred())
 			createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
-			expectedPipelineRun := createPipelineRunPayload(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
-			expectedPipelineRun.PipelineSpec = &createPipelineVersions[0].PipelineSpec
+			expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, false)
 			matcher.MatchPipelineRunShallow(createdPipelineRun, expectedPipelineRun)
 			createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
 				RunID: createdPipelineRun.RunID,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(createdPipelineRunFromDB).To(Equal(createdPipelineRun))
+			expectedPipelineRunDetails := utils.ToRunDetailsFromPipelineSpec(createPipelineVersions[0].PipelineSpec, createdPipelineRun.RunID)
+			fmt.Println("Expected Pipeline Run Details:")
+			yamlString, _ := yaml.Marshal(&expectedPipelineRunDetails)
+			fmt.Println("Waiting for run details to be available")
+			timeout := time.After(30 * time.Second)
+			for createdPipelineRunFromDB.RunDetails == nil {
+
+				time.Sleep(1 * time.Second)
+				createdPipelineRunFromDB, _ = runClient.Get(&run_params.RunServiceGetRunParams{
+					RunID: createdPipelineRun.RunID,
+				})
+				select {
+				case <-timeout:
+					Fail("Timeout waiting for run details to be available for runId=" + createdPipelineRun.RunID)
+				default:
+					if createdPipelineRunFromDB.RunDetails != nil {
+						if len(createdPipelineRunFromDB.RunDetails.TaskDetails) < len(expectedPipelineRunDetails.TaskDetails) {
+							logger.Log("Not all tasks for the run %s have been generated, tasks=%d/%d", createdPipelineRun.RunID, len(createdPipelineRunFromDB.RunDetails.TaskDetails), len(expectedPipelineRunDetails.TaskDetails))
+							createdPipelineRunFromDB.RunDetails = nil
+							continue
+						} else {
+							logger.Log("All %d/%d tasks for the run %s have been generated", len(createdPipelineRunFromDB.RunDetails.TaskDetails), len(expectedPipelineRunDetails.TaskDetails), createdPipelineRun.RunID)
+						}
+					}
+				}
+			}
+
+			fmt.Println(string(yamlString))
+			yamlString, _ = yaml.Marshal(&createdPipelineRunFromDB)
+			fmt.Println("Created Pipeline Run Details:")
+			fmt.Println(string(yamlString))
+			matcher.MatchPipelineRunDetails(createdPipelineRunFromDB.RunDetails, expectedPipelineRunDetails)
 		})
 	})
 })
@@ -116,4 +151,28 @@ func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, exp
 			PipelineVersionID: utils.ParsePointersToString(pipelineVersionID),
 		},
 	}
+}
+
+func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, archived bool) *run_model.V2beta1Run {
+	expectedRun := createPipelineRunPayload(&createdPipeline.PipelineID, pipelineVersionID, experimentID)
+	if !archived {
+		expectedRun.StorageState = run_model.V2beta1RunStorageStateAVAILABLE
+	} else {
+		expectedRun.StorageState = run_model.V2beta1RunStorageStateARCHIVED
+	}
+	if experimentID == nil {
+		logger.Log("Fetch default experiment's experimentId")
+		pageSize := int32(1000)
+		experminents, expError := experimentClient.ListAll(&experiment_params.ExperimentServiceListExperimentsParams{
+			Namespace: namespace,
+			PageSize:  &pageSize,
+		}, 1000)
+		Expect(expError).NotTo(HaveOccurred())
+		for _, experiment := range experminents {
+			if strings.ToLower(experiment.DisplayName) == "default" {
+				expectedRun.ExperimentID = experiment.ExperimentID
+			}
+		}
+	}
+	return expectedRun
 }
