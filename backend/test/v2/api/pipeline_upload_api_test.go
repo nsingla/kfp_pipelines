@@ -56,7 +56,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 
 	/* Critical Positive Scenarios of uploading a pipeline file */
 	Context("Upload a valid critical pipeline file and verify pipeline metadata after upload >", Label(Smoke, S1), func() {
-		var pipelineDir = "valid/critical"
+		var pipelineDir = "valid/types"
 		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
 		for _, pipelineFile := range criticalPipelineFiles {
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
@@ -85,7 +85,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 })
 
 var _ = Describe("Verify Pipeline Upload Version >", Label("Positive", "PipelineUpload", S1), func() {
-	var pipelineDir = "valid/critical"
+	var pipelineDir = "valid/types"
 
 	/* Positive Scenarios of uploading a pipeline file */
 	Context("Upload a pipeline and upload the same pipeline to change version >", func() {
@@ -111,7 +111,7 @@ var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "Pipeline
 	/* Negative scenarios of uploading a pipeline  */
 	Context("Upload a failing pipeline and verify the error in the response >", func() {
 		It("Upload a pipeline twice and verify that it should fail the second time", func() {
-			var pipelineDir = "valid/critical"
+			var pipelineDir = "valid/types"
 			createdPipeline := uploadPipelineAndVerify(pipelineDir, helloWorldPipelineFileName, &pipelineGeneratedName)
 			uploadPipelineAndVerifyFailure(pipelineDir, helloWorldPipelineFileName, &(createdPipeline.DisplayName), "Failed to upload pipeline")
 		})
@@ -126,7 +126,7 @@ var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "Pipeline
 })
 
 var _ = Describe("Verify Pipeline Upload Version Failure >", Label("Negative", "PipelineUpload", S2, FullRegression), func() {
-	var pipelineDir = "valid/critical"
+	var pipelineDir = "valid/types"
 
 	/* Positive Scenarios of uploading a pipeline file */
 	Context("Upload a pipeline and try changing the version with a different metric >", func() {
