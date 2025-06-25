@@ -28,20 +28,22 @@ func ToRunDetailsFromPipelineSpec(pipelineSpec interface{}, runID string) *run_m
 	parsedRunDetails := &run_model.V2beta1RunDetails{}
 	pipelineSpecMap := pipelineSpec.(map[string]interface{})
 	specs, ok := pipelineSpecMap["pipeline_specs"]
-	var root map[string]interface{}
-	var components map[string]interface{}
+	var specsMap map[string]interface{}
 	if !ok {
-		root = pipelineSpecMap["root"].(map[string]interface{})
-		components = pipelineSpecMap["components"].(map[string]interface{})
+		specsMap = pipelineSpecMap
 	} else {
-		specsMap := specs.(map[string]interface{})
-		root = specsMap["root"].(map[string]interface{})
-		components = specsMap["components"].(map[string]interface{})
+		specsMap = specs.(map[string]interface{})
 	}
+	root := pipelineSpecMap["root"].(map[string]interface{})
+	components := pipelineSpecMap["components"].(map[string]interface{})
 	tasks := root["dag"].(map[string]interface{})["tasks"].(map[string]interface{})
+	executors := specsMap["deploymentSpec"].(map[string]interface{})["executors"].(map[string]interface{})
 	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, getTaskDetailsForComponent(runID, tasks, components)...)
 	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, createTaskDetail(runID, "root", tasks, "", components))
 	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, createTaskDetail(runID, "root-driver", tasks, "", components))
+	for range executors {
+		parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, createTaskDetail(runID, "executor", tasks, "", make(map[string]interface{})))
+	}
 	return parsedRunDetails
 }
 
@@ -53,9 +55,9 @@ func getTaskDetailsForComponent(runID string, tasks map[string]interface{}, comp
 		parsedTaskDetails = append(parsedTaskDetails, createTaskDetail(runID, taskName, taskMap, "", components))
 		parsedTaskDetails = append(parsedTaskDetails, createTaskDetail(runID, taskName+"-driver", taskMap, "", components))
 		// Process nested tasks if this is a DAG component
-		componentName := taskMap["componentInfo"].(map[string]interface{})["name"].(string)
-		if component, exists := components[componentName].(map[string]interface{}); exists && component["dag"] != nil {
-			nestedTasks := getTaskDetailsForComponent(runID, component["tasks"].(map[string]interface{}), make(map[string]interface{}))
+		componentName := taskMap["componentRef"].(map[string]interface{})["name"].(string)
+		if component, compExists := components[componentName].(map[string]interface{}); compExists && component["dag"] != nil {
+			nestedTasks := getTaskDetailsForComponent(runID, component["dag"].(map[string]interface{})["tasks"].(map[string]interface{}), make(map[string]interface{}))
 			parsedTaskDetails = append(parsedTaskDetails, nestedTasks...)
 		}
 	}
@@ -68,7 +70,6 @@ func createTaskDetail(runID string, taskName string, task map[string]interface{}
 
 	taskDetail := &run_model.V2beta1PipelineTaskDetail{
 		RunID:        runID,
-		TaskID:       generateTaskID(taskName, parentTaskID),
 		DisplayName:  taskName,
 		ParentTaskID: parentTaskID,
 		CreateTime:   strfmt.DateTime(now),
@@ -132,32 +133,4 @@ func createTaskDetail(runID string, taskName string, task map[string]interface{}
 	}
 
 	return taskDetail
-}
-
-// processNestedTasks processes tasks within a DAG component
-func processNestedTasks(runID string, tasks map[string]interface{}, parentTaskID string, components map[string]interface{}) []*run_model.V2beta1PipelineTaskDetail {
-	var nestedTasks []*run_model.V2beta1PipelineTaskDetail
-
-	for _, task := range tasks {
-		taskMap := task.(map[string]interface{})
-		taskName := taskMap["taskInfo"].(map[string]interface{})["name"].(string)
-		taskDetail := createTaskDetail(runID, taskName, taskMap, parentTaskID, components)
-		nestedTasks = append(nestedTasks, taskDetail)
-
-		// Recursively process nested DAGs
-		if component, exists := components[taskMap["componentRef"].(map[string]interface{})["name"].(string)]; exists && component.(map[string]interface{})["dag"] != nil {
-			deepNestedTasks := processNestedTasks(runID, component.(map[string]interface{})["dag"].(map[string]interface{})["tasks"].(map[string]interface{}), taskDetail.TaskID, components)
-			nestedTasks = append(nestedTasks, deepNestedTasks...)
-		}
-	}
-
-	return nestedTasks
-}
-
-// generateTaskID generates a unique task ID
-func generateTaskID(taskName, parentTaskID string) string {
-	if parentTaskID == "" {
-		return fmt.Sprintf("task-%s", taskName)
-	}
-	return fmt.Sprintf("%s-%s", parentTaskID, taskName)
 }
