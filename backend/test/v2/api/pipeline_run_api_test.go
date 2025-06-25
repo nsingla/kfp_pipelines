@@ -49,9 +49,9 @@ var createdRunIds []string
 // ####################################################################################################################################################################
 
 var _ = BeforeEach(func() {
+	logger.Log("Setting up Pipeline Run Tests")
 	runName = "API Test Run - " + randomName
 	runDescription = "API Test Run"
-	logger.Log("Setting up Pipeline Run Tests")
 	createdRunIds = make([]string, 0)
 })
 
@@ -132,10 +132,8 @@ func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
 				valueMap := value.(map[string]interface{})
 				_, defaultValExists := valueMap["defaultValue"]
 				optional, optionalExists := valueMap["isOptional"]
-				if optionalExists {
-					if optional == "true" {
-						continue
-					}
+				if optionalExists && optional.(bool) {
+					continue
 				}
 				if !defaultValExists || !optionalExists {
 					valueType := valueMap["parameterType"].(string)
