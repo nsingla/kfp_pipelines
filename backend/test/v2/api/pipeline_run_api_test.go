@@ -151,8 +151,6 @@ func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
 						pipelineInputMap[input] = []string{utils.GetRandomString(20)}
 					case "BOOLEAN":
 						pipelineInputMap[input] = true
-					case "TASK_FINAL_STATUS":
-						pipelineInputMap[input] = ""
 					default:
 						pipelineInputMap[input] = utils.GetRandomString(20)
 					}
