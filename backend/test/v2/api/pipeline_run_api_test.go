@@ -16,7 +16,9 @@ package api
 
 import (
 	"fmt"
+	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	experiment_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_client/experiment_service"
@@ -50,17 +52,25 @@ var _ = BeforeEach(func() {
 	runName = "API Test Run - " + randomName
 	runDescription = "API Test Run"
 	logger.Log("Setting up Pipeline Run Tests")
+	createdRunIds = make([]string, 0)
 })
 
 var _ = AfterEach(func() {
 	logger.Log("Tearing down Pipeline Run Tests")
 	if len(createdRunIds) > 0 {
 		for _, runID := range createdRunIds {
+			logger.Log("Terminate run %s", runID)
+			terminateRunParams := run_params.NewRunServiceTerminateRunParams()
+			terminateRunParams.RunID = runID
+			terminateErr := runClient.Terminate(terminateRunParams)
+			if terminateErr != nil {
+				logger.Log("Failed to terminate run %s", runID)
+			}
 			logger.Log("Deleting run %s", runID)
 			deleteRunParams := run_params.NewRunServiceDeleteRunParams()
 			deleteRunParams.RunID = runID
-			err := runClient.Delete(deleteRunParams)
-			if err != nil {
+			deleteErr := runClient.Delete(deleteRunParams)
+			if deleteErr != nil {
 				logger.Log("Failed to delete run %s", runID)
 			}
 		}
@@ -111,13 +121,56 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun"), func
 func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
 	logger.Log("Create a pipeline")
 	createdPipeline, err = uploadPipeline(pipelineDir, pipelineFileName, &pipelineGeneratedName)
+	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFileName)
+	if _, platformSpecExists := pipelineSpecsFromFile["platform_spec"]; platformSpecExists {
+		pipelineSpecsFromFile = pipelineSpecsFromFile["pipeline_spec"].(map[string]interface{})
+	}
+	pipelineInputMap := make(map[string]interface{})
+	if pipelineInputDef, pipelineInputParamsExists := pipelineSpecsFromFile["root"].(map[string]interface{})["inputDefinitions"]; pipelineInputParamsExists {
+		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
+			for input, value := range pipelineInput.(map[string]interface{}) {
+				valueMap := value.(map[string]interface{})
+				_, defaultValExists := valueMap["defaultValue"]
+				optional, optionalExists := valueMap["isOptional"]
+				if optionalExists {
+					if optional == "true" {
+						continue
+					}
+				}
+				if !defaultValExists || !optionalExists {
+					valueType := valueMap["parameterType"].(string)
+					switch valueType {
+					case "NUMBER_INTEGER":
+						pipelineInputMap[input] = rand.Int()
+					case "STRING":
+						pipelineInputMap[input] = utils.GetRandomString(20)
+					case "STRUCT":
+						pipelineInputMap[input] = map[string]interface{}{
+							"A": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+							"B": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+						}
+					case "LIST":
+						pipelineInputMap[input] = []string{utils.GetRandomString(20)}
+					case "BOOLEAN":
+						pipelineInputMap[input] = true
+					case "TASK_FINAL_STATUS":
+						pipelineInputMap[input] = ""
+					default:
+						pipelineInputMap[input] = utils.GetRandomString(20)
+					}
+				}
+
+			}
+		}
+	}
+
 	Expect(err).NotTo(HaveOccurred())
 	createdPipelines = append(createdPipelines, createdPipeline)
 	createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
 	Expect(err).NotTo(HaveOccurred())
-	createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
+	createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, pipelineInputMap)
 	createdRunIds = append(createdRunIds, createdPipelineRun.RunID)
-	expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, false)
+	expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, pipelineInputMap, false)
 	matcher.MatchPipelineRuns(createdPipelineRun, expectedPipelineRun)
 	createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
 		RunID: createdPipelineRun.RunID,
@@ -128,16 +181,16 @@ func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
 	matcher.MatchPipelineRuns(createdPipelineRun, createdPipelineRunFromDB)
 }
 
-func createPipelineRunFromPipeline(pipelineID *string, pipelineVersionID *string, experimentID *string) *run_model.V2beta1Run {
+func createPipelineRunFromPipeline(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run for pipeline with id=%s and versionId=%s", pipelineID, pipelineVersionID)
-	createRunRequest := &run_params.RunServiceCreateRunParams{Body: createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID)}
+	createRunRequest := &run_params.RunServiceCreateRunParams{Body: createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams)}
 	createdRun, err := runClient.Create(createRunRequest)
 	Expect(err).NotTo(HaveOccurred())
 	logger.Log("Created Pipeline Run successfully with runId=%s", createdRun.RunID)
 	return createdRun
 }
 
-func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string) *run_model.V2beta1Run {
+func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run body")
 	return &run_model.V2beta1Run{
 		DisplayName:    runName,
@@ -148,11 +201,14 @@ func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, exp
 			PipelineID:        utils.ParsePointersToString(pipelineID),
 			PipelineVersionID: utils.ParsePointersToString(pipelineVersionID),
 		},
+		RuntimeConfig: &run_model.V2beta1RuntimeConfig{
+			Parameters: inputParams,
+		},
 	}
 }
 
-func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, archived bool) *run_model.V2beta1Run {
-	expectedRun := createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID)
+func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}, archived bool) *run_model.V2beta1Run {
+	expectedRun := createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams)
 	if !archived {
 		expectedRun.StorageState = run_model.V2beta1RunStorageStateAVAILABLE
 	} else {
