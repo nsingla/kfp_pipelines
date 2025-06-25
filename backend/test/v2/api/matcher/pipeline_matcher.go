@@ -34,12 +34,16 @@ func MatchPipelineVersions(actual *model.V2beta1PipelineVersion, expected *model
 	MatchMaps(actual.PipelineSpec, expected.PipelineSpec, "Pipeline Spec")
 }
 
-// MatchPipelineRunShallow - Shallow match 2 pipeline runs i.e. match only the fields that you do add to the payload when creating a run
-func MatchPipelineRunShallow(actual *run_model.V2beta1Run, expected *run_model.V2beta1Run) {
-	Expect(actual.RunID).To(Not(BeEmpty()), "Run ID is empty")
+// MatchPipelineRuns - Shallow match 2 pipeline runs i.e. match only the fields that you do add to the payload when creating a run
+func MatchPipelineRuns(actual *run_model.V2beta1Run, expected *run_model.V2beta1Run) {
+	if expected.RunID != "" {
+		Expect(actual.RunID).To(Equal(expected.RunID), "Run ID is not matching")
+	} else {
+		Expect(actual.RunID).To(Not(BeEmpty()), "Run ID is empty")
+	}
 	actualTime := time.Time(actual.CreatedAt).UTC()
 	expectedTime := time.Time(expected.CreatedAt).UTC()
-	Expect(actualTime.After(expectedTime)).To(BeTrue(), "Actual Run time is not before the expected time")
+	Expect(actualTime.After(expectedTime) || actualTime.Equal(expectedTime)).To(BeTrue(), "Actual Run time is not before the expected time")
 	Expect(actual.DisplayName).To(Equal(expected.DisplayName), "Run Name is not matching")
 	Expect(actual.ExperimentID).To(Equal(expected.ExperimentID), "Experiment Id is not matching")
 	Expect(actual.PipelineVersionID).To(Equal(expected.PipelineVersionID), "Pipeline Version Id is not matching")
