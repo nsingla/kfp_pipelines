@@ -85,28 +85,29 @@ var _ = AfterEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun"), func() {
+var _ = Describe("Verify Pipeline Run (Cache Enabled) >", Label("Positive", "PipelineRun"), func() {
 
-	/* Critical Positive Scenarios of uploading a pipeline file */
+	type TestParams struct {
+		pipelineDirectory    string
+		pipelineCacheEnabled bool
+	}
+
+	testParams := []TestParams{
+		{pipelineDirectory: "valid", pipelineCacheEnabled: true},
+		{pipelineDirectory: "valid", pipelineCacheEnabled: false},
+	}
+
+	/* Critical pipelines */
 	Context("Create a critical valid pipeline and verify the created run >", Label(Smoke, S1), func() {
-		var pipelineDir = "valid/critical"
-		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
-		for _, pipelineFile := range criticalPipelineFiles {
-			It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
-				createPipelineAndVerifyRun(pipelineDir, pipelineFile)
-			})
+		for _, param := range testParams {
+			pipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, param.pipelineDirectory))
+			for _, pipelineFile := range pipelineFiles {
+				It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
+					createPipelineAndVerifyRun(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
+				})
+			}
 		}
-	})
 
-	/* Critical Positive Scenarios of uploading a pipeline file */
-	Context("Create a valid pipeline and verify the created run >", Label(FullRegression, S2), func() {
-		var pipelineDir = "valid"
-		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
-		for _, pipelineFile := range criticalPipelineFiles {
-			It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
-				createPipelineAndVerifyRun(pipelineDir, pipelineFile)
-			})
-		}
 	})
 })
 
@@ -118,48 +119,15 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun"), func
 // ################################################################### UTILITY METHODS ################################################################################
 // ####################################################################################################################################################################
 
-func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
+func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string, cacheEnabled bool) {
 	logger.Log("Create a pipeline")
 	createdPipeline, err = uploadPipeline(pipelineDir, pipelineFileName, &pipelineGeneratedName)
 	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFileName)
 	if _, platformSpecExists := pipelineSpecsFromFile["platform_spec"]; platformSpecExists {
 		pipelineSpecsFromFile = pipelineSpecsFromFile["pipeline_spec"].(map[string]interface{})
 	}
-	pipelineInputMap := make(map[string]interface{})
-	if pipelineInputDef, pipelineInputParamsExists := pipelineSpecsFromFile["root"].(map[string]interface{})["inputDefinitions"]; pipelineInputParamsExists {
-		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
-			for input, value := range pipelineInput.(map[string]interface{}) {
-				valueMap := value.(map[string]interface{})
-				_, defaultValExists := valueMap["defaultValue"]
-				optional, optionalExists := valueMap["isOptional"]
-				if optionalExists && optional.(bool) {
-					continue
-				}
-				if !defaultValExists || !optionalExists {
-					valueType := valueMap["parameterType"].(string)
-					switch valueType {
-					case "NUMBER_INTEGER":
-						pipelineInputMap[input] = rand.Int()
-					case "STRING":
-						pipelineInputMap[input] = utils.GetRandomString(20)
-					case "STRUCT":
-						pipelineInputMap[input] = map[string]interface{}{
-							"A": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
-							"B": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
-						}
-					case "LIST":
-						pipelineInputMap[input] = []string{utils.GetRandomString(20)}
-					case "BOOLEAN":
-						pipelineInputMap[input] = true
-					default:
-						pipelineInputMap[input] = utils.GetRandomString(20)
-					}
-				}
-
-			}
-		}
-	}
-
+	configurePipelineCacheSettings(pipelineSpecsFromFile, cacheEnabled)
+	pipelineInputMap := getPipelineRunTimeInputs(pipelineSpecsFromFile)
 	Expect(err).NotTo(HaveOccurred())
 	createdPipelines = append(createdPipelines, createdPipeline)
 	createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
@@ -225,6 +193,57 @@ func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, ex
 		}
 	}
 	return expectedRun
+}
+
+func configurePipelineCacheSettings(pipelineSpec map[string]interface{}, cacheEnabled bool) {
+	if pipelineTasks, pipelineTasksExists := pipelineSpec["root"].(map[string]interface{})["dag"].(map[string]interface{})["tasks"]; pipelineTasksExists {
+		for _, pipelineTask := range pipelineTasks.(map[string]interface{}) {
+			task := pipelineTask.(map[string]interface{})
+			cachingOptionMap := make(map[string]interface{})
+			if cacheEnabled {
+				cachingOptionMap["enableCache"] = true
+			}
+			task["cachingOptions"] = cachingOptionMap
+		}
+	}
+}
+
+func getPipelineRunTimeInputs(pipelineSpec map[string]interface{}) map[string]interface{} {
+	pipelineInputMap := make(map[string]interface{})
+	if pipelineInputDef, pipelineInputParamsExists := pipelineSpec["root"].(map[string]interface{})["inputDefinitions"]; pipelineInputParamsExists {
+		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
+			for input, value := range pipelineInput.(map[string]interface{}) {
+				valueMap := value.(map[string]interface{})
+				_, defaultValExists := valueMap["defaultValue"]
+				optional, optionalExists := valueMap["isOptional"]
+				if optionalExists && optional.(bool) {
+					continue
+				}
+				if !defaultValExists || !optionalExists {
+					valueType := valueMap["parameterType"].(string)
+					switch valueType {
+					case "NUMBER_INTEGER":
+						pipelineInputMap[input] = rand.Int()
+					case "STRING":
+						pipelineInputMap[input] = utils.GetRandomString(20)
+					case "STRUCT":
+						pipelineInputMap[input] = map[string]interface{}{
+							"A": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+							"B": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+						}
+					case "LIST":
+						pipelineInputMap[input] = []string{utils.GetRandomString(20)}
+					case "BOOLEAN":
+						pipelineInputMap[input] = true
+					default:
+						pipelineInputMap[input] = utils.GetRandomString(20)
+					}
+				}
+
+			}
+		}
+	}
+	return pipelineInputMap
 }
 
 // DO NOT DELETE - When we have the logic to create pending tasks without AWC, we will use the following code
