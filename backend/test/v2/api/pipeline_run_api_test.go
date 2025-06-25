@@ -16,8 +16,8 @@ package api
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
-	"time"
 
 	experiment_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_client/experiment_service"
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
@@ -29,7 +29,6 @@ import (
 	utils "github.com/kubeflow/pipelines/backend/test/v2/api/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"gopkg.in/yaml.v2"
 )
 
 // ####################################################################################################################################################################
@@ -41,6 +40,7 @@ var createdPipeline *pipeline_upload_model.V2beta1Pipeline
 var err error
 var runName string
 var runDescription string
+var createdRunIds []string
 
 // ####################################################################################################################################################################
 // ################################################################### SETUP AND TEARDOWN ################################################################################
@@ -50,16 +50,21 @@ var _ = BeforeEach(func() {
 	runName = "API Test Run - " + randomName
 	runDescription = "API Test Run"
 	logger.Log("Setting up Pipeline Run Tests")
-	logger.Log("Create a hello-world pipeline")
-	var pipelineDir = "valid"
-	createdPipeline, err = uploadPipeline(pipelineDir, "parameters_simple.yaml", &pipelineGeneratedName)
-	Expect(err).NotTo(HaveOccurred())
-	createdPipelines = append(createdPipelines, createdPipeline)
 })
 
 var _ = AfterEach(func() {
 	logger.Log("Tearing down Pipeline Run Tests")
-	logger.Log("Deleting created Pipeline Runs")
+	if len(createdRunIds) > 0 {
+		for _, runID := range createdRunIds {
+			logger.Log("Deleting run %s", runID)
+			deleteRunParams := run_params.NewRunServiceDeleteRunParams()
+			deleteRunParams.RunID = runID
+			err := runClient.Delete(deleteRunParams)
+			if err != nil {
+				logger.Log("Failed to delete run %s", runID)
+			}
+		}
+	}
 })
 
 // ####################################################################################################################################################################
@@ -70,55 +75,28 @@ var _ = AfterEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", S1), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun"), func() {
 
 	/* Critical Positive Scenarios of uploading a pipeline file */
-	Context("Create a pipeline run and verify created argo workflows >", Label(Smoke), func() {
-
-		It(fmt.Sprintf("Create a run for '%s' pipeline and verify the argo workflow", helloWorldPipelineFileName), func() {
-			createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
-			Expect(err).NotTo(HaveOccurred())
-			createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
-			expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, false)
-			matcher.MatchPipelineRunShallow(createdPipelineRun, expectedPipelineRun)
-			createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
-				RunID: createdPipelineRun.RunID,
+	Context("Create a critical valid pipeline and verify the created run >", Label(Smoke, S1), func() {
+		var pipelineDir = "valid/critical"
+		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
+		for _, pipelineFile := range criticalPipelineFiles {
+			It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
+				createPipelineAndVerifyRun(pipelineDir, pipelineFile)
 			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(createdPipelineRunFromDB).To(Equal(createdPipelineRun))
-			expectedPipelineRunDetails := utils.ToRunDetailsFromPipelineSpec(createPipelineVersions[0].PipelineSpec, createdPipelineRun.RunID)
-			fmt.Println("Expected Pipeline Run Details:")
-			yamlString, _ := yaml.Marshal(&expectedPipelineRunDetails)
-			fmt.Println("Waiting for run details to be available")
-			timeout := time.After(30 * time.Second)
-			for createdPipelineRunFromDB.RunDetails == nil {
+		}
+	})
 
-				time.Sleep(1 * time.Second)
-				createdPipelineRunFromDB, _ = runClient.Get(&run_params.RunServiceGetRunParams{
-					RunID: createdPipelineRun.RunID,
-				})
-				select {
-				case <-timeout:
-					Fail("Timeout waiting for run details to be available for runId=" + createdPipelineRun.RunID)
-				default:
-					if createdPipelineRunFromDB.RunDetails != nil {
-						if len(createdPipelineRunFromDB.RunDetails.TaskDetails) < len(expectedPipelineRunDetails.TaskDetails) {
-							logger.Log("Not all tasks for the run %s have been generated, tasks=%d/%d", createdPipelineRun.RunID, len(createdPipelineRunFromDB.RunDetails.TaskDetails), len(expectedPipelineRunDetails.TaskDetails))
-							createdPipelineRunFromDB.RunDetails = nil
-							continue
-						} else {
-							logger.Log("All %d/%d tasks for the run %s have been generated", len(createdPipelineRunFromDB.RunDetails.TaskDetails), len(expectedPipelineRunDetails.TaskDetails), createdPipelineRun.RunID)
-						}
-					}
-				}
-			}
-
-			fmt.Println(string(yamlString))
-			yamlString, _ = yaml.Marshal(&createdPipelineRunFromDB)
-			fmt.Println("Created Pipeline Run Details:")
-			fmt.Println(string(yamlString))
-			matcher.MatchPipelineRunDetails(createdPipelineRunFromDB.RunDetails, expectedPipelineRunDetails)
-		})
+	/* Critical Positive Scenarios of uploading a pipeline file */
+	Context("Create a valid pipeline and verify the created run >", Label(FullRegression, S2), func() {
+		var pipelineDir = "valid"
+		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
+		for _, pipelineFile := range criticalPipelineFiles {
+			It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
+				createPipelineAndVerifyRun(pipelineDir, pipelineFile)
+			})
+		}
 	})
 })
 
@@ -129,6 +107,26 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", S1), 
 // ####################################################################################################################################################################
 // ################################################################### UTILITY METHODS ################################################################################
 // ####################################################################################################################################################################
+
+func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string) {
+	logger.Log("Create a pipeline")
+	createdPipeline, err = uploadPipeline(pipelineDir, pipelineFileName, &pipelineGeneratedName)
+	Expect(err).NotTo(HaveOccurred())
+	createdPipelines = append(createdPipelines, createdPipeline)
+	createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
+	Expect(err).NotTo(HaveOccurred())
+	createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil)
+	createdRunIds = append(createdRunIds, createdPipelineRun.RunID)
+	expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, false)
+	matcher.MatchPipelineRuns(createdPipelineRun, expectedPipelineRun)
+	createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
+		RunID: createdPipelineRun.RunID,
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	// Making the fields that can be different but we don't care about equal to stabilize tests
+	matcher.MatchPipelineRuns(createdPipelineRun, createdPipelineRunFromDB)
+}
 
 func createPipelineRunFromPipeline(pipelineID *string, pipelineVersionID *string, experimentID *string) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run for pipeline with id=%s and versionId=%s", pipelineID, pipelineVersionID)
@@ -154,7 +152,7 @@ func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, exp
 }
 
 func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, archived bool) *run_model.V2beta1Run {
-	expectedRun := createPipelineRunPayload(&createdPipeline.PipelineID, pipelineVersionID, experimentID)
+	expectedRun := createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID)
 	if !archived {
 		expectedRun.StorageState = run_model.V2beta1RunStorageStateAVAILABLE
 	} else {
@@ -176,3 +174,39 @@ func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, ex
 	}
 	return expectedRun
 }
+
+// DO NOT DELETE - When we have the logic to create pending tasks without AWC, we will use the following code
+// func waitForTasksAndGetRunDetails(runID string, numberOfExpectedTasks int) *run_model.V2beta1Run {
+//	createdPipelineRunFromDB, _ := runClient.Get(&run_params.RunServiceGetRunParams{
+//		RunID: runID,
+//	})
+//	timeout := time.After(30 * time.Second)
+//	for createdPipelineRunFromDB.RunDetails == nil {
+//		time.Sleep(1 * time.Second)
+//		createdPipelineRunFromDB, _ = runClient.Get(&run_params.RunServiceGetRunParams{
+//			RunID: runID,
+//		})
+//		select {
+//		case <-timeout:
+//			Fail("Timeout waiting for run details to be available for runId=" + runID)
+//		default:
+//			if createdPipelineRunFromDB.RunDetails != nil {
+//				if len(createdPipelineRunFromDB.RunDetails.TaskDetails) < numberOfExpectedTasks {
+//					logger.Log("Not all tasks for the run %s have been generated, tasks=%d/%d", runID, len(createdPipelineRunFromDB.RunDetails.TaskDetails), numberOfExpectedTasks)
+//					createdPipelineRunFromDB.RunDetails = nil
+//					continue
+//				} else {
+//					logger.Log("All %d/%d tasks for the run %s have been generated", len(createdPipelineRunFromDB.RunDetails.TaskDetails), numberOfExpectedTasks, runID)
+//				}
+//			}
+//		}
+//	}
+//	return createdPipelineRunFromDB
+//}
+
+// DO NOT DELETE - When we have the logic to create pending tasks without AWC, we will use the following code
+// func validatePipelineRunDetails(inputPipelineSpec interface{}, runID string) {
+//	expectedPipelineRunDetails := utils.ToRunDetailsFromPipelineSpec(inputPipelineSpec, runID)
+//	createdPipelineRunFromDB := waitForTasksAndGetRunDetails(runID, len(expectedPipelineRunDetails.TaskDetails))
+//	matcher.MatchPipelineRunDetails(createdPipelineRunFromDB.RunDetails, expectedPipelineRunDetails)
+//}
