@@ -8,8 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kubeflow/pipelines/backend/src/common/util"
+
 	"github.com/go-openapi/strfmt"
 	upload_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_client/pipeline_upload_service"
+	"k8s.io/client-go/kubernetes"
 
 	upload_model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	api_server "github.com/kubeflow/pipelines/backend/src/common/client/api_server/v2"
@@ -26,6 +29,7 @@ const (
 )
 
 // API Clients declaration to make API calls
+var k8Client *kubernetes.Clientset
 var pipelineUploadClient *api_server.PipelineUploadClient
 var pipelineClient *api_server.PipelineClient
 var experimentClient *api_server.ExperimentClient
@@ -36,6 +40,8 @@ var testStartTime strfmt.DateTime
 var randomName string
 var pipelineFilesRootDir = utils.GetPipelineFilesDir()
 var createdPipelines []*upload_model.V2beta1Pipeline
+var createdRunIds []string
+var createdExperimentIds []string
 var pipelineUploadParams *upload_params.UploadPipelineParams
 var pipelineGeneratedName string
 var testLogsDirectory = "logs"
@@ -105,15 +111,21 @@ var _ = BeforeSuite(func() {
 	if err != nil {
 		logger.Log("Failed to get run client. Error: %s", err.Error())
 	}
+	k8Client, err = initK8sClient()
+	if err != nil {
+		logger.Log("Failed to initialize K8s client. Error: %s", err.Error())
+	}
 })
 
 var _ = BeforeEach(func() {
 	logger.Log("################### Global Setup before each test #####################")
-	testStartTime, _ = strfmt.ParseDateTime(time.Now().Format(time.DateTime))
-	createdPipelines = []*upload_model.V2beta1Pipeline{}
+	testStartTime, _ = strfmt.ParseDateTime(time.Now().UTC().Format(time.DateTime))
 	randomName = strconv.FormatInt(time.Now().UnixNano(), 10)
 	pipelineGeneratedName = "apitest-pipeline-" + randomName
 	pipelineUploadParams = upload_params.NewUploadPipelineParams()
+	createdPipelines = []*upload_model.V2beta1Pipeline{}
+	createdRunIds = make([]string, 0)
+	createdExperimentIds = make([]string, 0)
 })
 
 var _ = AfterEach(func() {
@@ -123,18 +135,58 @@ var _ = AfterEach(func() {
 	for _, pipeline := range createdPipelines {
 		utils.DeletePipeline(pipelineClient, pipeline.PipelineID)
 	}
+
+	logger.Log("Deleting %d run(s)", len(createdRunIds))
+	for _, runID := range createdRunIds {
+		utils.TerminatePipelineRun(runClient, runID)
+		utils.DeletePipelineRun(runClient, runID)
+	}
+	logger.Log("Deleting %d experiment(s)", len(createdExperimentIds))
+	if len(createdExperimentIds) > 0 {
+		for _, experimentID := range createdExperimentIds {
+			utils.DeleteExperiment(experimentClient, experimentID)
+		}
+	}
 })
 
 var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	if specReport.Failed() {
-		logger.Log("Test failed... Capture pod logs if you want to")
-		AddReportEntry("Pod Log", "Pod Logs")
+		logger.Log("Test failed... Capturing pod logs")
+		testStart := time.Time(testStartTime)
+		podLogs := utils.ReadPodLogs(k8Client, *namespace, "ml-pipeline-api-server", nil, &testStart, podLogLimit)
+		AddReportEntry("Pod Log", podLogs)
 		AddReportEntry("Test Log", specReport.CapturedGinkgoWriterOutput)
 		writeLogFile(specReport)
 	} else {
 		log.Printf("Test passed")
 	}
 })
+
+func TestAPIs(t *testing.T) {
+	RegisterFailHandler(Fail)
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.FailFast = false
+	reporterConfig.GithubOutput = true
+	reporterConfig.JUnitReport = filepath.Join(testReportDirectory, junitReportFilename)
+	reporterConfig.JSONReport = filepath.Join(testReportDirectory, jsonReportFilename)
+	RunSpecs(t, "API Tests Suite", suiteConfig, reporterConfig)
+}
+
+// ####################################################################################################################################################################
+// ################################################################### UTILITY METHODS ################################################################################
+// ####################################################################################################################################################################
+
+func initK8sClient() (*kubernetes.Clientset, error) {
+	restConfig, configErr := util.GetKubernetesConfig()
+	if configErr != nil {
+		return nil, configErr
+	}
+	k8sClient, clientErr := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, clientErr
+	}
+	return k8sClient, nil
+}
 
 func writeLogFile(specReport types.SpecReport) {
 	stdOutput := specReport.CapturedGinkgoWriterOutput
@@ -149,14 +201,4 @@ func writeLogFile(specReport types.SpecReport) {
 		logger.Log("Failed to write to the log file, due to: %s", err.Error())
 	}
 	logFile.Close()
-}
-
-func TestAPIs(t *testing.T) {
-	RegisterFailHandler(Fail)
-	suiteConfig, reporterConfig := GinkgoConfiguration()
-	suiteConfig.FailFast = false
-	reporterConfig.GithubOutput = true
-	reporterConfig.JUnitReport = filepath.Join(testReportDirectory, junitReportFilename)
-	reporterConfig.JSONReport = filepath.Join(testReportDirectory, jsonReportFilename)
-	RunSpecs(t, "API Tests Suite", suiteConfig, reporterConfig)
 }

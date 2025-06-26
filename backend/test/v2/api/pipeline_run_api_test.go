@@ -21,6 +21,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_model"
+	"sigs.k8s.io/yaml"
+
 	experiment_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_client/experiment_service"
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	run_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_client/run_service"
@@ -40,9 +43,9 @@ import (
 var createdPipelineRun *run_model.V2beta1Run
 var createdPipeline *pipeline_upload_model.V2beta1Pipeline
 var err error
+var experimentName string
 var runName string
 var runDescription string
-var createdRunIds []string
 
 // ####################################################################################################################################################################
 // ################################################################### SETUP AND TEARDOWN ################################################################################
@@ -52,29 +55,7 @@ var _ = BeforeEach(func() {
 	logger.Log("Setting up Pipeline Run Tests")
 	runName = "API Test Run - " + randomName
 	runDescription = "API Test Run"
-	createdRunIds = make([]string, 0)
-})
-
-var _ = AfterEach(func() {
-	logger.Log("Tearing down Pipeline Run Tests")
-	if len(createdRunIds) > 0 {
-		for _, runID := range createdRunIds {
-			logger.Log("Terminate run %s", runID)
-			terminateRunParams := run_params.NewRunServiceTerminateRunParams()
-			terminateRunParams.RunID = runID
-			terminateErr := runClient.Terminate(terminateRunParams)
-			if terminateErr != nil {
-				logger.Log("Failed to terminate run %s", runID)
-			}
-			logger.Log("Deleting run %s", runID)
-			deleteRunParams := run_params.NewRunServiceDeleteRunParams()
-			deleteRunParams.RunID = runID
-			deleteErr := runClient.Delete(deleteRunParams)
-			if deleteErr != nil {
-				logger.Log("Failed to delete run %s", runID)
-			}
-		}
-	}
+	experimentName = "API Test Experiment - " + randomName
 })
 
 // ####################################################################################################################################################################
@@ -85,7 +66,7 @@ var _ = AfterEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run (Cache Enabled) >", Label("Positive", "PipelineRun"), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression, S1), func() {
 
 	type TestParams struct {
 		pipelineDirectory    string
@@ -98,16 +79,26 @@ var _ = Describe("Verify Pipeline Run (Cache Enabled) >", Label("Positive", "Pip
 	}
 
 	/* Critical pipelines */
-	Context("Create a critical valid pipeline and verify the created run >", Label(Smoke, S1), func() {
+	Context("Create a valid pipeline and verify the created run >", func() {
 		for _, param := range testParams {
 			pipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, param.pipelineDirectory))
 			for _, pipelineFile := range pipelineFiles {
-				It(fmt.Sprintf("Create a '%s' pipeline and verify run", pipelineFile), func() {
-					createPipelineAndVerifyRun(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
+				It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t and verify run", pipelineFile, param.pipelineCacheEnabled), func() {
+					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
+					createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
+					pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
+					createPipelineRunAndVerify(&createdPipeline.PipelineID, nil, pipelineRuntimeInputs)
 				})
 			}
+			It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t, create an experiement and verify run with associated experiment", pipelineFiles[0], param.pipelineCacheEnabled), Label(Smoke), func() {
+				pipelineFile := pipelineFiles[0]
+				configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
+				createdExperiment := createExperiment(experimentName)
+				createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
+				pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
+				createPipelineRunAndVerify(&createdPipeline.PipelineID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			})
 		}
-
 	})
 })
 
@@ -119,37 +110,65 @@ var _ = Describe("Verify Pipeline Run (Cache Enabled) >", Label("Positive", "Pip
 // ################################################################### UTILITY METHODS ################################################################################
 // ####################################################################################################################################################################
 
-func createPipelineAndVerifyRun(pipelineDir string, pipelineFileName string, cacheEnabled bool) {
-	logger.Log("Create a pipeline")
-	createdPipeline, err = uploadPipeline(pipelineDir, pipelineFileName, &pipelineGeneratedName)
-	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFileName)
+func configureCacheSettingAndGetPipelineFile(pipelineDirectory string, pipelineFileName string, cacheEnabled bool) string {
+	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDirectory, pipelineFileName)
 	if _, platformSpecExists := pipelineSpecsFromFile["platform_spec"]; platformSpecExists {
-		pipelineSpecsFromFile = pipelineSpecsFromFile["pipeline_spec"].(map[string]interface{})
+		pipelineSpecs := pipelineSpecsFromFile["pipeline_spec"].(map[string]interface{})
+		configurePipelineCacheSettings(&pipelineSpecs, cacheEnabled)
+
+	} else {
+		configurePipelineCacheSettings(&pipelineSpecsFromFile, cacheEnabled)
 	}
-	configurePipelineCacheSettings(pipelineSpecsFromFile, cacheEnabled)
-	pipelineInputMap := getPipelineRunTimeInputs(pipelineSpecsFromFile)
-	Expect(err).NotTo(HaveOccurred())
+	unmarshalledPipelineSpec, unmarshallErr := yaml.Marshal(pipelineSpecsFromFile)
+	Expect(unmarshallErr).NotTo(HaveOccurred(), "Failed to unmarshall pipeline spec")
+	newPipelineFilePath := utils.CreateTempFile(unmarshalledPipelineSpec)
+	return newPipelineFilePath
+}
+
+func uploadAPipeline(pipelineFile string, pipelineName *string) *pipeline_upload_model.V2beta1Pipeline {
+	logger.Log("Create a pipeline")
+	pipelineUploadParams.SetName(pipelineName)
+	logger.Log("Uploading pipeline with name=%s, from file %s", *pipelineName, pipelineFile)
+	createdPipeline, err = pipelineUploadClient.UploadFile(pipelineFile, pipelineUploadParams)
+	Expect(err).NotTo(HaveOccurred(), "Failed to upload pipeline")
 	createdPipelines = append(createdPipelines, createdPipeline)
-	createPipelineVersions, _, _, err := utils.ListPipelineVersions(pipelineClient, createdPipeline.PipelineID)
-	Expect(err).NotTo(HaveOccurred())
-	createdPipelineRun = createPipelineRunFromPipeline(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, pipelineInputMap)
+	return createdPipeline
+}
+
+func createExperiment(experimentName string) *experiment_model.V2beta1Experiment {
+	logger.Log("Create an experiment with name %s", experimentName)
+	createExperimentParams := experiment_params.NewExperimentServiceCreateExperimentParams()
+	createExperimentParams.Body = &experiment_model.V2beta1Experiment{
+		DisplayName: experimentName,
+	}
+	createdExperiment, experimentErr := experimentClient.Create(createExperimentParams)
+	Expect(experimentErr).NotTo(HaveOccurred(), "Failed to create experiment")
+	createdExperimentIds = append(createdExperimentIds, createdExperiment.ExperimentID)
+	return createdExperiment
+}
+
+func createPipelineRunAndVerify(pipelineID *string, experimentID *string, pipelineInputMap map[string]interface{}) {
+	createdPipelines = append(createdPipelines, createdPipeline)
+	createPipelineVersions, _, _, listPipelineVersionErr := utils.ListPipelineVersions(pipelineClient, *pipelineID)
+	Expect(listPipelineVersionErr).NotTo(HaveOccurred(), "Failed to list pipeline versions for pipeline with id="+*pipelineID)
+	createdPipelineRun = createPipelineRun(pipelineID, &createPipelineVersions[0].PipelineVersionID, experimentID, pipelineInputMap)
 	createdRunIds = append(createdRunIds, createdPipelineRun.RunID)
-	expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, nil, pipelineInputMap, false)
+	expectedPipelineRun := createExpectedPipelineRun(&createdPipeline.PipelineID, &createPipelineVersions[0].PipelineVersionID, experimentID, pipelineInputMap, false)
 	matcher.MatchPipelineRuns(createdPipelineRun, expectedPipelineRun)
-	createdPipelineRunFromDB, err := runClient.Get(&run_params.RunServiceGetRunParams{
+	createdPipelineRunFromDB, createRunError := runClient.Get(&run_params.RunServiceGetRunParams{
 		RunID: createdPipelineRun.RunID,
 	})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(createRunError).NotTo(HaveOccurred(), "Failed to get run with Id="+createdPipelineRun.RunID)
 
 	// Making the fields that can be different but we don't care about equal to stabilize tests
 	matcher.MatchPipelineRuns(createdPipelineRun, createdPipelineRunFromDB)
 }
 
-func createPipelineRunFromPipeline(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
+func createPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run for pipeline with id=%s and versionId=%s", pipelineID, pipelineVersionID)
 	createRunRequest := &run_params.RunServiceCreateRunParams{Body: createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams)}
-	createdRun, err := runClient.Create(createRunRequest)
-	Expect(err).NotTo(HaveOccurred())
+	createdRun, createRunError := runClient.Create(createRunRequest)
+	Expect(createRunError).NotTo(HaveOccurred(), "Failed to create run for pipeline with id="+*pipelineID)
 	logger.Log("Created Pipeline Run successfully with runId=%s", createdRun.RunID)
 	return createdRun
 }
@@ -185,7 +204,7 @@ func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, ex
 			Namespace: namespace,
 			PageSize:  &pageSize,
 		}, 1000)
-		Expect(expError).NotTo(HaveOccurred())
+		Expect(expError).NotTo(HaveOccurred(), "Failed to list experiments")
 		for _, experiment := range experminents {
 			if strings.ToLower(experiment.DisplayName) == "default" {
 				expectedRun.ExperimentID = experiment.ExperimentID
@@ -195,8 +214,8 @@ func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, ex
 	return expectedRun
 }
 
-func configurePipelineCacheSettings(pipelineSpec map[string]interface{}, cacheEnabled bool) {
-	if pipelineTasks, pipelineTasksExists := pipelineSpec["root"].(map[string]interface{})["dag"].(map[string]interface{})["tasks"]; pipelineTasksExists {
+func configurePipelineCacheSettings(pipelineSpec *map[string]interface{}, cacheEnabled bool) {
+	if pipelineTasks, pipelineTasksExists := (*pipelineSpec)["root"].(map[string]interface{})["dag"].(map[string]interface{})["tasks"]; pipelineTasksExists {
 		for _, pipelineTask := range pipelineTasks.(map[string]interface{}) {
 			task := pipelineTask.(map[string]interface{})
 			cachingOptionMap := make(map[string]interface{})
@@ -208,7 +227,8 @@ func configurePipelineCacheSettings(pipelineSpec map[string]interface{}, cacheEn
 	}
 }
 
-func getPipelineRunTimeInputs(pipelineSpec map[string]interface{}) map[string]interface{} {
+func getPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
+	pipelineSpec := utils.ReadYamlFile(pipelineSpecFile).(map[string]interface{})
 	pipelineInputMap := make(map[string]interface{})
 	if pipelineInputDef, pipelineInputParamsExists := pipelineSpec["root"].(map[string]interface{})["inputDefinitions"]; pipelineInputParamsExists {
 		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
