@@ -18,10 +18,43 @@ import (
 	"fmt"
 	"time"
 
+	run_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_client/run_service"
+	api_server "github.com/kubeflow/pipelines/backend/src/common/client/api_server/v2"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
 	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
 )
+
+func DeletePipelineRun(client *api_server.RunClient, runID string) {
+	_, err := client.Get(&run_params.RunServiceGetRunParams{RunID: runID})
+	if err != nil {
+		logger.Log("Deleting run %s", runID)
+		deleteRunParams := run_params.NewRunServiceDeleteRunParams()
+		deleteRunParams.RunID = runID
+		deleteErr := client.Delete(deleteRunParams)
+		if deleteErr != nil {
+			logger.Log("Failed to delete run %s", runID)
+		}
+	} else {
+		logger.Log("Skipping Deletion of the run %s, as it does not exist", runID)
+	}
+}
+
+func TerminatePipelineRun(client *api_server.RunClient, runID string) {
+	_, err := client.Get(&run_params.RunServiceGetRunParams{RunID: runID})
+	if err != nil {
+		logger.Log("Terminate run %s", runID)
+		terminateRunParams := run_params.NewRunServiceTerminateRunParams()
+		terminateRunParams.RunID = runID
+		terminateErr := client.Terminate(terminateRunParams)
+		if terminateErr != nil {
+			logger.Log("Failed to terminate run %s", runID)
+		}
+	} else {
+		logger.Log("Skipping Termination of the run %s, because it does not exist", runID)
+	}
+}
 
 func ToRunDetailsFromPipelineSpec(pipelineSpec interface{}, runID string) *run_model.V2beta1RunDetails {
 	logger.Log("Converting Pipeline Spec to run details")
