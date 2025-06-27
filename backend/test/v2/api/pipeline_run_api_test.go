@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_model"
 
@@ -69,21 +70,21 @@ var _ = BeforeEach(func() {
 var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression, S1), func() {
 
 	type TestParams struct {
-		pipelineDirectory    string
 		pipelineCacheEnabled bool
 	}
 
 	testParams := []TestParams{
-		{pipelineDirectory: "valid", pipelineCacheEnabled: true},
-		{pipelineDirectory: "valid", pipelineCacheEnabled: false},
+		{pipelineCacheEnabled: true},
+		{pipelineCacheEnabled: false},
 	}
+	pipelineDirectory := "valid"
+	pipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDirectory))
 
 	Context("Create a valid pipeline and verify the created run >", func() {
 		for _, param := range testParams {
-			pipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, param.pipelineDirectory))
 			for _, pipelineFile := range pipelineFiles {
 				It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t and verify run", pipelineFile, param.pipelineCacheEnabled), func() {
-					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
+					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
 					createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
 					createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
 					pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
@@ -91,24 +92,22 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 					createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 				})
 			}
-			It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t, create an experiement and verify run with associated experiment", pipelineFiles[0], param.pipelineCacheEnabled), Label(Smoke), func() {
-				pipelineFile := pipelineFiles[0]
-				configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(param.pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
-				createdExperiment := createExperiment(experimentName)
-				createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
-				createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-				pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
-				createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
-				createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
-			})
 		}
+
+		It(fmt.Sprintf("Create a '%s' pipeline, create an experiement and verify run with associated experiment", pipelineFiles[0]), Label(Smoke), func() {
+			pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
+			createdExperiment := createExperiment(experimentName)
+			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
+			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+		})
 	})
 
 	Context("Associate a single experiment with multiple pipeline runs >", func() {
-		testParam := testParams[0]
-		pipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, testParam.pipelineDirectory))
-		It(fmt.Sprintf("Create an experiement, a '%s' pipeline and associate multiple pipeline runs with the same experiment", pipelineFiles[0]), func() {
-			pipelineFile := filepath.Join(pipelineFilesRootDir, testParam.pipelineDirectory, pipelineFiles[0])
+		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
+		It("Create an experiment and associate it multiple pipeline runs of the same pipeline", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
@@ -119,8 +118,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdPipelineRun2 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun2, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
-		It(fmt.Sprintf("Create an experiement, 2 '%s' pipelines and associate these pipeline runs with the same experiment", pipelineFiles[0]), Label("nsingla"), func() {
-			pipelineFile := filepath.Join(pipelineFilesRootDir, testParam.pipelineDirectory, pipelineFiles[0])
+		It("Create an experiment and associate it pipeline runs of different pipelines", func() {
 
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline1 := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
@@ -136,11 +134,102 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExpectedRunAndVerify(createdPipelineRun2, &createdPipeline2.PipelineID, &createdPipeline2Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
 	})
+
+	Context("Archive pipeline run(s) >", func() {
+		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
+		It("Create a pipeline run, archive it and verify that the run state does not change on archiving", func() {
+			createdExperiment := createExperiment(experimentName)
+			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
+			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			archivePipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
+			Expect(createdPipelineRun.State).To(Equal(pipelineRunAfterArchive.State))
+			Expect(pipelineRunAfterArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateARCHIVED))
+
+		})
+
+		It("Create a pipeline run, wait for the run to move to RUNNING, archive it and verify that the run state is still RUNNING on archiving", func() {
+			createdExperiment := createExperiment(experimentName)
+			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
+			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			waitForRunToBeInState(&createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
+			archivePipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
+			Expect(pipelineRunAfterArchive.State).To(Equal(run_model.V2beta1RuntimeStateRUNNING))
+			Expect(pipelineRunAfterArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateARCHIVED))
+
+		})
+	})
+
+	Context("Unarchive pipeline run(s) >", func() {
+		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
+		It("Create a pipeline run, archive it and unarchive it and verify the storage state", func() {
+			createdExperiment := createExperiment(experimentName)
+			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
+			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			archivePipelineRun(&createdPipelineRun.RunID)
+			unArchivePipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterUnArchive := getPipelineRun(&createdPipelineRun.RunID)
+			Expect(pipelineRunAfterUnArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateAVAILABLE))
+		})
+	})
+
+	Context("Terminate a pipeline run >", func() {
+		It("Terminate a run in RUNNING state", func() {
+		})
+		It("Terminate a run in PENDING state", func() {
+		})
+		It("Terminate a run in SUCCESSFUL or ERRORED state", func() {
+		})
+	})
+
+	Context("Get All pipeline run >", func() {
+		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
+		})
+	})
 })
 
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S1), func() {
+	Context("Unarchive a pipeline run >", func() {
+		It("Unarchive a deleted run", func() {
+		})
+		It("Unarchive a non existent run", func() {
+		})
+		It("Unarchive an available run", func() {
+		})
+	})
+	Context("Archive a pipeline run >", func() {
+		It("Archive a deleted run", func() {
+		})
+		It("Archive a non existent run", func() {
+		})
+		It("Archive an already archived run", func() {
+		})
+	})
+	Context("Terminate a pipeline run >", func() {
+		It("Terminate a deleted run", func() {
+		})
+		It("Terminate a non existent run", func() {
+		})
+		It("Terminate an already terminated run", func() {
+		})
+	})
+	Context("Delete a pipeline run >", func() {
+		It("Delete a deleted run", func() {
+		})
+		It("Delete a non existent run", func() {
+		})
+	})
+})
 
 // ####################################################################################################################################################################
 // ################################################################### UTILITY METHODS ################################################################################
@@ -210,6 +299,51 @@ func createPipelineRun(pipelineID *string, pipelineVersionID *string, experiment
 	createdRunIds = append(createdRunIds, createdRun.RunID)
 	logger.Log("Created Pipeline Run successfully with runId=%s", createdRun.RunID)
 	return createdRun
+}
+
+func archivePipelineRun(pipelineRunID *string) {
+	logger.Log("Archiving a pipeline run with id=%s and versionId=%s", pipelineRunID)
+	archiveRunParams := &run_params.RunServiceArchiveRunParams{
+		RunID: *pipelineRunID,
+	}
+	archiveRunError := runClient.Archive(archiveRunParams)
+	Expect(archiveRunError).NotTo(HaveOccurred(), "Failed to archive run with id="+*pipelineRunID)
+	logger.Log("Successfully archived run with runId=%s", pipelineRunID)
+}
+
+func unArchivePipelineRun(pipelineRunID *string) {
+	logger.Log("Unarchiving a pipeline run with id=%s and versionId=%s", pipelineRunID)
+	unArchiveRunParams := &run_params.RunServiceUnarchiveRunParams{
+		RunID: *pipelineRunID,
+	}
+	unarchiveRunError := runClient.Unarchive(unArchiveRunParams)
+	Expect(unarchiveRunError).NotTo(HaveOccurred(), "Failed to un-archive run with id="+*pipelineRunID)
+	logger.Log("Successfully unarchived run with runId=%s", pipelineRunID)
+}
+
+func getPipelineRun(pipelineRunID *string) *run_model.V2beta1Run {
+	logger.Log("Get a pipeline run with id=%s", *pipelineRunID)
+	pipelineRun, runError := runClient.Get(&run_params.RunServiceGetRunParams{
+		RunID: *pipelineRunID,
+	})
+	Expect(runError).NotTo(HaveOccurred(), "Failed to get run with id="+*pipelineRunID)
+	return pipelineRun
+}
+
+func waitForRunToBeInState(pipelineRunID *string, expectedState run_model.V2beta1RuntimeState) {
+	timeout := time.After(30 * time.Second)
+	currentPipelineRunState := getPipelineRun(pipelineRunID).State
+	for currentPipelineRunState != expectedState {
+		logger.Log("Waiting for pipeline run with id=%s to be in %v state", pipelineRunID, expectedState)
+		time.Sleep(1 * time.Second)
+		select {
+		case <-timeout:
+			Fail("Timeout waiting for pipeline run with id runId=" + *pipelineRunID + " to be in expected state")
+		default:
+			logger.Log("Pipeline run with id=%s is in %v state", pipelineRunID, currentPipelineRunState)
+			currentPipelineRunState = getPipelineRun(pipelineRunID).State
+		}
+	}
 }
 
 func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
