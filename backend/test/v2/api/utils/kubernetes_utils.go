@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
@@ -17,7 +18,6 @@ func ReadPodLogs(client *kubernetes.Clientset, namespace string, containerName s
 	pod := GetPodContainingContainer(client, namespace, containerName)
 	if pod != nil {
 		podLogOptions := GetDefaultPodLogOptions()
-		podLogOptions.Container = containerName
 		if logLimit != nil {
 			podLogOptions.LimitBytes = logLimit
 		}
@@ -69,7 +69,7 @@ func GetPodContainingContainer(client *kubernetes.Clientset, namespace, containe
 	}
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
-			if container.Name == containerName {
+			if strings.Contains(container.Name, containerName) {
 				return &pod
 			}
 		}
