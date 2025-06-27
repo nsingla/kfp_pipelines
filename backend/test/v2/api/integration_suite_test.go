@@ -37,6 +37,7 @@ var runClient *api_server.RunClient
 
 // Common test variables
 var testStartTime strfmt.DateTime
+var testStartTimeUTC time.Time
 var randomName string
 var pipelineFilesRootDir = utils.GetPipelineFilesDir()
 var createdPipelines []*upload_model.V2beta1Pipeline
@@ -119,7 +120,8 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	logger.Log("################### Global Setup before each test #####################")
-	testStartTime, _ = strfmt.ParseDateTime(time.Now().UTC().Format(time.DateTime))
+	testStartTime, _ = strfmt.ParseDateTime(time.Now().Format(time.DateTime))
+	testStartTimeUTC = time.Now().UTC()
 	randomName = strconv.FormatInt(time.Now().UnixNano(), 10)
 	pipelineGeneratedName = "apitest-pipeline-" + randomName
 	pipelineUploadParams = upload_params.NewUploadPipelineParams()
@@ -152,8 +154,7 @@ var _ = AfterEach(func() {
 var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	if specReport.Failed() {
 		logger.Log("Test failed... Capturing pod logs")
-		testStart := time.Time(testStartTime)
-		podLogs := utils.ReadPodLogs(k8Client, *namespace, "pipeline-api-server", nil, &testStart, podLogLimit)
+		podLogs := utils.ReadPodLogs(k8Client, *namespace, "pipeline-api-server", nil, &testStartTimeUTC, podLogLimit)
 		AddReportEntry("Pod Log", podLogs)
 		AddReportEntry("Test Log", specReport.CapturedGinkgoWriterOutput)
 		writeLogFile(specReport)
