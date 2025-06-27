@@ -85,7 +85,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 })
 
 var _ = Describe("Verify Pipeline Upload Version >", Label("Positive", "PipelineUpload", S1), func() {
-	var pipelineDir = "valid/types"
+	var pipelineDir = "valid"
 
 	/* Positive Scenarios of uploading a pipeline file */
 	Context("Upload a pipeline and upload the same pipeline to change version >", func() {
