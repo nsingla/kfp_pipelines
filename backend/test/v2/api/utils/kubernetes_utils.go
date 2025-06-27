@@ -1,3 +1,17 @@
+// Package test
+// Copyright 2018-2023 The Kubeflow Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package test
 
 import (
@@ -14,6 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ReadPodLogs - Read pod logs from a specific names, with container name containing a substring and from a certain time period (default being from past 1 min)
 func ReadPodLogs(client *kubernetes.Clientset, namespace string, containerName string, follow *bool, sinceTime *time.Time, logLimit *int64) string {
 	pod := GetPodContainingContainer(client, namespace, containerName)
 	if pod != nil {
@@ -50,6 +65,7 @@ func ReadPodLogs(client *kubernetes.Clientset, namespace string, containerName s
 	}
 }
 
+// GetDefaultPodLogOptions - Get default pod log options for the pod log reader API request
 func GetDefaultPodLogOptions() *v1.PodLogOptions {
 	logLimit := int64(50000000)
 	sinceTime := metav1.NewTime(time.Now().Add(-1 * time.Minute).UTC())
@@ -62,6 +78,7 @@ func GetDefaultPodLogOptions() *v1.PodLogOptions {
 	}
 }
 
+// GetPodContainingContainer - Get the name of the pod with container name containing substring
 func GetPodContainingContainer(client *kubernetes.Clientset, namespace, containerName string) *v1.Pod {
 	pods, err := client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
