@@ -103,7 +103,8 @@ func PipelineSpecFromFile(pipelineFilesRootDir string, pipelineDir string, pipel
 		}
 	default:
 		{
-			panic("Unknown pipeline file format, supported format: yaml, json")
+			logger.Log("Unknown pipeline file format, supported format: yaml, json")
+			return map[string]interface{}{}
 		}
 	}
 	return unmarshalledPipelineSpec
