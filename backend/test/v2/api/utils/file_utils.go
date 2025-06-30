@@ -110,7 +110,7 @@ func PipelineSpecFromFile(pipelineFilesRootDir string, pipelineDir string, pipel
 	return unmarshalledPipelineSpec
 }
 
-func CreateTempFile(fileContents []byte) string {
+func CreateTempFile(fileContents [][]byte) *os.File {
 	tmpFile, err := os.CreateTemp("", "pipeline-*.yaml")
 	if err != nil {
 		logger.Log("Failed to create temporary file: %s", err.Error())
@@ -121,7 +121,9 @@ func CreateTempFile(fileContents []byte) string {
 			logger.Log("Failed to close temporary file: %s", err.Error())
 		}
 	}(tmpFile)
-	_, err = tmpFile.Write(fileContents)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to write contents to a temporary file")
-	return tmpFile.Name()
+	for _, content := range fileContents {
+		_, err = tmpFile.Write(content)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to write contents to a temporary file")
+	}
+	return tmpFile
 }
