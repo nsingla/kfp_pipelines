@@ -17,6 +17,7 @@ package api
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -198,7 +199,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S1), func() {
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
 	Context("Unarchive a pipeline run >", func() {
 		It("Unarchive a deleted run", func() {
 		})
@@ -237,17 +238,26 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 
 func configureCacheSettingAndGetPipelineFile(pipelineDirectory string, pipelineFileName string, cacheEnabled bool) string {
 	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDirectory, pipelineFileName)
+	var marshalledPipelineSpecs []byte
+	var marshalledPlatformSpecs []byte
+	var marshallErr error
+	var newPipelineFile *os.File
 	if _, platformSpecExists := pipelineSpecsFromFile["platform_spec"]; platformSpecExists {
 		pipelineSpecs := pipelineSpecsFromFile["pipeline_spec"].(map[string]interface{})
-		configurePipelineCacheSettings(&pipelineSpecs, cacheEnabled)
-
+		pipelineSpecs = *configurePipelineCacheSettings(&pipelineSpecs, cacheEnabled)
+		pipelineSpecsFromFile["pipeline_spec"] = pipelineSpecs
+		marshalledPipelineSpecs, marshallErr = yaml.Marshal(pipelineSpecsFromFile["pipeline_spec"])
+		Expect(marshallErr).NotTo(HaveOccurred())
+		marshalledPlatformSpecs, marshallErr = yaml.Marshal(pipelineSpecsFromFile["platform_spec"])
+		Expect(marshallErr).NotTo(HaveOccurred())
+		newPipelineFile = utils.CreateTempFile([][]byte{marshalledPipelineSpecs, []byte("\n---\n"), marshalledPlatformSpecs})
 	} else {
-		configurePipelineCacheSettings(&pipelineSpecsFromFile, cacheEnabled)
+		pipelineSpecsFromFile = *configurePipelineCacheSettings(&pipelineSpecsFromFile, cacheEnabled)
+		marshalledPipelineSpecs, marshallErr = yaml.Marshal(pipelineSpecsFromFile)
+		Expect(marshallErr).NotTo(HaveOccurred(), "Failed to marshall pipeline spec")
+		newPipelineFile = utils.CreateTempFile([][]byte{marshalledPipelineSpecs})
 	}
-	unmarshalledPipelineSpec, unmarshallErr := yaml.Marshal(pipelineSpecsFromFile)
-	Expect(unmarshallErr).NotTo(HaveOccurred(), "Failed to unmarshall pipeline spec")
-	newPipelineFilePath := utils.CreateTempFile(unmarshalledPipelineSpec)
-	return newPipelineFilePath
+	return newPipelineFile.Name()
 }
 
 func uploadAPipeline(pipelineFile string, pipelineName *string) *pipeline_upload_model.V2beta1Pipeline {
@@ -387,7 +397,7 @@ func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, ex
 	return expectedRun
 }
 
-func configurePipelineCacheSettings(pipelineSpec *map[string]interface{}, cacheEnabled bool) {
+func configurePipelineCacheSettings(pipelineSpec *map[string]interface{}, cacheEnabled bool) *map[string]interface{} {
 	if pipelineTasks, pipelineTasksExists := (*pipelineSpec)["root"].(map[string]interface{})["dag"].(map[string]interface{})["tasks"]; pipelineTasksExists {
 		for _, pipelineTask := range pipelineTasks.(map[string]interface{}) {
 			task := pipelineTask.(map[string]interface{})
@@ -397,13 +407,22 @@ func configurePipelineCacheSettings(pipelineSpec *map[string]interface{}, cacheE
 			}
 			task["cachingOptions"] = cachingOptionMap
 		}
+		return pipelineSpec
+	} else {
+		return nil
 	}
 }
 
 func getPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
 	pipelineSpec := utils.ReadYamlFile(pipelineSpecFile).(map[string]interface{})
 	pipelineInputMap := make(map[string]interface{})
-	if pipelineInputDef, pipelineInputParamsExists := pipelineSpec["root"].(map[string]interface{})["inputDefinitions"]; pipelineInputParamsExists {
+	var pipelineRoot map[string]interface{}
+	if _, platformSpecExists := pipelineSpec["platform_spec"]; platformSpecExists {
+		pipelineRoot = pipelineSpec["pipeline_spec"].(map[string]interface{})["root"].(map[string]interface{})
+	} else {
+		pipelineRoot = pipelineSpec["root"].(map[string]interface{})
+	}
+	if pipelineInputDef, pipelineInputParamsExists := pipelineRoot["inputDefinitions"]; pipelineInputParamsExists {
 		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
 			for input, value := range pipelineInput.(map[string]interface{}) {
 				valueMap := value.(map[string]interface{})
