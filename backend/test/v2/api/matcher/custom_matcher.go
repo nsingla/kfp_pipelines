@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
+
 	"github.com/onsi/gomega"
 )
 
@@ -25,8 +27,12 @@ import (
 //
 // param mapType - string value to append to the assertion error message
 func MatchMaps(actual interface{}, expected interface{}, mapType string) {
-	expectedMap, _ := expected.(map[any]interface{})
+	expectedMap, err := expected.(map[any]interface{})
+	if err {
+		logger.Log("Failed to cast to a map")
+	}
 	actualMap, _ := actual.(map[any]interface{})
+	gomega.Expect(len(actualMap)).To(gomega.Equal(len(expectedMap)), "The map length should be equal")
 	for key, value := range expectedMap {
 		if reflect.TypeOf(value).Kind() == reflect.Map {
 			expectedMapFromValue, _ := value.(map[any]interface{})
