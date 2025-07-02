@@ -22,7 +22,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/addlicense v0.0.0-20200906110928-a0294312aa76
 	github.com/google/cel-go v0.25.0
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
