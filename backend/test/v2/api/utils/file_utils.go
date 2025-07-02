@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
 	"github.com/onsi/gomega"
@@ -28,11 +29,20 @@ import (
 
 // GetProjectRoot Get project root directory
 func GetProjectRoot() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		logger.Log("Failed to get current directory, due to %s", err.Error())
+	dirFiles := make([]string, 0)
+	dir, _ := os.Getwd()
+	for !slices.Contains(dirFiles, "backend") && !slices.Contains(dirFiles, "data") {
+		dirFiles = make([]string, 0)
+		dir = filepath.Join(dir, "..")
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			logger.Log("Failed to read directory '%s', due to %s", err.Error())
+		}
+		for _, file := range files {
+			dirFiles = append(dirFiles, file.Name())
+		}
 	}
-	return filepath.Join(dir, "..", "..", "..", "../")
+	return dir
 }
 
 // GetPipelineFilesDir Get the directory location of the main list of pipeline files
@@ -58,8 +68,8 @@ func GetListOfFileInADir(directoryPath string) []string {
 }
 
 // ReadYamlFile - Read a YAML file and unmarshall it into a map
-func ReadYamlFile(pipelineFilePath string) interface{} {
-	pipelineSpecs, err := os.ReadFile(pipelineFilePath)
+func ReadYamlFile(filePath string) interface{} {
+	pipelineSpecs, err := os.ReadFile(filePath)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	decoder := yaml.NewDecoder(bytes.NewReader(pipelineSpecs))
 	var finalYamlData map[string]interface{}
@@ -70,7 +80,7 @@ func ReadYamlFile(pipelineFilePath string) interface{} {
 			break
 		}
 		if err != nil {
-			logger.Log("Failed to decode YAML: %s, due to %v", pipelineFilePath, err)
+			logger.Log("Failed to decode YAML: %s, due to %v", filePath, err)
 		}
 		_, exists := yamlData["platforms"]
 		if exists {
@@ -108,6 +118,24 @@ func PipelineSpecFromFile(pipelineFilesRootDir string, pipelineDir string, pipel
 		}
 	}
 	return unmarshalledPipelineSpec
+}
+
+func CreateFile(filePath string, fileContents [][]byte) *os.File {
+	file, err := os.Create(filePath)
+	if err != nil {
+		logger.Log("Failed to create file &s due to %s", filePath, err.Error())
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Log("Failed to close file: %s", err.Error())
+		}
+	}(file)
+	for _, content := range fileContents {
+		_, err = file.Write(content)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to write contents to a file")
+	}
+	return file
 }
 
 func CreateTempFile(fileContents [][]byte) *os.File {

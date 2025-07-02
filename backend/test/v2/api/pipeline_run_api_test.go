@@ -181,6 +181,27 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		})
 	})
 
+	Context("Create reccurring pipeline run >", func() {
+		createExperimentOptions := []bool{true, false}
+		for range createExperimentOptions {
+			It("Create a Pipeline Run with cron that runs every 5min", func() {
+			})
+			It("Create a Pipeline Run with cron that runs at a specific time and day", func() {
+			})
+			It("Create a Pipeline Run with cron that runs on alternate days", func() {
+			})
+		}
+	})
+
+	Context("Create reccurring pipeline run associated with a specific experiment>", func() {
+		It("Create a Pipeline Run with cron that runs every 5min", func() {
+		})
+		It("Create a Pipeline Run with cron that runs at a specific time and day", func() {
+		})
+		It("Create a Pipeline Run with cron that runs on alternate days", func() {
+		})
+	})
+
 	Context("Terminate a pipeline run >", func() {
 		It("Terminate a run in RUNNING state", func() {
 		})
@@ -192,6 +213,11 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 
 	Context("Get All pipeline run >", func() {
 		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
+		})
+	})
+
+	Context("Create reccurring pipeline run >", func() {
+		It("Create a Pipeline Run with invalid cron", func() {
 		})
 	})
 })
@@ -228,6 +254,14 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		It("Delete a deleted run", func() {
 		})
 		It("Delete a non existent run", func() {
+		})
+	})
+	Context("Associate a pipeline run with invalid experiment >", func() {
+		It("Associate a run with an archived experiment", func() {
+		})
+		It("Associate a run with non existent experiment", func() {
+		})
+		It("Associate a run with deleted experiment", func() {
 		})
 	})
 })
