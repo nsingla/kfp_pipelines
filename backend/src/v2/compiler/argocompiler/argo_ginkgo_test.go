@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -46,7 +47,8 @@ var argoYAMLDir = "compiledworkflows"
 var testReportDirectory = "reports"
 var junitReportFilename = "junit-compile.xml"
 var jsonReportFilename = "report-compile.json"
-var updateGoldenFiles = flag.Bool("update", false, "update golden/expected compiled workflow files")
+var updateGoldenFiles = flag.Bool("updateCompiledFiles", false, "update golden/expected compiled workflow files")
+var createMissingGoldenFiles = flag.Bool("createGoldenFiles", false, "create missing golden/expected compiled workflow files")
 
 var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	if specReport.Failed() {
@@ -75,6 +77,7 @@ var _ = Describe("Verify Spec Compilation to Workflow >", Label("Positive", "Wor
 
 	testParams := []struct {
 		compilerOptions argocompiler.Options
+		envVars         map[string]string
 	}{
 		{
 			compilerOptions: argocompiler.Options{CacheDisabled: true},
@@ -82,19 +85,47 @@ var _ = Describe("Verify Spec Compilation to Workflow >", Label("Positive", "Wor
 		{
 			compilerOptions: argocompiler.Options{CacheDisabled: false},
 		},
+		{
+			compilerOptions: argocompiler.Options{CacheDisabled: false},
+			envVars:         map[string]string{"PIPELINE_RUN_AS_USER": "1001", "PIPELINE_LOG_LEVEL": "3"},
+		},
 	}
 	for _, param := range testParams {
 		Context(fmt.Sprintf("Verify compiled workflow for a pipeline with compiler options '%v' >", param.compilerOptions), func() {
 			for _, pipelineSpecFileName := range pipelineFiles {
 				compiledWorkflowFilePath := filepath.Join(argoYAMLDir, pipelineSpecFileName)
+				// Set provided env variables
+				for envVarName, envVarValue := range param.envVars {
+					err := os.Setenv(envVarName, envVarValue)
+					Expect(err).To(BeNil(), "Could not set env var %s", envVarName)
+				}
+
+				// Defer UnSetting the set env variables at the end of the test
+				defer func() {
+					for envVarName := range param.envVars {
+						err := os.Unsetenv(envVarName)
+						Expect(err).To(BeNil(), "Could not unset env var %s", envVarName)
+					}
+				}()
 				It(fmt.Sprintf("When I compile %s pipeline spec, then the compiled yaml should be =%s", pipelineSpecFileName, compiledWorkflowFilePath), func() {
 					pipelineSpecs, platformSpec := loadSpecs(pipelineSpecFileName)
 					compiledWorflow := getCompiledArgoWorkflow(pipelineSpecs, platformSpec, &argocompiler.Options{})
 					if *updateGoldenFiles {
-						logger.Log(fmt.Sprintf("Updating golden files in %s", argoYAMLDir))
-						fileContents, err := yaml.Marshal(compiledWorflow)
-						Expect(err).NotTo(HaveOccurred())
-						utils.CreateFile(compiledWorkflowFilePath, [][]byte{fileContents})
+						logger.Log(fmt.Sprintf("Updating golden file %s", compiledWorkflowFilePath))
+						_, err := os.Stat(compiledWorkflowFilePath)
+						if err != nil {
+							logger.Log("File %s does not exist, but if you want to create the missing workflow file, please set 'createGoldenFiles' flag to true", compiledWorkflowFilePath)
+						} else {
+							createCompiledWorkflowFile(compiledWorflow, compiledWorkflowFilePath)
+						}
+					} else if *createMissingGoldenFiles {
+						_, err := os.Stat(compiledWorkflowFilePath)
+						if err == nil {
+							logger.Log("Creating Compiled Workflow File '%s'", compiledWorkflowFilePath)
+							createCompiledWorkflowFile(compiledWorflow, compiledWorkflowFilePath)
+						} else {
+							logger.Log("Compiled Workflow File '%s' already exists", compiledWorkflowFilePath)
+						}
 					} else {
 						expectedWorkflow := unmarshallWorkflowYAML(compiledWorkflowFilePath)
 						compareWorkflows(compiledWorflow, expectedWorkflow)
@@ -376,4 +407,10 @@ func areStringsSameWithoutOrder(s1, s2 string) bool {
 
 	// Compare the sorted slices
 	return reflect.DeepEqual(r1, r2)
+}
+
+func createCompiledWorkflowFile(compiledWorflow *v1alpha1.Workflow, compiledWorkflowFilePath string) *os.File {
+	fileContents, err := yaml.Marshal(compiledWorflow)
+	Expect(err).NotTo(HaveOccurred())
+	return utils.CreateFile(compiledWorkflowFilePath, [][]byte{fileContents})
 }
