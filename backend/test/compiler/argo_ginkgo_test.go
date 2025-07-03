@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argocompiler_test
+package compiler_test
 
 import (
 	"encoding/json"
@@ -91,7 +91,7 @@ var _ = Describe("Verify Spec Compilation to Workflow >", Label("Positive", "Wor
 		},
 	}
 	for _, param := range testParams {
-		Context(fmt.Sprintf("Verify compiled workflow for a pipeline with compiler options '%v' >", param.compilerOptions), func() {
+		Context(fmt.Sprintf("Verify compiled workflow for a pipeline with compiler options '%v' and env vars %v >", param.compilerOptions, param.envVars), func() {
 			for _, pipelineSpecFileName := range pipelineFiles {
 				compiledWorkflowFilePath := filepath.Join(argoYAMLDir, pipelineSpecFileName)
 				// Set provided env variables
