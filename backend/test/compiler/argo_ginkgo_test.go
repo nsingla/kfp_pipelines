@@ -41,9 +41,10 @@ import (
 )
 
 // var update = flag.Bool("update", false, "update golden files")
+var projectDataDir = utils.GetProjectDataDir()
 var pipelineFilesRootDir = utils.GetPipelineFilesDir()
 var pipelineDirectory = "valid"
-var argoYAMLDir = "compiledworkflows"
+var argoYAMLDir = filepath.Join(projectDataDir, "compiled-workflows")
 var testReportDirectory = "reports"
 var junitReportFilename = "compiler.xml"
 var jsonReportFilename = "compiler.json"
