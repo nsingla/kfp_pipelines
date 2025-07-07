@@ -45,6 +45,12 @@ func GetProjectRoot() string {
 	return dir
 }
 
+// GetProjectDataDir Get the directory location of the data directory
+func GetProjectDataDir() string {
+	projectRootDir := GetProjectRoot()
+	return filepath.Join(projectRootDir, "data")
+}
+
 // GetPipelineFilesDir Get the directory location of the main list of pipeline files
 func GetPipelineFilesDir() string {
 	projectRootDir := GetProjectRoot()
