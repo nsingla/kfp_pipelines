@@ -47,8 +47,8 @@ var pipelineUploadParams *upload_params.UploadPipelineParams
 var pipelineGeneratedName string
 var testLogsDirectory = "logs"
 var testReportDirectory = "reports"
-var junitReportFilename = "junit-api.xml"
-var jsonReportFilename = "report-api.json"
+var junitReportFilename = "api.xml"
+var jsonReportFilename = "api.json"
 
 var _ = BeforeSuite(func() {
 	err := os.MkdirAll(testLogsDirectory, 0755)
