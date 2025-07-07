@@ -45,8 +45,8 @@ var pipelineFilesRootDir = utils.GetPipelineFilesDir()
 var pipelineDirectory = "valid"
 var argoYAMLDir = "compiledworkflows"
 var testReportDirectory = "reports"
-var junitReportFilename = "junit-compile.xml"
-var jsonReportFilename = "report-compile.json"
+var junitReportFilename = "compiler.xml"
+var jsonReportFilename = "compiler.json"
 var updateGoldenFiles = flag.Bool("updateCompiledFiles", false, "update golden/expected compiled workflow files")
 var createMissingGoldenFiles = flag.Bool("createGoldenFiles", false, "create missing golden/expected compiled workflow files")
 
