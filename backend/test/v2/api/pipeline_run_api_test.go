@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -84,13 +85,21 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	Context("Create a valid pipeline and verify the created run >", func() {
 		for _, param := range testParams {
 			for _, pipelineFile := range pipelineFiles {
+				var knownIssue = ""
+				if strings.Contains(pipelineFile, "#") {
+					pipelineNameWithoutExtension := strings.Split(pipelineFile, ".")[0]
+					knownIssue = strings.Split(pipelineNameWithoutExtension, "#")[1]
+				}
 				It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t and verify run", pipelineFile, param.pipelineCacheEnabled), func() {
+					if knownIssue != "" {
+						Skip("Skipping due to a known issue: " + knownIssue)
+					}
 					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
 					createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
-					createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+					createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 					pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
-					createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs, true)
-					createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs, true)
+					createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
+					createExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 				})
 			}
 		}
@@ -99,21 +108,28 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
-			createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
 	})
 
-	Context("Create a pipeline run without pipeline ref context >", func() {
+	Context("Create a pipeline run without pipeline version id >", func() {
 		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
-		It("Create a run by specifying direct pipeline version id and not as a pipeline version ref", func() {
+		It("Create a run by specifying only pipeline id and not pipeline version id in the pipeline version ref of a pipeline with 1 pipeline version", func() {
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs, false)
-			createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs, false)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, nil, nil, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
+		})
+		It("Create a run by specifying only pipeline id and not pipeline version id in the pipeline version ref of a pipeline with multiple pipeline versions", func() {
+			createdPipelineVersion := uploadPipelineAndChangePipelineVersion(pipelineDirectory, pipelineFiles[0], pipelineFiles[0])
+			pipelineLatestVersion := getPipelineVersion(&createdPipelineVersion.PipelineID)
+			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			createdPipelineRun := createPipelineRun(&createdPipelineVersion.PipelineID, nil, nil, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun, &createdPipelineVersion.PipelineID, &pipelineLatestVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 		})
 	})
 
@@ -122,28 +138,28 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create an experiment and associate it multiple pipeline runs of the same pipeline", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun1 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
-			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun1 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun1, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 
-			createdPipelineRun2 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
-			createdExpectedRunAndVerify(createdPipelineRun2, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun2 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun2, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
 		It("Create an experiment and associate it pipeline runs of different pipelines", func() {
 
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline1 := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipeline1Version := getPipelineVersions(&createdPipeline1.PipelineID)
+			createdPipeline1Version := getPipelineVersion(&createdPipeline1.PipelineID)
 			pipeline2Name := pipelineGeneratedName + "2"
 			createdPipeline2 := uploadAPipeline(pipelineFile, &pipeline2Name)
-			createdPipeline2Version := getPipelineVersions(&createdPipeline2.PipelineID)
+			createdPipeline2Version := getPipelineVersion(&createdPipeline2.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun1 := createPipelineRun(&createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
-			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun1 := createPipelineRun(&createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun1, &createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 
-			createdPipelineRun2 := createPipelineRun(&createdPipeline2.PipelineID, &createdPipeline2Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
-			createdExpectedRunAndVerify(createdPipelineRun2, &createdPipeline2.PipelineID, &createdPipeline2Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun2 := createPipelineRun(&createdPipeline2.PipelineID, &createdPipeline2Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
+			createExpectedRunAndVerify(createdPipelineRun2, &createdPipeline2.PipelineID, &createdPipeline2Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
 	})
 
@@ -152,9 +168,9 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, archive it and verify that the run state does not change on archiving", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
 			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
 			Expect(createdPipelineRun.State).To(Equal(pipelineRunAfterArchive.State))
@@ -165,9 +181,9 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, wait for the run to move to RUNNING, archive it and verify that the run state is still RUNNING on archiving", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			waitForRunToBeInState(&createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
 			archivePipelineRun(&createdPipelineRun.RunID)
 			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
@@ -182,9 +198,9 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, archive it and unarchive it and verify the storage state", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := getPipelineVersion(&createdPipeline.PipelineID)
 			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
-			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs, true)
+			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
 			unArchivePipelineRun(&createdPipelineRun.RunID)
 			pipelineRunAfterUnArchive := getPipelineRun(&createdPipelineRun.RunID)
@@ -204,6 +220,11 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		}
 	})
 
+	Context("Get All pipeline run >", Label(Positive, FullRegression, S2), func() {
+		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
+		})
+	})
+
 	Context("Create reccurring pipeline run associated with a specific experiment>", func() {
 		It("Create a Pipeline Run with cron that runs every 5min", func() {
 		})
@@ -221,22 +242,12 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Terminate a run in SUCCESSFUL or ERRORED state", func() {
 		})
 	})
-
-	Context("Get All pipeline run >", func() {
-		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
-		})
-	})
-
-	Context("Create reccurring pipeline run >", func() {
-		It("Create a Pipeline Run with invalid cron", func() {
-		})
-	})
 })
 
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label(Negative, "PipelineRun", FullRegression, S2), func() {
 	Context("Unarchive a pipeline run >", func() {
 		It("Unarchive a deleted run", func() {
 		})
@@ -273,6 +284,17 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		It("Associate a run with non existent experiment", func() {
 		})
 		It("Associate a run with deleted experiment", func() {
+		})
+	})
+	Context("Create reccurring pipeline run >", func() {
+		It("Create a Pipeline Run with invalid cron", func() {
+		})
+	})
+
+	Context("Unarchive a pipeline run >", func() {
+		It("Create a Pipeline Run and try to unarchive it", func() {
+		})
+		It("Create a Pipeline Run, delete it and try to unarchive it", func() {
 		})
 	})
 })
@@ -315,10 +337,18 @@ func uploadAPipeline(pipelineFile string, pipelineName *string) *pipeline_upload
 	return createdPipeline
 }
 
-func getPipelineVersions(pipelineID *string) *pipeline_model.V2beta1PipelineVersion {
+func getPipelineVersion(pipelineID *string) *pipeline_model.V2beta1PipelineVersion {
 	createPipelineVersions, _, _, listPipelineVersionErr := utils.ListPipelineVersions(pipelineClient, *pipelineID)
 	Expect(listPipelineVersionErr).NotTo(HaveOccurred(), "Failed to list pipeline versions for pipeline with id="+*pipelineID)
-	return createPipelineVersions[0]
+	if len(createPipelineVersions) > 0 {
+		sort.Slice(createPipelineVersions, func(i, j int) bool {
+			return time.Time(createPipelineVersions[i].CreatedAt).After(time.Time(createPipelineVersions[j].CreatedAt))
+		})
+		return createPipelineVersions[0]
+	} else {
+		logger.Log("No pipeline versions found for pipeline with id=" + *pipelineID)
+		return nil
+	}
 }
 
 func createExperiment(experimentName string) *experiment_model.V2beta1Experiment {
@@ -334,8 +364,8 @@ func createExperiment(experimentName string) *experiment_model.V2beta1Experiment
 	return createdExperiment
 }
 
-func createdExpectedRunAndVerify(createdPipelineRun *run_model.V2beta1Run, pipelineID *string, pipelineVersionID *string, experimentID *string, pipelineInputMap map[string]interface{}, createPipelineRunWithPipelineRef bool) {
-	expectedPipelineRun := createExpectedPipelineRun(pipelineID, pipelineVersionID, experimentID, pipelineInputMap, false, createPipelineRunWithPipelineRef)
+func createExpectedRunAndVerify(createdPipelineRun *run_model.V2beta1Run, pipelineID *string, pipelineVersionID *string, experimentID *string, pipelineInputMap map[string]interface{}) {
+	expectedPipelineRun := createExpectedPipelineRun(pipelineID, pipelineVersionID, experimentID, pipelineInputMap, false)
 	matcher.MatchPipelineRuns(createdPipelineRun, expectedPipelineRun)
 	createdPipelineRunFromDB, createRunError := runClient.Get(&run_params.RunServiceGetRunParams{
 		RunID: createdPipelineRun.RunID,
@@ -346,9 +376,9 @@ func createdExpectedRunAndVerify(createdPipelineRun *run_model.V2beta1Run, pipel
 	matcher.MatchPipelineRuns(createdPipelineRun, createdPipelineRunFromDB)
 }
 
-func createPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}, createPipelineRunWithPipelineRef bool) *run_model.V2beta1Run {
+func createPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run for pipeline with id=%s and versionId=%s", pipelineID, pipelineVersionID)
-	createRunRequest := &run_params.RunServiceCreateRunParams{Body: createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams, createPipelineRunWithPipelineRef)}
+	createRunRequest := &run_params.RunServiceCreateRunParams{Body: createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams)}
 	createdRun, createRunError := runClient.Create(createRunRequest)
 	Expect(createRunError).NotTo(HaveOccurred(), "Failed to create run for pipeline with id="+*pipelineID)
 	createdRunIds = append(createdRunIds, createdRun.RunID)
@@ -401,7 +431,7 @@ func waitForRunToBeInState(pipelineRunID *string, expectedState run_model.V2beta
 	}
 }
 
-func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}, createPipelineRunWithPipelineRef bool) *run_model.V2beta1Run {
+func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run body")
 	runPayload := &run_model.V2beta1Run{
 		DisplayName:    runName,
@@ -412,19 +442,21 @@ func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, exp
 			Parameters: inputParams,
 		},
 	}
-	if createPipelineRunWithPipelineRef {
+	if pipelineVersionID != nil {
 		runPayload.PipelineVersionReference = &run_model.V2beta1PipelineVersionReference{
 			PipelineID:        utils.ParsePointersToString(pipelineID),
 			PipelineVersionID: utils.ParsePointersToString(pipelineVersionID),
 		}
 	} else {
-		runPayload.PipelineVersionID = utils.ParsePointersToString(pipelineVersionID)
+		runPayload.PipelineVersionReference = &run_model.V2beta1PipelineVersionReference{
+			PipelineID: utils.ParsePointersToString(pipelineID),
+		}
 	}
 	return runPayload
 }
 
-func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}, archived bool, createPipelineRunWithPipelineRef bool) *run_model.V2beta1Run {
-	expectedRun := createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams, createPipelineRunWithPipelineRef)
+func createExpectedPipelineRun(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}, archived bool) *run_model.V2beta1Run {
+	expectedRun := createPipelineRunPayload(pipelineID, pipelineVersionID, experimentID, inputParams)
 	if !archived {
 		expectedRun.StorageState = run_model.V2beta1RunStorageStateAVAILABLE
 	} else {
