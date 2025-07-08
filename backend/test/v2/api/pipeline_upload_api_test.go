@@ -159,7 +159,7 @@ A common method that creates a pipeline and then creates a new pipeline version
 @param pipelineFileNameForCreation - pipeline file name for initial pipeline upload
 @param pipelineFileNameWhenChangingVersion - the pipeline file name that you wish to upload when creating a new version
 */
-func uploadPipelineAndChangePipelineVersion(pipelineDir string, pipelineFileNameForCreation string, pipelineFileNameWhenChangingVersion string) {
+func uploadPipelineAndChangePipelineVersion(pipelineDir string, pipelineFileNameForCreation string, pipelineFileNameWhenChangingVersion string) *model.V2beta1PipelineVersion {
 	createdPipeline := uploadPipelineAndVerify(pipelineDir, pipelineFileNameForCreation, &pipelineGeneratedName)
 
 	// Construct a payload to create new pipeline version
@@ -179,7 +179,7 @@ func uploadPipelineAndChangePipelineVersion(pipelineDir string, pipelineFileName
 	expectedPipelineVersion.Description = descriptionNew
 	expectedPipelineVersion.PipelineSpec = inputFileContent
 	expectedPipelineVersion.DisplayName = pipelineNameNew
-	uploadPipelineVersionAndVerify(pipelineDir, pipelineFileNameWhenChangingVersion, parameters, expectedPipelineVersion)
+	return uploadPipelineVersionAndVerify(pipelineDir, pipelineFileNameWhenChangingVersion, parameters, expectedPipelineVersion)
 }
 
 func uploadPipeline(pipelineDir string, pipelineFileName string, pipelineName *string) (*model.V2beta1Pipeline, error) {
