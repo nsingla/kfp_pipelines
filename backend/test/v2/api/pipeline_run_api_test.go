@@ -136,6 +136,13 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		})
 	})
 
+	Context("Create a pipeline run with HTTP proxy >", func() {
+		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, "env-var.yaml")
+		It(fmt.Sprintf("Create a pipeline run with http proxy, using specs: %s", pipelineFile), func() {
+			Skip("To be implemented, but also need to know what this is suppose to do")
+		})
+	})
+
 	Context("Archive pipeline run(s) >", func() {
 		pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
 		It("Create a pipeline run, archive it and verify that the run state does not change on archiving", func() {
