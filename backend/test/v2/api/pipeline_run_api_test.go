@@ -181,27 +181,6 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		})
 	})
 
-	Context("Create reccurring pipeline run >", func() {
-		createExperimentOptions := []bool{true, false}
-		for range createExperimentOptions {
-			It("Create a Pipeline Run with cron that runs every 5min", func() {
-			})
-			It("Create a Pipeline Run with cron that runs at a specific time and day", func() {
-			})
-			It("Create a Pipeline Run with cron that runs on alternate days", func() {
-			})
-		}
-	})
-
-	Context("Create reccurring pipeline run associated with a specific experiment>", func() {
-		It("Create a Pipeline Run with cron that runs every 5min", func() {
-		})
-		It("Create a Pipeline Run with cron that runs at a specific time and day", func() {
-		})
-		It("Create a Pipeline Run with cron that runs on alternate days", func() {
-		})
-	})
-
 	Context("Terminate a pipeline run >", func() {
 		It("Terminate a run in RUNNING state", func() {
 		})
@@ -214,10 +193,43 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	Context("Get All pipeline run >", func() {
 		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
 		})
-	})
-
-	Context("Create reccurring pipeline run >", func() {
-		It("Create a Pipeline Run with invalid cron", func() {
+		It("Create 2 pipeline Runs, and list it", func() {
+		})
+		It("List pipeline Runs when no runs exist", func() {
+		})
+		It("List pipeline Runs and sort by display name in ascending order", func() {
+		})
+		It("List pipeline Runs and sort by display name in descending order", func() {
+		})
+		It("List pipeline Runs and sort by id in ascending order", func() {
+		})
+		It("List pipeline Runs and sort by id in descending order", func() {
+		})
+		It("List pipeline Runs and sort by pipeline version id in ascending order", func() {
+		})
+		It("List pipeline Runs and sort by pipeline version id in descending order", func() {
+		})
+		It("List pipeline Runs and sort by creation date in ascending order", func() {
+		})
+		It("List pipeline Runs and sort by creation date in descending order", func() {
+		})
+		It("List pipeline Runs and sort by updated date in ascending order", func() {
+		})
+		It("List pipeline Runs and sort by updated date in descending order", func() {
+		})
+		It("List pipeline Runs by specifying page size", func() {
+		})
+		It("List pipeline Runs by specifying page size and iterate over atleast 2 pages", func() {
+		})
+		It("List pipeline Runs filtering by run id", func() {
+		})
+		It("List pipeline Runs filtering by display name containing", func() {
+		})
+		It("List pipeline Runs filtering by creation date", func() {
+		})
+		It("List pipeline Runs by experiment id", func() {
+		})
+		It("List pipeline Runs by namespace", func() {
 		})
 	})
 })
@@ -262,6 +274,10 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		It("Associate a run with non existent experiment", func() {
 		})
 		It("Associate a run with deleted experiment", func() {
+		})
+	})
+	Context("Disable reccurring pipeline run >", func() {
+		It("Create a Pipeline Run, disable a run and make sure its not deleted", func() {
 		})
 	})
 })
