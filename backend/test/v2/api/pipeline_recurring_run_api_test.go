@@ -35,7 +35,7 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression, S1), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", "RecurringPipelineRun", FullRegression, S1), func() {
 
 	Context("Create reccurring pipeline run >", func() {
 		It("Create a Pipeline Run with cron that runs every 5min", func() {
@@ -58,11 +58,22 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a Recurring pipeline Run, disable it and then enable it", func() {
 		})
 	})
-	Context("List reccurring pipeline run >", func() {
-		It("Create 2 Recurring pipeline Runs, and list it", func() {
+
+	Context("Get a reccurring pipeline run >", func() {
+		It("Create a Recurring pipeline Run, verify its details", func() {
 		})
-		It("List Recurring pipeline Runs when no recurring runs exist", func() {
+	})
+})
+
+var _ = Describe("List Recurring Pipeline Runs >", Label("Positive", "PipelineRun", "RecurringPipelineRun", "ListRecurringPipelineRun", FullRegression, S1), func() {
+
+	Context("Basic Operations >", func() {
+		It("Create 2 runs and list", func() {
 		})
+		It("When no recurring runs exist", func() {
+		})
+	})
+	Context("Sorting >", func() {
 		It("List Recurring pipeline Runs and sort by display name in ascending order", func() {
 		})
 		It("List Recurring pipeline Runs and sort by display name in descending order", func() {
@@ -87,26 +98,33 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		})
 		It("List Recurring pipeline Runs and sort by cron time in descending order", func() {
 		})
-		It("List Recurring pipeline Runs by specifying page size", func() {
+	})
+	Context("Specify Page Size >", func() {
+		It("List by page size", func() {
 		})
-		It("List Recurring pipeline Runs by specifying page size and iterate over atleast 2 pages", func() {
-		})
-		It("List Recurring pipeline Runs filtering by run id", func() {
-		})
-		It("List Recurring pipeline Runs filtering by display name containing", func() {
-		})
-		It("List Recurring pipeline Runs filtering by creation date", func() {
-		})
-		It("List Recurring pipeline Runs filtering by cron time", func() {
-		})
-		It("List pipeline Runs by experiment id", func() {
-		})
-		It("List pipeline Runs by namespace", func() {
+		It("List by page size and iterate over atleast 2 pages", func() {
 		})
 	})
-
-	Context("Get a reccurring pipeline run >", func() {
-		It("Create a Recurring pipeline Run, verify its details", func() {
+	Context("Filtering >", func() {
+		It("By run id", func() {
+		})
+		It("By display name containing", func() {
+		})
+		It("By creation date", func() {
+		})
+		It("By cron time", func() {
+		})
+		It("By experiment id", func() {
+		})
+		It("By namespace", func() {
+		})
+		It("By name in ascending order", func() {
+		})
+	})
+	Context("Sort and Filter >", func() {
+		It("Filter and sort by created date in descending order", func() {
+		})
+		It("Filter by created date and sort by updated date in descending order", func() {
 		})
 	})
 })
@@ -114,7 +132,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", "RecurringPipelineRun", FullRegression, S2), func() {
 
 	Context("Create reccurring pipeline run >", func() {
 		It("Create a Pipeline Run with invalid cron", func() {

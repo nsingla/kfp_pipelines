@@ -35,30 +35,60 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression, S1), func() {
+var _ = Describe("List Pipelines API Tests >", Label("Positive", "Pipeline", "PipelineList", FullRegression, S1), func() {
 
-	Context("Create reccurring pipeline run >", func() {
-		It("Create a Pipeline Run with cron that runs every 5min", func() {
+	Context("Basic List Operations >", func() {
+		It("When no pipelines exist", func() {
+		})
+		It("After creating a single pipeline", func() {
+		})
+		It("After creating multiple pipelines", func() {
+		})
+		It("By namespace", func() {
 		})
 	})
-
-	Context("Create reccurring pipeline run associated with a specific experiment>", func() {
-		It("Create a Pipeline Run with cron that runs every 5min", func() {
+	Context("Pagination >", func() {
+		It("List pipelines with page size limit", func() {
+		})
+		It("List pipelines with pagination - iterate through all pages (atleast 2)", func() {
 		})
 	})
-
-	Context("Terminate a pipeline run >", func() {
-		It("Terminate a run in RUNNING state", func() {
+	Context("Sorting >", func() {
+		It("Sort by name in ascending order", func() {
+		})
+		It("Sort by name in descending order", func() {
+		})
+		It("Sort by display name containing substring in ascending order", func() {
+		})
+		It("Sort by display name containing substring in descending order", func() {
+		})
+		It("Sort by creation date in ascending order", func() {
+		})
+		It("Sort by creation date in descending order", func() {
 		})
 	})
-
-	Context("Get All pipeline run >", func() {
-		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
+	Context("Filtering >", func() {
+		It("Filter by pipeline id", func() {
+		})
+		It("Filter by name", func() {
+		})
+		It("Filter by created at", func() {
+		})
+		It("Filter by namespace", func() {
+		})
+		It("Filter by description", func() {
 		})
 	})
-
-	Context("Create reccurring pipeline run >", func() {
-		It("Create a Pipeline Run with invalid cron", func() {
+	Context("Combined Parameters >", func() {
+		It("Filter and sort by name in ascending order", func() {
+		})
+		It("Filter and sort by created date in descending order", func() {
+		})
+	})
+	Context("Combined Parameters >", func() {
+		It("Filter and sort by name in ascending order", func() {
+		})
+		It("Filter and sort by created date in descending order", func() {
 		})
 	})
 })
