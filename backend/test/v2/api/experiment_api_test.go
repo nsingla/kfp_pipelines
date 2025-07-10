@@ -35,22 +35,22 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("List Experiments API Tests >", Label("Positive", "Pipeline", "PipelineList", FullRegression, S1), func() {
+var _ = Describe("List Experiments API Tests >", Label("Positive", "Experiment", "ExperimentList", FullRegression, S1), func() {
 
 	Context("Basic List Operations >", func() {
-		It("When no pipelines exist", func() {
+		It("When no experiments exist", func() {
 		})
-		It("After creating a single pipeline", func() {
+		It("After creating a single experiment", func() {
 		})
-		It("After creating multiple pipelines", func() {
+		It("After creating multiple experiments", func() {
 		})
 		It("By namespace", func() {
 		})
 	})
 	Context("Pagination >", func() {
-		It("List pipelines with page size limit", func() {
+		It("List experiments with page size limit", func() {
 		})
-		It("List pipelines with pagination - iterate through all pages (atleast 2)", func() {
+		It("List experiments with pagination - iterate through all pages (atleast 2)", func() {
 		})
 	})
 	Context("Sorting >", func() {
@@ -68,7 +68,9 @@ var _ = Describe("List Experiments API Tests >", Label("Positive", "Pipeline", "
 		})
 	})
 	Context("Filtering >", func() {
-		It("Filter by pipeline id", func() {
+		It("Filter by experiment id", func() {
+		})
+		It("Filter by pipeline run id", func() {
 		})
 		It("Filter by name", func() {
 		})
@@ -89,7 +91,7 @@ var _ = Describe("List Experiments API Tests >", Label("Positive", "Pipeline", "
 	})
 })
 
-var _ = Describe("Create Experiment API Tests >", Label("Positive", "Pipeline", "PipelineCreate", FullRegression, S1), func() {
+var _ = Describe("Create Experiment API Tests >", Label("Positive", "Experiment", "ExperimentCreate", FullRegression, S1), func() {
 
 	Context("Create an experiment >", func() {
 		It("With just name", func() {
@@ -103,7 +105,7 @@ var _ = Describe("Create Experiment API Tests >", Label("Positive", "Pipeline", 
 	})
 })
 
-var _ = Describe("Get Experiment API Tests >", Label("Positive", "Pipeline", "PipelineGet", FullRegression, S1), func() {
+var _ = Describe("Get Experiment API Tests >", Label("Positive", "Experiment", "ExperimentGet", FullRegression, S1), func() {
 
 	Context("Get by ID >", func() {
 		It("With ID", func() {
@@ -111,7 +113,7 @@ var _ = Describe("Get Experiment API Tests >", Label("Positive", "Pipeline", "Pi
 	})
 })
 
-var _ = Describe("Archive an experiment Tests >", Label("Positive", "Pipeline", "PipelineVersionGet", FullRegression, S1), func() {
+var _ = Describe("Archive an experiment Tests >", Label("Positive", "Experiment", "ExperimentArchive", FullRegression, S1), func() {
 
 	Context("By ID >", func() {
 		It("One that does not have any run(s) or recurring run(s)", func() {
@@ -124,7 +126,7 @@ var _ = Describe("Archive an experiment Tests >", Label("Positive", "Pipeline", 
 		})
 	})
 })
-var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Pipeline", "PipelineVersionGet", FullRegression, S1), func() {
+var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Experiment", "ExperimentUnarchive", FullRegression, S1), func() {
 
 	Context("By ID >", func() {
 		It("One that does not have any run(s) or recurring run(s)", func() {
@@ -136,7 +138,7 @@ var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Pipeline"
 	})
 })
 
-var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Pipeline", "PipelineDelete", FullRegression, S1), func() {
+var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Experiment", "ExperimentDelete", FullRegression, S1), func() {
 
 	Context("Delete by ID >", func() {
 		It("Delete an experiment by ID that does not have any run(s) or recurring run(s)", func() {
@@ -149,7 +151,7 @@ var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Pipeline", 
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Pipeline", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Experiment", FullRegression, S2), func() {
 
 	Context("Create experiment >", func() {
 		It("With 500 char name", func() {
@@ -167,6 +169,30 @@ var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Pipeline
 		It("Delete by non existing ID", func() {
 		})
 		It("Delete by ID containing ASCII characters", func() {
+		})
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+			})
+		}
+	})
+	Context("Archive >", func() {
+		It("Archive by non existing ID", func() {
+		})
+		It("Archive by ID containing ASCII characters", func() {
+		})
+		It("Archive an archived experiment", func() {
+		})
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+			})
+		}
+	})
+	Context("UnArchive >", func() {
+		It("UnArchive by non existing ID", func() {
+		})
+		It("UnArchive an active experiment", func() {
+		})
+		It("UnArchive by ID containing ASCII characters", func() {
 		})
 		if *isKubeflowMode {
 			It("In a namespace you don;t have access to", func() {
