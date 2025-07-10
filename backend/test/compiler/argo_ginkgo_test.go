@@ -92,7 +92,13 @@ var _ = Describe("Verify Spec Compilation to Workflow >", Label("Positive", "Wor
 		},
 	}
 	for _, param := range testParams {
-		Context(fmt.Sprintf("Verify compiled workflow for a pipeline with compiler options '%v' and env vars %v >", param.compilerOptions, param.envVars), func() {
+		var testRunType interface{}
+		if param.envVars == nil {
+			testRunType = Serial
+		} else {
+			testRunType = Ordered
+		}
+		Context(fmt.Sprintf("Verify compiled workflow for a pipeline with compiler options '%v' and env vars %v >", param.compilerOptions, param.envVars), testRunType, func() {
 			for _, pipelineSpecFileName := range pipelineFiles {
 				compiledWorkflowFilePath := filepath.Join(argoYAMLDir, pipelineSpecFileName)
 				// Set provided env variables
