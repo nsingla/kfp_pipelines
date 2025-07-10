@@ -182,6 +182,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	})
 
 	Context("Terminate a pipeline run >", func() {
+		Skip("To be implemented")
 		It("Terminate a run in RUNNING state", func() {
 		})
 		It("Terminate a run in PENDING state", func() {
@@ -191,6 +192,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	})
 
 	Context("Get All pipeline run >", func() {
+		Skip("To be implemented")
 		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
 		})
 		It("Create 2 pipeline Runs, and list it", func() {
@@ -238,6 +240,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
 var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
+	Skip("To be implemented")
 	Context("Unarchive a pipeline run >", func() {
 		It("Unarchive a deleted run", func() {
 		})
@@ -245,6 +248,10 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		})
 		It("Unarchive an available run", func() {
 		})
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+			})
+		}
 	})
 	Context("Archive a pipeline run >", func() {
 		It("Archive a deleted run", func() {
@@ -253,6 +260,10 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		})
 		It("Archive an already archived run", func() {
 		})
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+			})
+		}
 	})
 	Context("Terminate a pipeline run >", func() {
 		It("Terminate a deleted run", func() {
@@ -261,6 +272,10 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		})
 		It("Terminate an already terminated run", func() {
 		})
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+			})
+		}
 	})
 	Context("Delete a pipeline run >", func() {
 		It("Delete a deleted run", func() {
@@ -274,10 +289,6 @@ var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "Pipe
 		It("Associate a run with non existent experiment", func() {
 		})
 		It("Associate a run with deleted experiment", func() {
-		})
-	})
-	Context("Disable reccurring pipeline run >", func() {
-		It("Create a Pipeline Run, disable a run and make sure its not deleted", func() {
 		})
 	})
 })

@@ -123,6 +123,13 @@ var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "Pipeline
 			})
 		}
 	})
+	Context("Upload in a multi user cluster", func() {
+		if *isKubeflowMode {
+			It("In a namespace you don;t have access to", func() {
+				Skip("To be implemented")
+			})
+		}
+	})
 })
 
 var _ = Describe("Verify Pipeline Upload Version Failure >", Label("Negative", "PipelineUpload", S2, FullRegression), func() {
