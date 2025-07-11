@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "pipeline-generator": {
+      "command": "python",
+      "args": ["mcp_pipeline_server.py"],
+      "env": {
+        "PYTHONPATH": "."
+      }
+    }
+  }
+}

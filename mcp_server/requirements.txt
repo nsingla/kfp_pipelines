@@ -1,0 +1,15 @@
+# MCP Server for Kubeflow Pipeline Generation
+# Requirements file
+
+# Core MCP dependencies
+mcp>=1.0.0
+
+# Data processing and serialization
+pyyaml>=6.0
+dataclasses-json>=0.6.0
+
+# Standard library enhancements (if needed)
+typing-extensions>=4.0.0
+
+# Optional: For enhanced logging and debugging
+colorlog>=6.0.0
