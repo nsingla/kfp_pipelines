@@ -16,12 +16,9 @@ package api
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_model"
 
@@ -88,7 +85,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
 					createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
 					createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-					pipelineRuntimeInputs := getPipelineRunTimeInputs(configuredPipelineSpecFile)
+					pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(configuredPipelineSpecFile)
 					createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 					createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 				})
@@ -100,7 +97,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 		})
@@ -112,7 +109,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun1 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 
@@ -127,7 +124,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			pipeline2Name := pipelineGeneratedName + "2"
 			createdPipeline2 := uploadAPipeline(pipelineFile, &pipeline2Name)
 			createdPipeline2Version := getPipelineVersions(&createdPipeline2.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun1 := createPipelineRun(&createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 
@@ -149,10 +146,10 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
-			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterArchive := utils.GetPipelineRun(runClient, &createdPipelineRun.RunID)
 			Expect(createdPipelineRun.State).To(Equal(pipelineRunAfterArchive.State))
 			Expect(pipelineRunAfterArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateARCHIVED))
 
@@ -162,11 +159,11 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
-			waitForRunToBeInState(&createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
+			utils.WaitForRunToBeInState(runClient, &createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
 			archivePipelineRun(&createdPipelineRun.RunID)
-			pipelineRunAfterArchive := getPipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterArchive := utils.GetPipelineRun(runClient, &createdPipelineRun.RunID)
 			Expect(pipelineRunAfterArchive.State).To(Equal(run_model.V2beta1RuntimeStateRUNNING))
 			Expect(pipelineRunAfterArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateARCHIVED))
 
@@ -179,11 +176,11 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
 			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
-			pipelineRuntimeInputs := getPipelineRunTimeInputs(pipelineFile)
+			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
 			unArchivePipelineRun(&createdPipelineRun.RunID)
-			pipelineRunAfterUnArchive := getPipelineRun(&createdPipelineRun.RunID)
+			pipelineRunAfterUnArchive := utils.GetPipelineRun(runClient, &createdPipelineRun.RunID)
 			Expect(pipelineRunAfterUnArchive.StorageState).To(Equal(run_model.V2beta1RunStorageStateAVAILABLE))
 		})
 	})
@@ -399,31 +396,6 @@ func unArchivePipelineRun(pipelineRunID *string) {
 	logger.Log("Successfully unarchived run with runId=%s", pipelineRunID)
 }
 
-func getPipelineRun(pipelineRunID *string) *run_model.V2beta1Run {
-	logger.Log("Get a pipeline run with id=%s", *pipelineRunID)
-	pipelineRun, runError := runClient.Get(&run_params.RunServiceGetRunParams{
-		RunID: *pipelineRunID,
-	})
-	Expect(runError).NotTo(HaveOccurred(), "Failed to get run with id="+*pipelineRunID)
-	return pipelineRun
-}
-
-func waitForRunToBeInState(pipelineRunID *string, expectedState run_model.V2beta1RuntimeState) {
-	timeout := time.After(30 * time.Second)
-	currentPipelineRunState := getPipelineRun(pipelineRunID).State
-	for currentPipelineRunState != expectedState {
-		logger.Log("Waiting for pipeline run with id=%s to be in %v state", pipelineRunID, expectedState)
-		time.Sleep(1 * time.Second)
-		select {
-		case <-timeout:
-			Fail("Timeout waiting for pipeline run with id runId=" + *pipelineRunID + " to be in expected state")
-		default:
-			logger.Log("Pipeline run with id=%s is in %v state", pipelineRunID, currentPipelineRunState)
-			currentPipelineRunState = getPipelineRun(pipelineRunID).State
-		}
-	}
-}
-
 func createPipelineRunPayload(pipelineID *string, pipelineVersionID *string, experimentID *string, inputParams map[string]interface{}) *run_model.V2beta1Run {
 	logger.Log("Create a pipeline run body")
 	return &run_model.V2beta1Run{
@@ -479,51 +451,6 @@ func configurePipelineCacheSettings(pipelineSpec *map[string]interface{}, cacheE
 	} else {
 		return nil
 	}
-}
-
-func getPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
-	pipelineSpec := utils.ReadYamlFile(pipelineSpecFile).(map[string]interface{})
-	pipelineInputMap := make(map[string]interface{})
-	var pipelineRoot map[string]interface{}
-	if _, platformSpecExists := pipelineSpec["platform_spec"]; platformSpecExists {
-		pipelineRoot = pipelineSpec["pipeline_spec"].(map[string]interface{})["root"].(map[string]interface{})
-	} else {
-		pipelineRoot = pipelineSpec["root"].(map[string]interface{})
-	}
-	if pipelineInputDef, pipelineInputParamsExists := pipelineRoot["inputDefinitions"]; pipelineInputParamsExists {
-		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
-			for input, value := range pipelineInput.(map[string]interface{}) {
-				valueMap := value.(map[string]interface{})
-				_, defaultValExists := valueMap["defaultValue"]
-				optional, optionalExists := valueMap["isOptional"]
-				if optionalExists && optional.(bool) {
-					continue
-				}
-				if !defaultValExists || !optionalExists {
-					valueType := valueMap["parameterType"].(string)
-					switch valueType {
-					case "NUMBER_INTEGER":
-						pipelineInputMap[input] = rand.Int()
-					case "STRING":
-						pipelineInputMap[input] = utils.GetRandomString(20)
-					case "STRUCT":
-						pipelineInputMap[input] = map[string]interface{}{
-							"A": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
-							"B": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
-						}
-					case "LIST":
-						pipelineInputMap[input] = []string{utils.GetRandomString(20)}
-					case "BOOLEAN":
-						pipelineInputMap[input] = true
-					default:
-						pipelineInputMap[input] = utils.GetRandomString(20)
-					}
-				}
-
-			}
-		}
-	}
-	return pipelineInputMap
 }
 
 // DO NOT DELETE - When we have the logic to create pending tasks without AWC, we will use the following code

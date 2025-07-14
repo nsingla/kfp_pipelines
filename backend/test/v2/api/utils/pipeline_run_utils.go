@@ -16,7 +16,12 @@ package test
 
 import (
 	"fmt"
+	"math/rand"
+	"strconv"
 	"time"
+
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 
 	run_params "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_client/run_service"
 	api_server "github.com/kubeflow/pipelines/backend/src/common/client/api_server/v2"
@@ -56,6 +61,76 @@ func TerminatePipelineRun(client *api_server.RunClient, runID string) {
 	}
 }
 
+func GetPipelineRun(runClient *api_server.RunClient, pipelineRunID *string) *run_model.V2beta1Run {
+	logger.Log("Get a pipeline run with id=%s", *pipelineRunID)
+	pipelineRun, runError := runClient.Get(&run_params.RunServiceGetRunParams{
+		RunID: *pipelineRunID,
+	})
+	gomega.Expect(runError).NotTo(gomega.HaveOccurred(), "Failed to get run with id="+*pipelineRunID)
+	return pipelineRun
+}
+
+func WaitForRunToBeInState(runClient *api_server.RunClient, pipelineRunID *string, expectedState run_model.V2beta1RuntimeState) {
+	timeout := time.After(30 * time.Second)
+	currentPipelineRunState := GetPipelineRun(runClient, pipelineRunID).State
+	for currentPipelineRunState != expectedState {
+		logger.Log("Waiting for pipeline run with id=%s to be in %v state", pipelineRunID, expectedState)
+		time.Sleep(1 * time.Second)
+		select {
+		case <-timeout:
+			ginkgo.Fail("Timeout waiting for pipeline run with id runId=" + *pipelineRunID + " to be in expected state")
+		default:
+			logger.Log("Pipeline run with id=%s is in %v state", pipelineRunID, currentPipelineRunState)
+			currentPipelineRunState = GetPipelineRun(runClient, pipelineRunID).State
+		}
+	}
+}
+
+func GetPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
+	pipelineSpec := ReadYamlFile(pipelineSpecFile).(map[string]interface{})
+	pipelineInputMap := make(map[string]interface{})
+	var pipelineRoot map[string]interface{}
+	if _, platformSpecExists := pipelineSpec["platform_spec"]; platformSpecExists {
+		pipelineRoot = pipelineSpec["pipeline_spec"].(map[string]interface{})["root"].(map[string]interface{})
+	} else {
+		pipelineRoot = pipelineSpec["root"].(map[string]interface{})
+	}
+	if pipelineInputDef, pipelineInputParamsExists := pipelineRoot["inputDefinitions"]; pipelineInputParamsExists {
+		if pipelineInput, pipelineInputExists := pipelineInputDef.(map[string]interface{})["parameters"]; pipelineInputExists {
+			for input, value := range pipelineInput.(map[string]interface{}) {
+				valueMap := value.(map[string]interface{})
+				_, defaultValExists := valueMap["defaultValue"]
+				optional, optionalExists := valueMap["isOptional"]
+				if optionalExists && optional.(bool) {
+					continue
+				}
+				if !defaultValExists || !optionalExists {
+					valueType := valueMap["parameterType"].(string)
+					switch valueType {
+					case "NUMBER_INTEGER":
+						pipelineInputMap[input] = rand.Int()
+					case "STRING":
+						pipelineInputMap[input] = GetRandomString(20)
+					case "STRUCT":
+						pipelineInputMap[input] = map[string]interface{}{
+							"A": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+							"B": strconv.FormatFloat(rand.Float64(), 'g', -1, 64),
+						}
+					case "LIST":
+						pipelineInputMap[input] = []string{GetRandomString(20)}
+					case "BOOLEAN":
+						pipelineInputMap[input] = true
+					default:
+						pipelineInputMap[input] = GetRandomString(20)
+					}
+				}
+
+			}
+		}
+	}
+	return pipelineInputMap
+}
+
 func ToRunDetailsFromPipelineSpec(pipelineSpec interface{}, runID string) *run_model.V2beta1RunDetails {
 	logger.Log("Converting Pipeline Spec to run details")
 	parsedRunDetails := &run_model.V2beta1RunDetails{}
@@ -71,7 +146,7 @@ func ToRunDetailsFromPipelineSpec(pipelineSpec interface{}, runID string) *run_m
 	components := pipelineSpecMap["components"].(map[string]interface{})
 	tasks := root["dag"].(map[string]interface{})["tasks"].(map[string]interface{})
 	executors := specsMap["deploymentSpec"].(map[string]interface{})["executors"].(map[string]interface{})
-	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, getTaskDetailsForComponent(runID, tasks, components)...)
+	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, GetTaskDetailsForComponent(runID, tasks, components)...)
 	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, createTaskDetail(runID, "root", tasks, "", components))
 	parsedRunDetails.TaskDetails = append(parsedRunDetails.TaskDetails, createTaskDetail(runID, "root-driver", tasks, "", components))
 	for range executors {
@@ -80,7 +155,7 @@ func ToRunDetailsFromPipelineSpec(pipelineSpec interface{}, runID string) *run_m
 	return parsedRunDetails
 }
 
-func getTaskDetailsForComponent(runID string, tasks map[string]interface{}, components map[string]interface{}) []*run_model.V2beta1PipelineTaskDetail {
+func GetTaskDetailsForComponent(runID string, tasks map[string]interface{}, components map[string]interface{}) []*run_model.V2beta1PipelineTaskDetail {
 	var parsedTaskDetails []*run_model.V2beta1PipelineTaskDetail
 	for _, task := range tasks {
 		taskMap := task.(map[string]interface{})
@@ -90,7 +165,7 @@ func getTaskDetailsForComponent(runID string, tasks map[string]interface{}, comp
 		// Process nested tasks if this is a DAG component
 		componentName := taskMap["componentRef"].(map[string]interface{})["name"].(string)
 		if component, compExists := components[componentName].(map[string]interface{}); compExists && component["dag"] != nil {
-			nestedTasks := getTaskDetailsForComponent(runID, component["dag"].(map[string]interface{})["tasks"].(map[string]interface{}), make(map[string]interface{}))
+			nestedTasks := GetTaskDetailsForComponent(runID, component["dag"].(map[string]interface{})["tasks"].(map[string]interface{}), make(map[string]interface{}))
 			parsedTaskDetails = append(parsedTaskDetails, nestedTasks...)
 		}
 	}
