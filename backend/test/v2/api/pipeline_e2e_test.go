@@ -54,7 +54,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 				logger.Log("Uploading pipeline file %s", pipelineFile)
 				uploadedPipeline := uploadPipelineAndVerify(pipelineDir, pipelineFile, &pipelineGeneratedName)
 				logger.Log("Upload of pipeline file '%s' successful", pipelineFile)
-				uploadedPipelineVersion := getPipelineVersions(&uploadedPipeline.PipelineID)
+				uploadedPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &uploadedPipeline.PipelineID)
 				pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 				logger.Log("Create run for pipeline with id: '%s' and name: '%s'", uploadedPipeline.PipelineID, uploadedPipeline.DisplayName)
 				uploadedPipelineRun := createPipelineRun(&uploadedPipeline.PipelineID, &uploadedPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
