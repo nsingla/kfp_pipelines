@@ -20,8 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_model"
-
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_model"
 	"sigs.k8s.io/yaml"
 
@@ -84,7 +82,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 				It(fmt.Sprintf("Create a '%s' pipeline with cacheEnabled=%t and verify run", pipelineFile, param.pipelineCacheEnabled), func() {
 					configuredPipelineSpecFile := configureCacheSettingAndGetPipelineFile(pipelineDirectory, pipelineFile, param.pipelineCacheEnabled)
 					createdPipeline := uploadAPipeline(configuredPipelineSpecFile, &pipelineGeneratedName)
-					createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+					createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 					pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(configuredPipelineSpecFile)
 					createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
 					createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, nil, pipelineRuntimeInputs)
@@ -96,7 +94,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			pipelineFile := filepath.Join(pipelineFilesRootDir, pipelineDirectory, pipelineFiles[0])
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
@@ -108,7 +106,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create an experiment and associate it multiple pipeline runs of the same pipeline", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun1 := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
@@ -120,10 +118,10 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline1 := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipeline1Version := getPipelineVersions(&createdPipeline1.PipelineID)
+			createdPipeline1Version := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline1.PipelineID)
 			pipeline2Name := pipelineGeneratedName + "2"
 			createdPipeline2 := uploadAPipeline(pipelineFile, &pipeline2Name)
-			createdPipeline2Version := getPipelineVersions(&createdPipeline2.PipelineID)
+			createdPipeline2Version := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline2.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun1 := createPipelineRun(&createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			createdExpectedRunAndVerify(createdPipelineRun1, &createdPipeline1.PipelineID, &createdPipeline1Version.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
@@ -145,7 +143,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, archive it and verify that the run state does not change on archiving", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
@@ -158,7 +156,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, wait for the run to move to RUNNING, archive it and verify that the run state is still RUNNING on archiving", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			utils.WaitForRunToBeInState(runClient, &createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
@@ -175,7 +173,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 		It("Create a pipeline run, archive it and unarchive it and verify the storage state", func() {
 			createdExperiment := createExperiment(experimentName)
 			createdPipeline := uploadAPipeline(pipelineFile, &pipelineGeneratedName)
-			createdPipelineVersion := getPipelineVersions(&createdPipeline.PipelineID)
+			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
 			archivePipelineRun(&createdPipelineRun.RunID)
@@ -333,12 +331,6 @@ func uploadAPipeline(pipelineFile string, pipelineName *string) *pipeline_upload
 	Expect(uploadErr).NotTo(HaveOccurred(), "Failed to upload pipeline")
 	createdPipelines = append(createdPipelines, createdPipeline)
 	return createdPipeline
-}
-
-func getPipelineVersions(pipelineID *string) *pipeline_model.V2beta1PipelineVersion {
-	createPipelineVersions, _, _, listPipelineVersionErr := utils.ListPipelineVersions(pipelineClient, *pipelineID)
-	Expect(listPipelineVersionErr).NotTo(HaveOccurred(), "Failed to list pipeline versions for pipeline with id="+*pipelineID)
-	return createPipelineVersions[0]
 }
 
 func createExperiment(experimentName string) *experiment_model.V2beta1Experiment {
