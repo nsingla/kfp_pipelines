@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+
 	"github.com/kubeflow/pipelines/backend/test/v2/api/logger"
 	"github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
@@ -124,6 +126,22 @@ func PipelineSpecFromFile(pipelineFilesRootDir string, pipelineDir string, pipel
 		}
 	}
 	return unmarshalledPipelineSpec
+}
+
+func DeserializeSpecs(specs map[string]interface{}) (*pipelinespec.PipelineSpec, *pipelinespec.PlatformSpec) {
+	logger.Log("Unmarshalling %v specs to pipeline specs and platform specs", specs)
+	var unmarshalledPipelineSpec pipelinespec.PipelineSpec
+	var unmarshalledPlatformSpec pipelinespec.PlatformSpec
+
+	marshalledPipelineSpec, marshallPipelineSpecErr := yaml.Marshal(specs["pipeline_spec"])
+	gomega.Expect(marshallPipelineSpecErr).NotTo(gomega.HaveOccurred(), "Failed to marshall pipeline specs")
+	unmarshalledPipelineSpecErr := yaml.Unmarshal(marshalledPipelineSpec, &unmarshalledPipelineSpec)
+	gomega.Expect(unmarshalledPipelineSpecErr).NotTo(gomega.HaveOccurred(), "Failed to unmarshall pipeline specs")
+	marshalledPlatformSpecs, marshalledPlatformSpecErr := yaml.Marshal(specs["platform_spec"])
+	gomega.Expect(marshalledPlatformSpecErr).NotTo(gomega.HaveOccurred(), "Failed to marshall platform specs")
+	unmarshalledPlatformSpecErr := yaml.Unmarshal(marshalledPlatformSpecs, &unmarshalledPlatformSpec)
+	gomega.Expect(unmarshalledPlatformSpecErr).NotTo(gomega.HaveOccurred(), "Failed to unmarshall platform specs")
+	return &unmarshalledPipelineSpec, &unmarshalledPlatformSpec
 }
 
 func CreateFile(filePath string, fileContents [][]byte) *os.File {

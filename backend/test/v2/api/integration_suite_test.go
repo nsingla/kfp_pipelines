@@ -154,7 +154,7 @@ var _ = AfterEach(func() {
 var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	if specReport.Failed() {
 		logger.Log("Test failed... Capturing pod logs")
-		podLogs := utils.ReadPodLogs(k8Client, *namespace, "pipeline-api-server", nil, &testStartTimeUTC, podLogLimit)
+		podLogs := utils.ReadContainerLogs(k8Client, *namespace, "pipeline-api-server", nil, &testStartTimeUTC, podLogLimit)
 		AddReportEntry("Pod Log", podLogs)
 		AddReportEntry("Test Log", specReport.CapturedGinkgoWriterOutput)
 		writeLogFile(specReport)
