@@ -17,6 +17,7 @@ package test
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"strconv"
 	"time"
 
@@ -70,23 +71,32 @@ func GetPipelineRun(runClient *api_server.RunClient, pipelineRunID *string) *run
 	return pipelineRun
 }
 
-func WaitForRunToBeInState(runClient *api_server.RunClient, pipelineRunID *string, expectedState run_model.V2beta1RuntimeState) {
-	timeout := time.After(30 * time.Second)
+func WaitForRunToBeInState(runClient *api_server.RunClient, pipelineRunID *string, expectedStates []run_model.V2beta1RuntimeState, timeout *time.Duration) {
+	logger.Log("Waiting for pipeline run with id=%s to be in one of '%s'", *pipelineRunID, expectedStates)
+	maxTimeToWait := time.Duration(30)
+	pollTime := time.Duration(1)
+	if timeout != nil {
+		maxTimeToWait = *timeout
+		pollTime = time.Duration(5)
+	}
+	waitTime := time.After(maxTimeToWait * time.Second)
 	currentPipelineRunState := GetPipelineRun(runClient, pipelineRunID).State
-	for currentPipelineRunState != expectedState {
-		logger.Log("Waiting for pipeline run with id=%s to be in %v state", pipelineRunID, expectedState)
-		time.Sleep(1 * time.Second)
+	for !slices.Contains(expectedStates, currentPipelineRunState) {
+		logger.Log("Waiting for pipeline run with id=%s to be in one of %s", *pipelineRunID, expectedStates)
+		time.Sleep(pollTime * time.Second)
 		select {
-		case <-timeout:
-			ginkgo.Fail("Timeout waiting for pipeline run with id runId=" + *pipelineRunID + " to be in expected state")
+		case <-waitTime:
+			ginkgo.Fail("Timed out waiting for pipeline run with id runId=" + *pipelineRunID + " to be in expected state")
 		default:
-			logger.Log("Pipeline run with id=%s is in %v state", pipelineRunID, currentPipelineRunState)
+			logger.Log("Pipeline run with id=%s is in %s state", *pipelineRunID, currentPipelineRunState)
 			currentPipelineRunState = GetPipelineRun(runClient, pipelineRunID).State
 		}
 	}
+	logger.Log("Pipeline run with id=%s is now in '%s' state", *pipelineRunID, currentPipelineRunState)
 }
 
 func GetPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
+	logger.Log("Get the pipeline run time inputs from pipeline spec file %s", pipelineSpecFile)
 	pipelineSpec := ReadYamlFile(pipelineSpecFile).(map[string]interface{})
 	pipelineInputMap := make(map[string]interface{})
 	var pipelineRoot map[string]interface{}
@@ -128,6 +138,7 @@ func GetPipelineRunTimeInputs(pipelineSpecFile string) map[string]interface{} {
 			}
 		}
 	}
+	logger.Log("Returining pipeline run time inputs %v", pipelineInputMap)
 	return pipelineInputMap
 }
 
