@@ -159,7 +159,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 			createdPipelineVersion := utils.GetLatestPipelineVersion(pipelineClient, &createdPipeline.PipelineID)
 			pipelineRuntimeInputs := utils.GetPipelineRunTimeInputs(pipelineFile)
 			createdPipelineRun := createPipelineRun(&createdPipeline.PipelineID, &createdPipelineVersion.PipelineVersionID, &createdExperiment.ExperimentID, pipelineRuntimeInputs)
-			utils.WaitForRunToBeInState(runClient, &createdPipelineRun.RunID, run_model.V2beta1RuntimeStateRUNNING)
+			utils.WaitForRunToBeInState(runClient, &createdPipelineRun.RunID, []run_model.V2beta1RuntimeState{run_model.V2beta1RuntimeStateRUNNING}, nil)
 			archivePipelineRun(&createdPipelineRun.RunID)
 			pipelineRunAfterArchive := utils.GetPipelineRun(runClient, &createdPipelineRun.RunID)
 			Expect(pipelineRunAfterArchive.State).To(Equal(run_model.V2beta1RuntimeStateRUNNING))
@@ -184,7 +184,6 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	})
 
 	Context("Terminate a pipeline run >", func() {
-		Skip("To be implemented")
 		It("Terminate a run in RUNNING state", func() {
 		})
 		It("Terminate a run in PENDING state", func() {
@@ -194,7 +193,6 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 	})
 
 	Context("Get All pipeline run >", func() {
-		Skip("To be implemented")
 		It("Create a Pipeline Run and validate that it gets returned in the List Runs API call", func() {
 		})
 		It("Create 2 pipeline Runs, and list it", func() {
@@ -242,7 +240,6 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
 var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
-	Skip("To be implemented")
 	Context("Unarchive a pipeline run >", func() {
 		It("Unarchive a deleted run", func() {
 		})
