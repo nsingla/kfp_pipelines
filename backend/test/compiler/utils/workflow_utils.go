@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// LoadSpecsFromIR - Unmarshall Pipeline Spec IR into a tupe of (pipelinespec.PipelineJob, pipelinespec.SinglePlatformSpec)
+// LoadSpecsFromIR - Unmarshall Pipeline Spec IR into a tuple of (pipelinespec.PipelineJob, pipelinespec.SinglePlatformSpec)
 func LoadSpecsFromIR(pipelineIRRootDir, pipelineIRDirectory, pipelineIRFileName string) (*pipelinespec.PipelineJob, *pipelinespec.SinglePlatformSpec) {
 	pipelineSpecsFromFile := utils.PipelineSpecFromFile(pipelineIRRootDir, pipelineIRDirectory, pipelineIRFileName)
 	var singlePlatformSpec *pipelinespec.SinglePlatformSpec = nil
