@@ -21,6 +21,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/onsi/gomega"
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	workflow_utils "github.com/kubeflow/pipelines/backend/test/compiler/utils"
+
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
 
 	model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
@@ -53,6 +59,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 	/* Critical Positive Scenarios of uploading a pipeline file */
 	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", func() {
 		var pipelineDir = "valid"
+		var compiledWorkflowsDir = "compiled-workflows"
 		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
 		for _, pipelineFile := range criticalPipelineFiles[0:1] {
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
@@ -69,10 +76,9 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 				logger.Log("Created Pipeline Run with id: %s for pipeline with id: %s is now RUNNING", uploadedPipelineRun.RunID, uploadedPipeline.PipelineID)
 				timeToWait := time.Duration(300)
 				utils.WaitForRunToBeInState(runClient, &uploadedPipelineRun.RunID, []run_model.V2beta1RuntimeState{run_model.V2beta1RuntimeStateSUCCEEDED, run_model.V2beta1RuntimeStateSKIPPED, run_model.V2beta1RuntimeStateFAILED, run_model.V2beta1RuntimeStateCANCELED}, &timeToWait)
-				specs := utils.ReadYamlFile(pipelineFilePath).(map[string]interface{})
-				pipelineSpecs, platformSpecs := utils.DeserializeSpecs(specs)
-				logger.Log("%v - %v", pipelineSpecs.PipelineInfo, platformSpecs.Platforms)
-				capturePodLogsForUnsuccessfulTasks(uploadedPipelineRun.RunID)
+				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
+				compiledWorkflow := workflow_utils.UnmarshallWorkflowYAML(filepath.Join(utils.GetProjectDataDir(), compiledWorkflowsDir, pipelineFile))
+				capturePodLogsForUnsuccessfulTasks(uploadedPipelineRun.RunID, compiledWorkflow)
 			})
 		}
 	})
@@ -82,7 +88,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 // ################################################################### UTILITY METHODS ################################################################################
 // ####################################################################################################################################################################
 
-func capturePodLogsForUnsuccessfulTasks(runID string) {
+func capturePodLogsForUnsuccessfulTasks(runID string, expectedWorkflow *v1alpha1.Workflow) {
 	logger.Log("Fetching updated pipeline run details for run with id=%s", runID)
 	runDetails := utils.GetPipelineRun(runClient, &runID)
 	logger.Log("Updated pipeline run details")
@@ -90,6 +96,8 @@ func capturePodLogsForUnsuccessfulTasks(runID string) {
 	sort.Slice(runDetails.RunDetails.TaskDetails, func(i, j int) bool {
 		return time.Time(runDetails.RunDetails.TaskDetails[i].EndTime).After(time.Time(runDetails.RunDetails.TaskDetails[j].EndTime)) // Sort Tasks by End Time in descending order
 	})
+	listOfAllExpectedContainers := getListOfContainersFromWorkflow(expectedWorkflow)
+	gomega.Expect(len(runDetails.RunDetails.TaskDetails)).To(gomega.Equal(len(listOfAllExpectedContainers)))
 	for _, task := range runDetails.RunDetails.TaskDetails {
 		switch task.State {
 		case run_model.V2beta1RuntimeStateSUCCEEDED:
@@ -131,4 +139,23 @@ func capturePodLogsForUnsuccessfulTasks(runID string) {
 		logger.Log("Found failed tasks: %v", failedTasks)
 		Fail(fmt.Sprintf("Test failed due to failing tasks: %s", strings.Join(failedTasks, "\n")))
 	}
+}
+
+// GetTemplateMapFromWorkflow
+func GetTemplateMapFromWorkflow(workflow *v1alpha1.Workflow) map[string]*v1alpha1.Template {
+	var templateNameMap = make(map[string]*v1alpha1.Template)
+	for _, template := range workflow.Spec.Templates {
+		templateNameMap[template.Name] = &template
+	}
+	return templateNameMap
+}
+
+func getListOfContainersFromWorkflow(workflow *v1alpha1.Workflow) []*v1.Container {
+	var containers []*v1.Container
+	for _, template := range workflow.Spec.Templates {
+		if template.Container != nil {
+			containers = append(containers, template.Container)
+		}
+	}
+	return containers
 }
