@@ -16,16 +16,16 @@ package api
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	workflow_utils "github.com/kubeflow/pipelines/backend/test/compiler/utils"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
 
@@ -78,7 +78,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 				utils.WaitForRunToBeInState(runClient, &uploadedPipelineRun.RunID, []run_model.V2beta1RuntimeState{run_model.V2beta1RuntimeStateSUCCEEDED, run_model.V2beta1RuntimeStateSKIPPED, run_model.V2beta1RuntimeStateFAILED, run_model.V2beta1RuntimeStateCANCELED}, &timeToWait)
 				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
 				compiledWorkflow := workflow_utils.UnmarshallWorkflowYAML(filepath.Join(utils.GetProjectDataDir(), compiledWorkflowsDir, pipelineFile))
-				capturePodLogsForUnsuccessfulTasks(uploadedPipelineRun.RunID, compiledWorkflow)
+				validateComponentStatuses(uploadedPipelineRun.RunID, compiledWorkflow)
 			})
 		}
 	})
@@ -88,17 +88,21 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 // ################################################################### UTILITY METHODS ################################################################################
 // ####################################################################################################################################################################
 
-func capturePodLogsForUnsuccessfulTasks(runID string, expectedWorkflow *v1alpha1.Workflow) {
+func validateComponentStatuses(runID string, compiledWorkflow *v1alpha1.Workflow) {
 	logger.Log("Fetching updated pipeline run details for run with id=%s", runID)
-	runDetails := utils.GetPipelineRun(runClient, &runID)
+	actualTaskDetails := utils.GetPipelineRun(runClient, &runID).RunDetails.TaskDetails
 	logger.Log("Updated pipeline run details")
-	var failedTasks []string
-	sort.Slice(runDetails.RunDetails.TaskDetails, func(i, j int) bool {
-		return time.Time(runDetails.RunDetails.TaskDetails[i].EndTime).After(time.Time(runDetails.RunDetails.TaskDetails[j].EndTime)) // Sort Tasks by End Time in descending order
+	expectedTaskDetails := getTasksFromWorkflow(compiledWorkflow)
+	Expect(len(actualTaskDetails)).To(Equal(len(expectedTaskDetails)), "Number of expected tasks does not match the length of actual task")
+	capturePodLogsForUnsuccessfulTasks(actualTaskDetails)
+}
+
+func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1PipelineTaskDetail) {
+	failedTasks := make(map[string]string)
+	sort.Slice(taskDetails, func(i, j int) bool {
+		return time.Time(taskDetails[i].EndTime).After(time.Time(taskDetails[j].EndTime)) // Sort Tasks by End Time in descending order
 	})
-	listOfAllExpectedContainers := getMapOfTasksFromWorkflow(expectedWorkflow)
-	gomega.Expect(len(runDetails.RunDetails.TaskDetails)).To(gomega.Equal(len(listOfAllExpectedContainers)))
-	for _, task := range runDetails.RunDetails.TaskDetails {
+	for _, task := range taskDetails {
 		switch task.State {
 		case run_model.V2beta1RuntimeStateSUCCEEDED:
 			{
@@ -119,7 +123,7 @@ func capturePodLogsForUnsuccessfulTasks(runID string, expectedWorkflow *v1alpha1
 			}
 		default:
 			{
-				logger.Log("%s - Task %s for Run %s did not complete successfully", task.State, task.DisplayName, runID)
+				logger.Log("%s - Task %s for Run %s did not complete successfully", task.State, task.DisplayName, task.RunID)
 				for _, childTask := range task.ChildTasks {
 					podName := childTask.PodName
 					if podName != "" {
@@ -131,13 +135,13 @@ func capturePodLogsForUnsuccessfulTasks(runID string, expectedWorkflow *v1alpha1
 						logger.Log("Attached pod logs to the report")
 					}
 				}
-				failedTasks = append(failedTasks, task.DisplayName)
+				failedTasks[task.DisplayName] = string(task.State)
 			}
 		}
 	}
 	if len(failedTasks) > 0 {
 		logger.Log("Found failed tasks: %v", failedTasks)
-		Fail(fmt.Sprintf("Test failed due to failing tasks: %s", strings.Join(failedTasks, "\n")))
+		Fail(fmt.Sprintf("Test failed due to failing tasks: %v", maps.Keys(failedTasks)))
 	}
 }
 
@@ -156,7 +160,7 @@ type TaskDetails struct {
 	DependsOn string
 }
 
-func getMapOfTasksFromWorkflow(workflow *v1alpha1.Workflow) []TaskDetails {
+func getTasksFromWorkflow(workflow *v1alpha1.Workflow) []TaskDetails {
 	var containers = make(map[string]*v1.Container)
 	var tasks []TaskDetails
 	for _, template := range workflow.Spec.Templates {
