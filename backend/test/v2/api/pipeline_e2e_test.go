@@ -21,11 +21,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	workflow_utils "github.com/kubeflow/pipelines/backend/test/compiler/utils"
+	"github.com/onsi/gomega"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
 
@@ -96,7 +96,7 @@ func capturePodLogsForUnsuccessfulTasks(runID string, expectedWorkflow *v1alpha1
 	sort.Slice(runDetails.RunDetails.TaskDetails, func(i, j int) bool {
 		return time.Time(runDetails.RunDetails.TaskDetails[i].EndTime).After(time.Time(runDetails.RunDetails.TaskDetails[j].EndTime)) // Sort Tasks by End Time in descending order
 	})
-	listOfAllExpectedContainers := getListOfContainersFromWorkflow(expectedWorkflow)
+	listOfAllExpectedContainers := getMapOfTasksFromWorkflow(expectedWorkflow)
 	gomega.Expect(len(runDetails.RunDetails.TaskDetails)).To(gomega.Equal(len(listOfAllExpectedContainers)))
 	for _, task := range runDetails.RunDetails.TaskDetails {
 		switch task.State {
@@ -150,12 +150,33 @@ func GetTemplateMapFromWorkflow(workflow *v1alpha1.Workflow) map[string]*v1alpha
 	return templateNameMap
 }
 
-func getListOfContainersFromWorkflow(workflow *v1alpha1.Workflow) []*v1.Container {
-	var containers []*v1.Container
+type TaskDetails struct {
+	Task      v1alpha1.DAGTask
+	Container v1.Container
+	DependsOn string
+}
+
+func getMapOfTasksFromWorkflow(workflow *v1alpha1.Workflow) []TaskDetails {
+	var containers = make(map[string]*v1.Container)
+	var tasks []TaskDetails
 	for _, template := range workflow.Spec.Templates {
 		if template.Container != nil {
-			containers = append(containers, template.Container)
+			containers[template.Name] = template.Container
 		}
 	}
-	return containers
+	for _, template := range workflow.Spec.Templates {
+		if template.DAG != nil {
+			for _, task := range template.DAG.Tasks {
+				container, containerExists := containers[task.Template]
+				if containerExists {
+					tasks = append(tasks, TaskDetails{
+						Container: *container,
+						Task:      task,
+						DependsOn: task.Depends,
+					})
+				}
+			}
+		}
+	}
+	return tasks
 }
