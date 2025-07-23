@@ -13,6 +13,8 @@
 
 This test plan validates the "Bring Your Own Argo Workflows" feature, which enables Data Science Pipelines to work with existing Argo Workflows installations instead of deploying dedicated WorkflowControllers. The feature includes a global configuration mechanism to disable DSP-managed WorkflowControllers and ensures compatibility with user-provided Argo Workflows.
 
+The plan covers comprehensive testing scenarios including co-existence of DSP and external Argo controllers, RBAC compatibility across different permission models, workflow schema version compatibility, and validation of conflict resolution mechanisms when multiple controllers compete for the same resources.
+
 ## Test Scope
 
 ### In Scope
@@ -21,10 +23,14 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 - Version compatibility matrix testing (N and N-1 versions)
 - Migration scenarios between DSP-managed and external Argo configurations
 - Conflict detection and resolution mechanisms
+- Co-existence testing of DSP and external WorkflowControllers competing for same events
+- RBAC compatibility across different permission models (cluster vs namespace level)
+- Workflow schema version compatibility validation
 - DSPA lifecycle management with external Argo
 - Security and RBAC integration with external Argo
 - Performance impact assessment
 - Upgrade scenarios for RHOAI with external Argo
+- Hello world pipeline validation in co-existence scenarios
 
 ### Out of Scope
 - Partial ArgoWF installs combined with DSP-shipped Workflow Controller
@@ -149,6 +155,14 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. Deploy DSPA with WorkflowController enabled<br/>2. Install external Argo on same cluster<br/>3. Attempt pipeline execution<br/>4. Document conflicts and behavior<br/>5. Test conflict resolution mechanisms |
 | **Expected Results** | - System behavior is predictable<br/>- Appropriate warnings displayed<br/>- No data corruption<br/>- Clear guidance provided |
 
+### 3.1.1 Co-existing WorkflowController Event Conflicts
+
+| Test Case ID | TC-NF-001a |
+|---|---|
+| **Test Case Summary** | Test DSP and External WorkflowControllers co-existing and competing for same events |
+| **Test Steps** | 1. Deploy DSPA with internal WorkflowController<br/>2. Install external Argo WorkflowController watching same namespaces<br/>3. Submit pipeline that creates Workflow CRs<br/>4. Monitor which controller processes the workflow<br/>5. Verify event handling and potential conflicts<br/>6. Test resource ownership and cleanup |
+| **Expected Results** | - Event conflicts properly identified<br/>- Clear ownership of workflow resources<br/>- No orphaned or stuck workflows<br/>- Predictable controller behavior documented |
+
 ### 3.2 Incompatible Argo Version
 
 | Test Case ID | TC-NF-002 |
@@ -188,6 +202,22 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Case Summary** | Test behavior with conflicting Argo CRD versions |
 | **Test Steps** | 1. Install DSP with specific Argo CRD version<br/>2. Install external Argo with different CRD version<br/>3. Attempt pipeline execution<br/>4. Verify conflict detection and resolution<br/>5. Test update-in-place mechanisms |
 | **Expected Results** | - CRD version conflicts detected<br/>- Update-in-place works when compatible<br/>- Clear error messages for incompatible versions<br/>- No existing workflow corruption |
+
+### 3.7 Different RBAC Between DSP and External Argo
+
+| Test Case ID | TC-NF-007 |
+|---|---|
+| **Test Case Summary** | Test DSP and external WorkflowController with different RBAC configurations |
+| **Test Steps** | 1. Configure DSP with cluster-level RBAC permissions<br/>2. Install external Argo with namespace-level RBAC restrictions<br/>3. Submit pipelines through DSP interface<br/>4. Verify RBAC conflicts and permission issues<br/>5. Test resource access and execution failures<br/>6. Document RBAC compatibility requirements |
+| **Expected Results** | - RBAC conflicts properly identified<br/>- Clear error messages for permission issues<br/>- Guidance provided for RBAC alignment<br/>- No security violations or escalations |
+
+### 3.8 DSP with Incompatible Workflow Schema
+
+| Test Case ID | TC-NF-008 |
+|---|---|
+| **Test Case Summary** | Test DSP behavior with incompatible workflow schema versions |
+| **Test Steps** | 1. Install external Argo with older workflow schema<br/>2. Configure DSP to use external Argo<br/>3. Submit pipelines with newer schema features<br/>4. Verify schema compatibility checking<br/>5. Test graceful degradation or error handling<br/>6. Document schema compatibility matrix |
+| **Expected Results** | - Schema incompatibilities detected<br/>- Clear error messages about schema conflicts<br/>- Graceful handling of unsupported features<br/>- No workflow corruption or data loss |
 
 ## 4. RBAC and Security Tests
 
@@ -277,6 +307,14 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. For each version in compatibility matrix:<br/>   a. Deploy specific Argo version<br/>   b. Configure DSPA<br/>   c. Execute standard test suite<br/>   d. Document results and issues<br/>2. Update compatibility matrix<br/>3. Identify unsupported combinations |
 | **Expected Results** | - Compatibility matrix accurately reflects reality<br/>- All supported versions documented<br/>- Unsupported combinations identified<br/>- Clear guidance for version selection |
 
+### 7.4 DSP and External Argo Co-existence Validation
+
+| Test Case ID | TC-CM-004 |
+|---|---|
+| **Test Case Summary** | Validate successful hello world pipeline with DSP and External Argo co-existing |
+| **Test Steps** | 1. Deploy DSPA with internal WorkflowController<br/>2. Install external Argo WorkflowController on same cluster<br/>3. Submit simple hello world pipeline through DSP<br/>4. Verify pipeline executes successfully using DSP controller<br/>5. Verify external Argo remains unaffected<br/>6. Test pipeline monitoring and status reporting<br/>7. Validate artifact handling and logs access |
+| **Expected Results** | - Hello world pipeline executes successfully<br/>- DSP WorkflowController processes the pipeline<br/>- External Argo WorkflowController unaffected<br/>- No resource conflicts or interference<br/>- Pipeline status and logs accessible<br/>- Artifacts properly stored and retrievable |
+
 ## 8. Uninstall and Data Preservation Tests
 
 ### 8.1 DSPA Uninstall with External Argo
@@ -345,10 +383,11 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 - Basic Negative Tests (TC-NF-001, TC-NF-002)
 
 ### Phase 2: Compatibility and Integration (Weeks 3-4)
-- Compatibility Matrix Tests (TC-CM-001 to TC-CM-003)
+- Compatibility Matrix Tests (TC-CM-001 to TC-CM-004)
 - RBAC and Security Tests (TC-RBAC-001, TC-RBAC-002)
 - Advanced Positive Tests (TC-PF-003, TC-PF-004)
-- Extended Negative Tests (TC-NF-003, TC-NF-004, TC-NF-005, TC-NF-006)
+- Extended Negative Tests (TC-NF-003, TC-NF-004, TC-NF-005, TC-NF-006, TC-NF-007, TC-NF-008)
+- Co-existence Testing (TC-NF-001a)
 
 ### Phase 3: Advanced Scenarios (Weeks 5-7)
 - Uninstall and Data Preservation Tests (TC-UP-001 to TC-UP-003)
@@ -373,6 +412,9 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 - Clear error messages for all failure modes
 - Unsupported configuration detection functional
 - CRD version conflict resolution working
+- RBAC conflict detection and resolution
+- Schema compatibility validation working
+- Co-existence scenarios validated successfully
 - Documentation complete and accurate
 - Uninstall scenarios preserve external Argo integrity
 
@@ -414,5 +456,8 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 7. **Uninstall Procedures** - Validated procedures for clean DSPA removal with external Argo
 8. **CRD Management Guidelines** - Platform-level CRD and RBAC management recommendations
 9. **Configuration Validation Guide** - Detection and resolution of unsupported configurations
-10. **Known Issues Log** - Documented limitations and workarounds
-11. **Final Test Report** - Executive summary with recommendations and lessons learned
+10. **RBAC Compatibility Matrix** - Guidelines for DSP and external Argo RBAC alignment
+11. **Schema Compatibility Guide** - Workflow schema version compatibility and limitations
+12. **Co-existence Best Practices** - Recommendations for running DSP and external Argo together
+13. **Known Issues Log** - Documented limitations and workarounds
+14. **Final Test Report** - Executive summary with recommendations and lessons learned
