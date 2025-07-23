@@ -89,6 +89,22 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. Configure disconnected cluster environment<br/>2. Install external Argo from local registry<br/>3. Configure DSPA for external Argo<br/>4. Execute pipelines using local artifacts<br/>5. Verify offline operation |
 | **Expected Results** | - External Argo operates in disconnected mode<br/>- Pipeline execution works without external connectivity<br/>- Local registries and artifacts accessible |
 
+### 1.5 Platform-Level CRD and RBAC Management
+
+| Test Case ID | TC-CC-006 |
+|---|---|
+| **Test Case Summary** | Verify platform-level Argo CRDs and RBAC remain intact with external Argo |
+| **Test Steps** | 1. Install DSPO which creates platform-level Argo CRDs and RBAC<br/>2. Install external Argo with different CRD versions<br/>3. Toggle global WorkflowController disable<br/>4. Verify platform CRDs are not removed<br/>5. Test that user modifications to CRDs are preserved<br/>6. Verify RBAC conflicts are handled appropriately |
+| **Expected Results** | - Platform-level CRDs remain intact<br/>- User CRD modifications preserved<br/>- RBAC conflicts resolved without breaking functionality<br/>- Platform operator doesn't overwrite user changes |
+
+### 1.6 Sub-Component Removal Testing
+
+| Test Case ID | TC-CC-007 |
+|---|---|
+| **Test Case Summary** | Verify sub-component removal functionality for WorkflowControllers |
+| **Test Steps** | 1. Deploy DSPA with WorkflowController enabled<br/>2. Execute pipelines and accumulate run data<br/>3. Disable WorkflowController globally<br/>4. Verify WorkflowController is removed but data preserved<br/>5. Verify backing data (run details, metrics) remains intact<br/>6. Test re-enabling WorkflowController preserves historical data |
+| **Expected Results** | - WorkflowController removed cleanly<br/>- Run details and metrics preserved<br/>- Historical pipeline data remains accessible<br/>- Re-enabling restores full functionality |
+
 ## 2. Positive Functional Tests
 
 ### 2.1 Basic Pipeline Execution
@@ -103,9 +119,9 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 
 | Test Case ID | TC-PF-002 |
 |---|---|
-| **Test Case Summary** | Execute various pipeline types from valid pipeline files |
-| **Test Steps** | 1. Execute pipelines from `data/pipeline_files/valid/` including:<br/>   - Conditional pipelines<br/>   - Parallel execution pipelines<br/>   - Loop constructs<br/>   - Artifact-heavy pipelines<br/>   - Component pipelines<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts and metadata |
-| **Expected Results** | - All pipeline types execute successfully<br/>- Conditional logic works correctly<br/>- Parallel execution operates properly<br/>- Artifacts transferred and stored correctly |
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files |
+| **Test Steps** | 1. Execute pipelines from `data/pipeline_files/valid/` including:<br/>   - Pipelines with artifacts<br/>   - Pipelines without artifacts<br/>   - For loop constructs<br/>   - Parallel for execution<br/>   - Custom root KFP components<br/>   - Custom python package indexes<br/>   - Custom base images<br/>   - Pipelines with input parameters<br/>   - Pipelines without input parameters<br/>   - Pipelines with output artifacts<br/>   - Pipelines without output artifacts<br/>   - Pipelines with iteration count<br/>   - Pipelines with retry mechanisms<br/>   - Pipelines with certificate handling<br/>   - Conditional branching pipelines<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations |
+| **Expected Results** | - All pipeline types execute successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
 
 ### 2.3 Pod Spec Override Testing
 
@@ -156,6 +172,22 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Case Summary** | Test invalid pipeline handling with external Argo |
 | **Test Steps** | 1. Submit pipelines from `data/pipeline_files/invalid/`<br/>2. Verify appropriate error handling<br/>3. Check error message clarity<br/>4. Ensure no system instability |
 | **Expected Results** | - Invalid pipelines rejected appropriately<br/>- Clear error messages provided<br/>- System remains stable<br/>- No resource leaks |
+
+### 3.5 Unsupported Configuration Detection
+
+| Test Case ID | TC-NF-005 |
+|---|---|
+| **Test Case Summary** | Verify detection of unsupported individual DSPA WorkflowController disable |
+| **Test Steps** | 1. Set global WorkflowController management to Removed<br/>2. Attempt to create DSPA with individual `workflowController.deploy: false`<br/>3. Verify appropriate warning/error messages<br/>4. Test documentation guidance for users<br/>5. Ensure configuration is flagged as development-only |
+| **Expected Results** | - Unsupported configuration detected<br/>- Clear warning messages displayed<br/>- Documentation provides proper guidance<br/>- Development-only usage clearly indicated |
+
+### 3.6 CRD Version Conflicts
+
+| Test Case ID | TC-NF-006 |
+|---|---|
+| **Test Case Summary** | Test behavior with conflicting Argo CRD versions |
+| **Test Steps** | 1. Install DSP with specific Argo CRD version<br/>2. Install external Argo with different CRD version<br/>3. Attempt pipeline execution<br/>4. Verify conflict detection and resolution<br/>5. Test update-in-place mechanisms |
+| **Expected Results** | - CRD version conflicts detected<br/>- Update-in-place works when compatible<br/>- Clear error messages for incompatible versions<br/>- No existing workflow corruption |
 
 ## 4. RBAC and Security Tests
 
@@ -245,9 +277,35 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. For each version in compatibility matrix:<br/>   a. Deploy specific Argo version<br/>   b. Configure DSPA<br/>   c. Execute standard test suite<br/>   d. Document results and issues<br/>2. Update compatibility matrix<br/>3. Identify unsupported combinations |
 | **Expected Results** | - Compatibility matrix accurately reflects reality<br/>- All supported versions documented<br/>- Unsupported combinations identified<br/>- Clear guidance for version selection |
 
-## 8. Migration and Upgrade Tests
+## 8. Uninstall and Data Preservation Tests
 
-### 8.1 DSP-Managed to External Migration
+### 8.1 DSPA Uninstall with External Argo
+
+| Test Case ID | TC-UP-001 |
+|---|---|
+| **Test Case Summary** | Verify DSPA uninstall behavior with external Argo |
+| **Test Steps** | 1. Configure DSPA with external Argo (no internal WC)<br/>2. Execute multiple pipelines and generate data<br/>3. Delete DSPA<br/>4. Verify external Argo WorkflowController remains intact<br/>5. Verify DSPA-specific resources are cleaned up<br/>6. Check that pipeline history is appropriately handled |
+| **Expected Results** | - DSPA removes cleanly<br/>- External Argo WorkflowController unaffected<br/>- No impact on other DSPAs using same external Argo<br/>- Pipeline data handling follows standard procedures |
+
+### 8.2 DSPA Uninstall with Internal WorkflowController
+
+| Test Case ID | TC-UP-002 |
+|---|---|
+| **Test Case Summary** | Verify standard DSPA uninstall with internal WorkflowController |
+| **Test Steps** | 1. Configure DSPA with internal WorkflowController<br/>2. Execute pipelines and generate data<br/>3. Delete DSPA<br/>4. Verify WorkflowController is removed with DSPA<br/>5. Verify proper cleanup of all DSPA components<br/>6. Ensure no external Argo impact |
+| **Expected Results** | - DSPA and WorkflowController removed completely<br/>- Standard cleanup procedures followed<br/>- No resource leaks or orphaned components<br/>- External Argo installations unaffected |
+
+### 8.3 Data Preservation During WorkflowController Transitions
+
+| Test Case ID | TC-UP-003 |
+|---|---|
+| **Test Case Summary** | Verify data preservation during WorkflowController management transitions |
+| **Test Steps** | 1. Create DSPA with internal WC and execute pipelines<br/>2. Disable WC globally (transition to external Argo)<br/>3. Verify run history, artifacts, and metadata preserved<br/>4. Re-enable WC globally (transition back to internal)<br/>5. Verify all historical data remains accessible<br/>6. Test new pipeline execution in both states |
+| **Expected Results** | - Pipeline run history preserved across transitions<br/>- Artifacts remain accessible<br/>- Metadata integrity maintained<br/>- New pipelines work in both configurations |
+
+## 9. Migration and Upgrade Tests
+
+### 9.1 DSP-Managed to External Migration
 
 | Test Case ID | TC-MU-001 |
 |---|---|
@@ -255,7 +313,7 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. Create DSPA with internal WorkflowController<br/>2. Execute pipelines and accumulate data<br/>3. Install external Argo<br/>4. Disable internal WCs globally<br/>5. Verify data preservation and new execution |
 | **Expected Results** | - Migration completes without data loss<br/>- Historical data remains accessible<br/>- New pipelines use external Argo<br/>- Artifacts and metadata preserved |
 
-### 8.2 External to DSP-Managed Migration
+### 9.2 External to DSP-Managed Migration
 
 | Test Case ID | TC-MU-002 |
 |---|---|
@@ -263,7 +321,7 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. Configure DSPA with external Argo<br/>2. Execute pipelines and verify data<br/>3. Re-enable internal WCs globally<br/>4. Remove external Argo configuration<br/>5. Verify continued operation |
 | **Expected Results** | - Migration to internal WC successful<br/>- Pipeline history preserved<br/>- New pipelines use internal WC<br/>- No service interruption |
 
-### 8.3 RHOAI Upgrade Scenarios
+### 9.3 RHOAI Upgrade Scenarios
 
 | Test Case ID | TC-MU-003 |
 |---|---|
@@ -271,10 +329,18 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 | **Test Steps** | 1. Configure RHOAI with external Argo<br/>2. Execute baseline pipeline tests<br/>3. Upgrade RHOAI to newer version<br/>4. Verify external Argo configuration intact<br/>5. Re-execute pipeline tests |
 | **Expected Results** | - Upgrade preserves BYOAW configuration<br/>- External Argo continues working<br/>- No functionality regression<br/>- Configuration settings maintained |
 
+### 9.4 Argo Version Upgrade with External Installation
+
+| Test Case ID | TC-MU-004 |
+|---|---|
+| **Test Case Summary** | Verify external Argo version upgrade scenarios |
+| **Test Steps** | 1. Configure DSPA with external Argo version N-1<br/>2. Execute baseline pipeline tests<br/>3. Upgrade external Argo to version N<br/>4. Verify compatibility matrix adherence<br/>5. Test pipeline execution post-upgrade<br/>6. Document any required RHOAI updates |
+| **Expected Results** | - External Argo upgrade completes successfully<br/>- Compatibility maintained within support matrix<br/>- Clear guidance for required RHOAI updates<br/>- Pipeline functionality preserved |
+
 ## Test Execution Schedule
 
 ### Phase 1: Foundation (Weeks 1-2)
-- Cluster Configuration Tests (TC-CC-001 to TC-CC-005)
+- Cluster Configuration Tests (TC-CC-001 to TC-CC-007)
 - Basic Positive Functional Tests (TC-PF-001, TC-PF-002)
 - Basic Negative Tests (TC-NF-001, TC-NF-002)
 
@@ -282,12 +348,13 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 - Compatibility Matrix Tests (TC-CM-001 to TC-CM-003)
 - RBAC and Security Tests (TC-RBAC-001, TC-RBAC-002)
 - Advanced Positive Tests (TC-PF-003, TC-PF-004)
+- Extended Negative Tests (TC-NF-003, TC-NF-004, TC-NF-005, TC-NF-006)
 
-### Phase 3: Advanced Scenarios (Weeks 5-6)
-- Migration and Upgrade Tests (TC-MU-001 to TC-MU-003)
+### Phase 3: Advanced Scenarios (Weeks 5-7)
+- Uninstall and Data Preservation Tests (TC-UP-001 to TC-UP-003)
+- Migration and Upgrade Tests (TC-MU-001 to TC-MU-004)
 - Performance Tests (TC-PT-001, TC-PT-002)
 - Boundary Tests (TC-BT-001 to TC-BT-003)
-- Remaining Negative Tests (TC-NF-003, TC-NF-004)
 
 ## Success Criteria
 
@@ -297,17 +364,24 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 - Migration scenarios preserve data integrity
 - Security and RBAC properly enforced
 - Performance within acceptable bounds (no >20% degradation)
+- Platform-level CRD and RBAC management works correctly
+- Data preservation during WorkflowController transitions
+- Sub-component removal functionality validated
 
 ### Should Have
 - Negative test scenarios handled gracefully
 - Clear error messages for all failure modes
+- Unsupported configuration detection functional
+- CRD version conflict resolution working
 - Documentation complete and accurate
-- Automated conflict detection functional
+- Uninstall scenarios preserve external Argo integrity
 
 ### Could Have
 - Performance optimizations for external Argo scenarios
 - Enhanced monitoring and observability
 - Additional version compatibility beyond N-1
+- Automated detection of conflicting configurations
+- Advanced CRD update-in-place mechanisms
 
 ## Risk Assessment
 
@@ -332,9 +406,13 @@ This test plan validates the "Bring Your Own Argo Workflows" feature, which enab
 ## Test Deliverables
 
 1. **Test Execution Reports** - Detailed results for each test phase
-2. **Compatibility Matrix** - Updated with validated version combinations
+2. **Compatibility Matrix** - Updated with validated version combinations and CRD compatibility
 3. **Performance Benchmarks** - Comparative analysis of internal vs external Argo
-4. **Security Assessment** - RBAC and isolation validation results
-5. **Migration Documentation** - Procedures and best practices
-6. **Known Issues Log** - Documented limitations and workarounds
-7. **Final Test Report** - Executive summary with recommendations
+4. **Security Assessment** - RBAC and isolation validation results with platform-level testing
+5. **Migration Documentation** - Procedures and best practices for all migration scenarios
+6. **Data Preservation Guidelines** - Best practices for maintaining data integrity during transitions
+7. **Uninstall Procedures** - Validated procedures for clean DSPA removal with external Argo
+8. **CRD Management Guidelines** - Platform-level CRD and RBAC management recommendations
+9. **Configuration Validation Guide** - Detection and resolution of unsupported configurations
+10. **Known Issues Log** - Documented limitations and workarounds
+11. **Final Test Report** - Executive summary with recommendations and lessons learned
