@@ -13,7 +13,17 @@
 
 This test plan validates the "Bring Your Own Argo Workflows" feature, which enables Data Science Pipelines to work with existing Argo Workflows installations instead of deploying dedicated WorkflowControllers. The feature includes a global configuration mechanism to disable DSP-managed WorkflowControllers and ensures compatibility with user-provided Argo Workflows.
 
-The plan covers comprehensive testing scenarios including co-existence of DSP and external Argo controllers, RBAC compatibility across different permission models, workflow schema version compatibility, and validation of conflict resolution mechanisms when multiple controllers compete for the same resources.
+The plan covers comprehensive testing scenarios including:
+- **Co-existence validation** of DSP and external Argo controllers competing for same events
+- **Pre-existing Argo detection** and prevention mechanisms
+- **CRD update-in-place** functionality and conflict resolution
+- **RBAC compatibility** across different permission models (cluster vs namespace level)
+- **Workflow schema version compatibility** and API compatibility validation
+- **Z-stream (patch) version compatibility** testing
+- **Data preservation** for WorkflowTemplates, CronWorkflows, and pipeline data
+- **Independent lifecycle management** of RHOAI and external Argo installations
+- **Project-level access controls** ensuring workflow visibility boundaries
+- **Comprehensive migration scenarios** and upgrade path validation
 
 ## Test Scope
 
@@ -110,6 +120,22 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Case Summary** | Verify sub-component removal functionality for WorkflowControllers |
 | **Test Steps** | 1. Deploy DSPA with WorkflowController enabled<br/>2. Execute pipelines and accumulate run data<br/>3. Disable WorkflowController globally<br/>4. Verify WorkflowController is removed but data preserved<br/>5. Verify backing data (run details, metrics) remains intact<br/>6. Test re-enabling WorkflowController preserves historical data |
 | **Expected Results** | - WorkflowController removed cleanly<br/>- Run details and metrics preserved<br/>- Historical pipeline data remains accessible<br/>- Re-enabling restores full functionality |
+
+### 1.7 Pre-existing Argo Detection and Prevention
+
+| Test Case ID | TC-CC-008 |
+|---|---|
+| **Test Case Summary** | Verify detection and prevention of DSPA creation when pre-existing Argo exists |
+| **Test Steps** | 1. Install external Argo Workflows on cluster<br/>2. Install RHOAI DSP operator<br/>3. Attempt to create DSPA with default configuration (WC enabled)<br/>4. Verify detection mechanism identifies pre-existing Argo<br/>5. Test prevention of DSPA creation or automatic WC disable<br/>6. Verify appropriate warning/guidance messages<br/>7. Test manual override if supported |
+| **Expected Results** | - Pre-existing Argo installation detected<br/>- DSPA creation prevented or WC automatically disabled<br/>- Clear guidance provided to user<br/>- Manual override works when applicable<br/>- No conflicts or resource competition |
+
+### 1.8 CRD Update-in-Place Testing
+
+| Test Case ID | TC-CC-009 |
+|---|---|
+| **Test Case Summary** | Verify CRD update-in-place when differences exist between pre-existing and shipped CRDs |
+| **Test Steps** | 1. Install external Argo with specific CRD version<br/>2. Create Workflows, WorkflowTemplates, and CronWorkflows<br/>3. Install DSP with different compatible CRD version<br/>4. Verify CRDs are updated in-place<br/>5. Verify existing CRs (Workflows, WorkflowTemplates, CronWorkflows) remain intact<br/>6. Test new CR creation with updated CRD schema<br/>7. Verify no data loss or corruption |
+| **Expected Results** | - CRDs updated in-place successfully<br/>- Existing Workflows, WorkflowTemplates, CronWorkflows preserved<br/>- New CRs work with updated schema<br/>- No data loss or corruption<br/>- Compatibility maintained |
 
 ## 2. Positive Functional Tests
 
@@ -237,6 +263,14 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Steps** | 1. Configure custom service accounts<br/>2. Set specific RBAC permissions<br/>3. Execute pipelines with different service accounts<br/>4. Verify permission enforcement<br/>5. Test cross-namespace access controls |
 | **Expected Results** | - Service accounts properly integrated<br/>- Permissions correctly enforced<br/>- No unauthorized resource access<br/>- Proper audit trail maintained |
 
+### 4.3 Workflow Visibility and Project Access Control
+
+| Test Case ID | TC-RBAC-003 |
+|---|---|
+| **Test Case Summary** | Verify workflows using external Argo are only visible to users with Project access |
+| **Test Steps** | 1. Create multiple Data Science Projects with different users<br/>2. Configure external Argo for all projects<br/>3. Execute pipelines from different projects<br/>4. Test workflow visibility across projects with different users<br/>5. Verify users can only see workflows from their accessible projects<br/>6. Test API access controls and UI filtering<br/>7. Verify external Argo workflows respect DSP project boundaries |
+| **Expected Results** | - Workflows only visible to users with project access<br/>- Proper isolation between Data Science Projects<br/>- API and UI enforce access controls correctly<br/>- External Argo workflows respect DSP boundaries<br/>- No cross-project workflow visibility |
+
 ## 5. Boundary Tests
 
 ### 5.1 Resource Limits
@@ -299,6 +333,14 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Steps** | 1. Install previous supported Argo version (e.g., 3.4.15)<br/>2. Configure DSPA for external Argo<br/>3. Execute comprehensive pipeline test suite<br/>4. Document compatibility differences<br/>5. Verify core functionality maintained |
 | **Expected Results** | - Core functionality works with N-1 version<br/>- Any limitations clearly documented<br/>- No critical failures or data loss<br/>- Upgrade path available |
 
+### 7.2.1 Z-Stream Version Compatibility
+
+| Test Case ID | TC-CM-002a |
+|---|---|
+| **Test Case Summary** | Validate compatibility with z-stream (patch) versions of Argo |
+| **Test Steps** | 1. Test current DSP with multiple z-stream versions of same minor Argo release<br/>2. Example: Test DSP v3.4.17 with Argo v3.4.16, v3.4.17, v3.4.18<br/>3. Execute standard pipeline test suite for each z-stream version<br/>4. Document any breaking changes in patch versions<br/>5. Verify backward and forward compatibility within minor version |
+| **Expected Results** | - Z-stream versions maintain compatibility<br/>- No breaking changes in patch releases<br/>- Smooth operation across patch versions<br/>- Clear documentation of any exceptions |
+
 ### 7.3 Version Matrix Validation
 
 | Test Case ID | TC-CM-003 |
@@ -314,6 +356,14 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Case Summary** | Validate successful hello world pipeline with DSP and External Argo co-existing |
 | **Test Steps** | 1. Deploy DSPA with internal WorkflowController<br/>2. Install external Argo WorkflowController on same cluster<br/>3. Submit simple hello world pipeline through DSP<br/>4. Verify pipeline executes successfully using DSP controller<br/>5. Verify external Argo remains unaffected<br/>6. Test pipeline monitoring and status reporting<br/>7. Validate artifact handling and logs access |
 | **Expected Results** | - Hello world pipeline executes successfully<br/>- DSP WorkflowController processes the pipeline<br/>- External Argo WorkflowController unaffected<br/>- No resource conflicts or interference<br/>- Pipeline status and logs accessible<br/>- Artifacts properly stored and retrievable |
+
+### 7.5 API Server and WorkflowController Compatibility
+
+| Test Case ID | TC-CM-005 |
+|---|---|
+| **Test Case Summary** | Verify DSP API Server compatibility with different external WorkflowController versions |
+| **Test Steps** | 1. Deploy DSP API Server with specific Argo library dependencies<br/>2. Install external Argo WorkflowController with different version<br/>3. Test API Server to WorkflowController communication<br/>4. Verify Kubernetes API interactions (CRs, status updates)<br/>5. Test pipeline submission, execution, and status reporting<br/>6. Monitor for API compatibility issues or version mismatches<br/>7. Document API compatibility matrix |
+| **Expected Results** | - API Server communicates successfully with external WC<br/>- Kubernetes API interactions work correctly<br/>- Pipeline lifecycle management functions properly<br/>- Status updates and monitoring work correctly<br/>- API compatibility documented and validated |
 
 ## 8. Uninstall and Data Preservation Tests
 
@@ -340,6 +390,14 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Case Summary** | Verify data preservation during WorkflowController management transitions |
 | **Test Steps** | 1. Create DSPA with internal WC and execute pipelines<br/>2. Disable WC globally (transition to external Argo)<br/>3. Verify run history, artifacts, and metadata preserved<br/>4. Re-enable WC globally (transition back to internal)<br/>5. Verify all historical data remains accessible<br/>6. Test new pipeline execution in both states |
 | **Expected Results** | - Pipeline run history preserved across transitions<br/>- Artifacts remain accessible<br/>- Metadata integrity maintained<br/>- New pipelines work in both configurations |
+
+### 8.4 WorkflowTemplates and CronWorkflows Preservation
+
+| Test Case ID | TC-UP-004 |
+|---|---|
+| **Test Case Summary** | Verify preservation of WorkflowTemplates and CronWorkflows during DSP install/uninstall |
+| **Test Steps** | 1. Install external Argo and create WorkflowTemplates and CronWorkflows<br/>2. Install DSP with BYOAW configuration<br/>3. Verify existing WorkflowTemplates and CronWorkflows remain intact<br/>4. Create additional WorkflowTemplates through DSP interface<br/>5. Uninstall DSP components<br/>6. Verify all WorkflowTemplates and CronWorkflows still exist<br/>7. Test functionality of preserved resources with external Argo |
+| **Expected Results** | - Pre-existing WorkflowTemplates and CronWorkflows preserved<br/>- DSP-created templates also preserved during uninstall<br/>- All preserved resources remain functional<br/>- No data corruption or resource deletion<br/>- External Argo can use all preserved templates |
 
 ## 9. Migration and Upgrade Tests
 
@@ -375,23 +433,36 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 | **Test Steps** | 1. Configure DSPA with external Argo version N-1<br/>2. Execute baseline pipeline tests<br/>3. Upgrade external Argo to version N<br/>4. Verify compatibility matrix adherence<br/>5. Test pipeline execution post-upgrade<br/>6. Document any required RHOAI updates |
 | **Expected Results** | - External Argo upgrade completes successfully<br/>- Compatibility maintained within support matrix<br/>- Clear guidance for required RHOAI updates<br/>- Pipeline functionality preserved |
 
+### 9.5 Independent Lifecycle Management
+
+| Test Case ID | TC-MU-005 |
+|---|---|
+| **Test Case Summary** | Verify independent lifecycle management of RHOAI and external Argo |
+| **Test Steps** | 1. Install and configure RHOAI with external Argo<br/>2. Perform independent upgrade of external Argo installation<br/>3. Verify RHOAI continues operating without issues<br/>4. Perform independent upgrade of RHOAI<br/>5. Verify external Argo continues operating without issues<br/>6. Test independent scaling of each component<br/>7. Verify independent maintenance and restart scenarios |
+| **Expected Results** | - Independent upgrades work without mutual interference<br/>- Each component maintains functionality during the other's maintenance<br/>- Scaling operations work independently<br/>- No forced coupling of upgrade/maintenance schedules<br/>- Clear documentation of independence boundaries |
+
 ## Test Execution Schedule
 
-### Phase 1: Foundation (Weeks 1-2)
-- Cluster Configuration Tests (TC-CC-001 to TC-CC-007)
+### Phase 1: Foundation (Weeks 1-3)
+- Cluster Configuration Tests (TC-CC-001 to TC-CC-009)
 - Basic Positive Functional Tests (TC-PF-001, TC-PF-002)
 - Basic Negative Tests (TC-NF-001, TC-NF-002)
+- Pre-existing Argo Detection and CRD Testing (TC-CC-008, TC-CC-009)
 
-### Phase 2: Compatibility and Integration (Weeks 3-4)
-- Compatibility Matrix Tests (TC-CM-001 to TC-CM-004)
-- RBAC and Security Tests (TC-RBAC-001, TC-RBAC-002)
+### Phase 2: Compatibility and Integration (Weeks 4-5)
+- Compatibility Matrix Tests (TC-CM-001 to TC-CM-005)
+- Z-Stream Version Testing (TC-CM-002a)
+- RBAC and Security Tests (TC-RBAC-001 to TC-RBAC-003)
 - Advanced Positive Tests (TC-PF-003, TC-PF-004)
-- Extended Negative Tests (TC-NF-003, TC-NF-004, TC-NF-005, TC-NF-006, TC-NF-007, TC-NF-008)
-- Co-existence Testing (TC-NF-001a)
 
-### Phase 3: Advanced Scenarios (Weeks 5-7)
-- Uninstall and Data Preservation Tests (TC-UP-001 to TC-UP-003)
-- Migration and Upgrade Tests (TC-MU-001 to TC-MU-004)
+### Phase 3: Conflict Resolution and Negative Testing (Weeks 6-7)
+- Extended Negative Tests (TC-NF-003 to TC-NF-008)
+- Co-existence Testing (TC-NF-001a)
+- API Server Compatibility Testing (TC-CM-005)
+
+### Phase 4: Advanced Scenarios (Weeks 8-9)
+- Uninstall and Data Preservation Tests (TC-UP-001 to TC-UP-004)
+- Migration and Upgrade Tests (TC-MU-001 to TC-MU-005)
 - Performance Tests (TC-PT-001, TC-PT-002)
 - Boundary Tests (TC-BT-001 to TC-BT-003)
 
@@ -400,12 +471,18 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 ### Must Have
 - All positive functional tests pass without failures
 - Compatibility matrix validation complete for N and N-1 versions
+- Z-stream (patch) version compatibility validated
 - Migration scenarios preserve data integrity
 - Security and RBAC properly enforced
 - Performance within acceptable bounds (no >20% degradation)
 - Platform-level CRD and RBAC management works correctly
 - Data preservation during WorkflowController transitions
 - Sub-component removal functionality validated
+- Pre-existing Argo detection and prevention working
+- CRD update-in-place functionality validated
+- WorkflowTemplates and CronWorkflows preservation confirmed
+- API Server to WorkflowController compatibility verified
+- Workflow visibility and project access controls enforced
 
 ### Should Have
 - Negative test scenarios handled gracefully
@@ -415,6 +492,7 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 - RBAC conflict detection and resolution
 - Schema compatibility validation working
 - Co-existence scenarios validated successfully
+- Independent lifecycle management validated
 - Documentation complete and accurate
 - Uninstall scenarios preserve external Argo integrity
 
@@ -447,17 +525,21 @@ The plan covers comprehensive testing scenarios including co-existence of DSP an
 
 ## Test Deliverables
 
-1. **Test Execution Reports** - Detailed results for each test phase
-2. **Compatibility Matrix** - Updated with validated version combinations and CRD compatibility
-3. **Performance Benchmarks** - Comparative analysis of internal vs external Argo
-4. **Security Assessment** - RBAC and isolation validation results with platform-level testing
-5. **Migration Documentation** - Procedures and best practices for all migration scenarios
-6. **Data Preservation Guidelines** - Best practices for maintaining data integrity during transitions
-7. **Uninstall Procedures** - Validated procedures for clean DSPA removal with external Argo
-8. **CRD Management Guidelines** - Platform-level CRD and RBAC management recommendations
-9. **Configuration Validation Guide** - Detection and resolution of unsupported configurations
-10. **RBAC Compatibility Matrix** - Guidelines for DSP and external Argo RBAC alignment
-11. **Schema Compatibility Guide** - Workflow schema version compatibility and limitations
-12. **Co-existence Best Practices** - Recommendations for running DSP and external Argo together
-13. **Known Issues Log** - Documented limitations and workarounds
-14. **Final Test Report** - Executive summary with recommendations and lessons learned
+1. **Test Execution Reports** - Detailed results for each test phase with comprehensive coverage
+2. **Enhanced Compatibility Matrix** - Validated version combinations including Z-stream compatibility and API compatibility
+3. **Performance Benchmarks** - Comparative analysis of internal vs external Argo across all scenarios
+4. **Comprehensive Security Assessment** - RBAC and isolation validation including project access controls
+5. **Migration Documentation** - Complete procedures for all migration scenarios and lifecycle management
+6. **Data Preservation Guidelines** - Best practices for maintaining data integrity during all transitions
+7. **Uninstall Procedures** - Validated procedures for clean removal preserving WorkflowTemplates and CronWorkflows
+8. **CRD Management Guidelines** - Platform-level CRD update-in-place and conflict resolution procedures
+9. **Pre-existing Argo Detection Guide** - Implementation and configuration of detection mechanisms
+10. **Configuration Validation Guide** - Detection and resolution of all unsupported configurations
+11. **RBAC Compatibility Matrix** - Comprehensive guidelines for DSP and external Argo RBAC alignment
+12. **Schema Compatibility Guide** - Workflow schema version compatibility and API compatibility matrix
+13. **Co-existence Best Practices** - Detailed recommendations for running DSP and external Argo together
+14. **Z-Stream Testing Strategy** - Framework for ongoing patch version compatibility validation
+15. **API Compatibility Documentation** - DSP API Server to external WorkflowController compatibility guidelines
+16. **Independent Lifecycle Management Guide** - Best practices for managing RHOAI and Argo independently
+17. **Known Issues Log** - Comprehensive documentation of limitations and workarounds
+18. **Final Test Report** - Executive summary with recommendations, lessons learned, and future testing strategy
