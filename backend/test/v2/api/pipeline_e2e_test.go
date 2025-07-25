@@ -56,7 +56,6 @@ var _ = BeforeEach(func() {
 
 var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1, FullRegression), func() {
 
-	/* Critical Positive Scenarios of uploading a pipeline file */
 	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", func() {
 		var pipelineDir = "valid"
 		var compiledWorkflowsDir = "compiled-workflows"
@@ -78,6 +77,11 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 				utils.WaitForRunToBeInState(runClient, &uploadedPipelineRun.RunID, []run_model.V2beta1RuntimeState{run_model.V2beta1RuntimeStateSUCCEEDED, run_model.V2beta1RuntimeStateSKIPPED, run_model.V2beta1RuntimeStateFAILED, run_model.V2beta1RuntimeStateCANCELED}, &timeToWait)
 				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
 				compiledWorkflow := workflow_utils.UnmarshallWorkflowYAML(filepath.Join(utils.GetProjectDataDir(), compiledWorkflowsDir, pipelineFile))
+				pipelineSpecMap := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFile)
+				pipelineSpec, _ := utils.DeserializeSpecs(pipelineSpecMap)
+				workflow, workflowErr := NewArgoWorkflowConverter("").ConvertToArgoWorkflow(pipelineSpec, compiledWorkflow, compiledWorkflow.GenerateName)
+				Expect(workflowErr).To(BeNil(), "Failed to convert pipeline spec and compiled Workflow to ArgoWorkflow")
+				logger.Log("Workflow %s", workflow.Name)
 				validateComponentStatuses(uploadedPipelineRun.RunID, compiledWorkflow)
 			})
 		}
