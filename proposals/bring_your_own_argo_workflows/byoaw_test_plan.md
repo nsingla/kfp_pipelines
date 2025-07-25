@@ -1,3 +1,4 @@
+**Assisted-by**: Cursor
 # Test Plan: Bring Your Own Argo Workflows (BYOAW)
 
 ## Table of Contents
