@@ -540,36 +540,11 @@ The plan covers comprehensive testing scenarios including:
 
 ### 9.5 Independent Lifecycle Management
 
-| Test Case ID | TC-MU-005 |
-|---|---|
-| **Test Case Summary** | Verify independent lifecycle management of RHOAI and external Argo |
-| **Test Steps** | 1. Install and configure RHOAI with external Argo<br/>2. Perform independent upgrade of external Argo installation<br/>3. Verify RHOAI continues operating without issues<br/>4. Perform independent upgrade of RHOAI<br/>5. Verify external Argo continues operating without issues<br/>6. Test independent scaling of each component<br/>7. Verify independent maintenance and restart scenarios |
-| **Expected Results** | - Independent upgrades work without mutual interference<br/>- Each component maintains functionality during the other's maintenance<br/>- Scaling operations work independently<br/>- No forced coupling of upgrade/maintenance schedules<br/>- Clear documentation of independence boundaries |
-
-## Test Execution Schedule
-
-### Phase 1: Foundation (Weeks 1-3)
-- Cluster Configuration Tests (TC-CC-001 to TC-CC-009)
-- Basic Positive Functional Tests (TC-PF-001, TC-PF-002)
-- Basic Negative Tests (TC-NF-001, TC-NF-002)
-- Pre-existing Argo Detection and CRD Testing (TC-CC-008, TC-CC-009)
-
-### Phase 2: Compatibility and Integration (Weeks 4-5)
-- Compatibility Matrix Tests (TC-CM-001 to TC-CM-005)
-- Z-Stream Version Testing (TC-CM-002a)
-- RBAC and Security Tests (TC-RBAC-001 to TC-RBAC-003)
-- Advanced Positive Tests (TC-PF-003, TC-PF-004)
-
-### Phase 3: Conflict Resolution and Negative Testing (Weeks 6-7)
-- Extended Negative Tests (TC-NF-003 to TC-NF-008)
-- Co-existence Testing (TC-NF-001a)
-- API Server Compatibility Testing (TC-CM-005)
-
-### Phase 4: Advanced Scenarios (Weeks 8-9)
-- Uninstall and Data Preservation Tests (TC-UP-001 to TC-UP-004)
-- Migration and Upgrade Tests (TC-MU-001 to TC-MU-005)
-- Performance Tests (TC-PT-001, TC-PT-002)
-- Boundary Tests (TC-BT-001 to TC-BT-003)
+| Test Case ID          | TC-MU-005                                                                                                                                                                                                                                                                                                                                                                                          |
+|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify independent lifecycle management of RHOAI and external Argo                                                                                                                                                                                                                                                                                                                                 |
+| **Test Steps**        | 1. Install and configure RHOAI with external Argo<br/>2. Perform independent upgrade of external Argo installation<br/>3. Verify RHOAI continues operating without issues<br/>4. Perform independent upgrade of RHOAI<br/>5. Verify external Argo continues operating without issues<br/>6. Test independent scaling of each component<br/>7. Verify independent maintenance and restart scenarios |
+| **Expected Results**  | - Independent upgrades work without mutual interference<br/>- Each component maintains functionality during the other's maintenance<br/>- Scaling operations work independently<br/>- No forced coupling of upgrade/maintenance schedules<br/>- Clear documentation of independence boundaries                                                                                                     |
 
 ## Success Criteria
 
