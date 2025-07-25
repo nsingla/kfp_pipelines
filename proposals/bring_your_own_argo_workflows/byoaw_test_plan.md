@@ -149,45 +149,149 @@ The plan covers comprehensive testing scenarios including:
 
 ### 2.2 Complex Pipeline Types
 
-| Test Case ID | TC-PF-002 |
-|---|---|
-| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files |
-| **Test Steps** | 1. Execute pipelines from `data/pipeline_files/valid/` including:<br/>   - Pipelines with artifacts<br/>   - Pipelines without artifacts<br/>   - For loop constructs<br/>   - Parallel for execution<br/>   - Custom root KFP components<br/>   - Custom python package indexes<br/>   - Custom base images<br/>   - Pipelines with input parameters<br/>   - Pipelines without input parameters<br/>   - Pipelines with output artifacts<br/>   - Pipelines without output artifacts<br/>   - Pipelines with iteration count<br/>   - Pipelines with retry mechanisms<br/>   - Pipelines with certificate handling<br/>   - Conditional branching pipelines<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations |
-| **Expected Results** | - All pipeline types execute successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+| Test Case ID          | TC-PF-002                                                                                                                                                                                                                                      |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                                 |
+| **Test Steps**        | 1. Execute pipeline - Pipelines with artifacts<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                                              |
+| **Expected Results**  | - All pipeline types execute successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-003                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines without artifacts<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                              |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-004                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - For loop constructs<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                                      |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+
+| Test Case ID          | TC-PF-005                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Parallel for execution<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                                   |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+
+| Test Case ID          | TC-PF-006                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Custom root KFP components <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                              |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-007                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Custom python package indexes <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                           |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-008                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines with input parameters <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                         |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-009                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Custom base images <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                                      |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-010                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines without artifacts<br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                              |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-011                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines without input parameters <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                      |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-012                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines with output artifacts <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                         |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-013                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines without output artifacts <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                      |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-014                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines with iteration count <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                          |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-015                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines with retry mechanisms <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                         |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-016                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Pipelines with certificate handling <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                     |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
+
+| Test Case ID          | TC-PF-017                                                                                                                                                                                                                         |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Execute comprehensive pipeline types from valid pipeline files                                                                                                                                                                    |
+| **Test Steps**        | 1. Execute Pipeline - Conditional branching pipelines <br/>2. Verify each pipeline type executes correctly<br/>3. Validate artifacts, metadata, and custom configurations                                                         |                                                                                                                                                                                   |
+| **Expected Results**  | - Pipeline runs successfully<br/>- Custom components and packages work correctly<br/>- Retry and iteration logic functions properly<br/>- Certificate handling operates securely<br/>- Artifacts and metadata preserved correctly |
 
 ### 2.3 Pod Spec Override Testing
 
-| Test Case ID | TC-PF-003 |
-|---|---|
-| **Test Case Summary** | Verify pipeline execution with Pod spec overrides |
-| **Test Steps** | 1. Configure pipelines with Pod spec patches:<br/>   - Node taints and tolerations<br/>   - PVC mounts<br/>   - Custom labels and annotations<br/>   - Resource limits<br/>2. Execute pipelines with external Argo<br/>3. Verify Pod specifications applied correctly |
-| **Expected Results** | - Pod spec overrides applied successfully<br/>- Pipelines schedule on correct nodes<br/>- PVCs mounted and accessible<br/>- Custom labels and annotations present |
+| Test Case ID          | TC-PF-018                                                                                                                                                                 |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify pipeline execution with Pod spec overrides                                                                                                                         |
+| **Test Steps**        | 1. Configure pipelines with Pod spec patch : - Node taints and tolerations<br/>2. Execute pipelines with external Argo<br/>3. Verify Pod specifications applied correctly |
+| **Expected Results**  | - Pod spec overrides applied successfully<br/>- Pipelines schedule on correct nodes<br/>- PVCs mounted and accessible<br/>- Custom labels and annotations present         |
+
+| Test Case ID          | TC-PF-019                                                                                                                                                                    |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify pipeline execution with Pod spec overrides                                                                                                                            |
+| **Test Steps**        | 1. Configure pipelines with Pod spec patch : - Custom labels and annotations <br/>2. Execute pipelines with external Argo<br/>3. Verify Pod specifications applied correctly |
+| **Expected Results**  | - Pod spec overrides applied successfully<br/>- Pipelines schedule on correct nodes<br/>- PVCs mounted and accessible<br/>- Custom labels and annotations present            |
+
+| Test Case ID          | TC-PF-020                                                                                                                                                         |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify pipeline execution with Pod spec overrides                                                                                                                 |
+| **Test Steps**        | 1. Configure pipelines with Pod spec patch : - Resource limits <br/>2. Execute pipelines with external Argo<br/>3. Verify Pod specifications applied correctly    |
+| **Expected Results**  | - Pod spec overrides applied successfully<br/>- Pipelines schedule on correct nodes<br/>- PVCs mounted and accessible<br/>- Custom labels and annotations present |
 
 ### 2.4 Multi-DSPA Environment
 
-| Test Case ID | TC-PF-004 |
-|---|---|
-| **Test Case Summary** | Verify multiple DSPAs sharing external Argo |
-| **Test Steps** | 1. Create DSPAs in different namespaces<br/>2. Configure all for external Argo<br/>3. Execute pipelines simultaneously<br/>4. Verify namespace isolation<br/>5. Check resource sharing and conflicts |
-| **Expected Results** | - Multiple DSPAs operate independently<br/>- Proper namespace isolation maintained<br/>- No pipeline interference or data leakage<br/>- Resource sharing works correctly |
+| Test Case ID          | TC-PF-004                                                                                                                                                                                            |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify multiple DSPAs sharing external Argo                                                                                                                                                          |
+| **Test Steps**        | 1. Create DSPAs in different namespaces<br/>2. Configure all for external Argo<br/>3. Execute pipelines simultaneously<br/>4. Verify namespace isolation<br/>5. Check resource sharing and conflicts |
+| **Expected Results**  | - Multiple DSPAs operate independently<br/>- Proper namespace isolation maintained<br/>- No pipeline interference or data leakage<br/>- Resource sharing works correctly                             |
 
 ## 3. Negative Functional Tests
 
 ### 3.1 Conflicting WorkflowController Detection
 
-| Test Case ID | TC-NF-001 |
-|---|---|
-| **Test Case Summary** | Verify behavior with conflicting WorkflowController configurations |
-| **Test Steps** | 1. Deploy DSPA with WorkflowController enabled<br/>2. Install external Argo on same cluster<br/>3. Attempt pipeline execution<br/>4. Document conflicts and behavior<br/>5. Test conflict resolution mechanisms |
-| **Expected Results** | - System behavior is predictable<br/>- Appropriate warnings displayed<br/>- No data corruption<br/>- Clear guidance provided |
+| Test Case ID          | TC-NF-001                                                                                                                                                                                                       |
+|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Verify behavior with conflicting WorkflowController configurations                                                                                                                                              |
+| **Test Steps**        | 1. Deploy DSPA with WorkflowController enabled<br/>2. Install external Argo on same cluster<br/>3. Attempt pipeline execution<br/>4. Document conflicts and behavior<br/>5. Test conflict resolution mechanisms |
+| **Expected Results**  | - System behavior is predictable<br/>- Appropriate warnings displayed<br/>- No data corruption<br/>- Clear guidance provided                                                                                    |
 
 ### 3.1.1 Co-existing WorkflowController Event Conflicts
 
-| Test Case ID | TC-NF-001a |
-|---|---|
-| **Test Case Summary** | Test DSP and External WorkflowControllers co-existing and competing for same events |
-| **Test Steps** | 1. Deploy DSPA with internal WorkflowController<br/>2. Install external Argo WorkflowController watching same namespaces<br/>3. Submit pipeline that creates Workflow CRs<br/>4. Monitor which controller processes the workflow<br/>5. Verify event handling and potential conflicts<br/>6. Test resource ownership and cleanup |
-| **Expected Results** | - Event conflicts properly identified<br/>- Clear ownership of workflow resources<br/>- No orphaned or stuck workflows<br/>- Predictable controller behavior documented |
+| Test Case ID          | TC-NF-001a                                                                                                                                                                                                                                                                                                                       |
+|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Test Case Summary** | Test DSP and External WorkflowControllers co-existing and competing for same events                                                                                                                                                                                                                                              |
+| **Test Steps**        | 1. Deploy DSPA with internal WorkflowController<br/>2. Install external Argo WorkflowController watching same namespaces<br/>3. Submit pipeline that creates Workflow CRs<br/>4. Monitor which controller processes the workflow<br/>5. Verify event handling and potential conflicts<br/>6. Test resource ownership and cleanup |
+| **Expected Results**  | - Event conflicts properly identified<br/>- Clear ownership of workflow resources<br/>- No orphaned or stuck workflows<br/>- Predictable controller behavior documented                                                                                                                                                          |
 
 ### 3.2 Incompatible Argo Version
 
