@@ -16,6 +16,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/onsi/gomega"
 	"maps"
 	"path/filepath"
 	"sort"
@@ -24,10 +25,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
-	workflow_utils "github.com/kubeflow/pipelines/backend/test/compiler/utils"
-	. "github.com/onsi/gomega"
-
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/run_model"
+	workflow_utils "github.com/kubeflow/pipelines/backend/test/compiler/utils"
 
 	model "github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/pipeline_upload_model"
 	. "github.com/kubeflow/pipelines/backend/test/v2/api/constants"
@@ -60,7 +59,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 		var pipelineDir = "valid"
 		var compiledWorkflowsDir = "compiled-workflows"
 		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
-		for _, pipelineFile := range criticalPipelineFiles[19:20] {
+		for _, pipelineFile := range criticalPipelineFiles {
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
 				pipelineFilePath := filepath.Join(pipelineFilesRootDir, pipelineDir, pipelineFile)
 				logger.Log("Uploading pipeline file %s", pipelineFile)
@@ -107,10 +106,13 @@ func validateComponentStatuses(runID string, compiledWorkflow *v1alpha1.Workflow
 			lengthOfExpectedTasks = lengthOfExpectedTasks + 1
 		}
 	}
-	Expect(lengthOfActualTasks).To(Equal(lengthOfExpectedTasks), "Number of expected tasks does not match the length of actual task")
 	if updatedRun.State != run_model.V2beta1RuntimeStateSUCCEEDED {
 		logger.Log("Looks like the run %s FAILED, so capture pod logs for the failed task", runID)
 		capturePodLogsForUnsuccessfulTasks(actualTaskDetails)
+		Fail("Failing test because the pipeline run is not a SUCCESS")
+	} else {
+		logger.Log("Pipeline run succeeded, checking if the number of tasks are what is expected")
+		gomega.Expect(lengthOfActualTasks).To(gomega.Equal(lengthOfExpectedTasks), "Number of expected DAG tasks does not match the length of actual task")
 	}
 
 }
@@ -162,18 +164,8 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 		}
 	}
 	if len(failedTasks) > 0 {
-		logger.Log("Found failed tasks: %v", failedTasks)
-		Fail(fmt.Sprintf("Test failed due to failing tasks: %v", maps.Keys(failedTasks)))
+		logger.Log("Found failed tasks: %s", maps.Keys(failedTasks))
 	}
-}
-
-// GetTemplateMapFromWorkflow
-func GetTemplateMapFromWorkflow(workflow *v1alpha1.Workflow) map[string]*v1alpha1.Template {
-	var templateNameMap = make(map[string]*v1alpha1.Template)
-	for _, template := range workflow.Spec.Templates {
-		templateNameMap[template.Name] = &template
-	}
-	return templateNameMap
 }
 
 type TaskDetails struct {

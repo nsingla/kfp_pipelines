@@ -133,10 +133,6 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	// Delete pipelines created during the test
 	logger.Log("################### Global Cleanup after each test #####################")
-	logger.Log("Deleting %d pipeline(s)", len(createdPipelines))
-	for _, pipeline := range createdPipelines {
-		utils.DeletePipeline(pipelineClient, pipeline.PipelineID)
-	}
 
 	logger.Log("Deleting %d run(s)", len(createdRunIds))
 	for _, runID := range createdRunIds {
@@ -149,6 +145,11 @@ var _ = AfterEach(func() {
 			utils.DeleteExperiment(experimentClient, experimentID)
 		}
 	}
+	logger.Log("Deleting %d pipeline(s)", len(createdPipelines))
+	for _, pipeline := range createdPipelines {
+		utils.DeletePipeline(pipelineClient, pipeline.PipelineID)
+	}
+
 })
 
 var _ = ReportAfterEach(func(specReport types.SpecReport) {
