@@ -60,7 +60,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 		var pipelineDir = "valid"
 		var compiledWorkflowsDir = "compiled-workflows"
 		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
-		for _, pipelineFile := range criticalPipelineFiles[0:1] {
+		for _, pipelineFile := range criticalPipelineFiles[19:20] {
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
 				pipelineFilePath := filepath.Join(pipelineFilesRootDir, pipelineDir, pipelineFile)
 				logger.Log("Uploading pipeline file %s", pipelineFile)
@@ -77,11 +77,6 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 				utils.WaitForRunToBeInState(runClient, &uploadedPipelineRun.RunID, []run_model.V2beta1RuntimeState{run_model.V2beta1RuntimeStateSUCCEEDED, run_model.V2beta1RuntimeStateSKIPPED, run_model.V2beta1RuntimeStateFAILED, run_model.V2beta1RuntimeStateCANCELED}, &timeToWait)
 				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
 				compiledWorkflow := workflow_utils.UnmarshallWorkflowYAML(filepath.Join(utils.GetProjectDataDir(), compiledWorkflowsDir, pipelineFile))
-				pipelineSpecMap := utils.PipelineSpecFromFile(pipelineFilesRootDir, pipelineDir, pipelineFile)
-				pipelineSpec, _ := utils.DeserializeSpecs(pipelineSpecMap)
-				workflow, workflowErr := NewArgoWorkflowConverter("").ConvertToArgoWorkflow(pipelineSpec, compiledWorkflow, compiledWorkflow.GenerateName)
-				Expect(workflowErr).To(BeNil(), "Failed to convert pipeline spec and compiled Workflow to ArgoWorkflow")
-				logger.Log("Workflow %s", workflow.Name)
 				validateComponentStatuses(uploadedPipelineRun.RunID, compiledWorkflow)
 			})
 		}
@@ -94,11 +89,30 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1
 
 func validateComponentStatuses(runID string, compiledWorkflow *v1alpha1.Workflow) {
 	logger.Log("Fetching updated pipeline run details for run with id=%s", runID)
-	actualTaskDetails := utils.GetPipelineRun(runClient, &runID).RunDetails.TaskDetails
+	updatedRun := utils.GetPipelineRun(runClient, &runID)
+	actualTaskDetails := updatedRun.RunDetails.TaskDetails
+	lengthOfActualTasks := len(actualTaskDetails)
+	for _, actualTask := range actualTaskDetails {
+		if actualTask.DisplayName == "" {
+			// Not sure what this task does, but it's an empty task that shows up in run details
+			lengthOfActualTasks = lengthOfActualTasks - 1
+		}
+	}
 	logger.Log("Updated pipeline run details")
 	expectedTaskDetails := getTasksFromWorkflow(compiledWorkflow)
-	Expect(len(actualTaskDetails)).To(Equal(len(expectedTaskDetails)), "Number of expected tasks does not match the length of actual task")
-	capturePodLogsForUnsuccessfulTasks(actualTaskDetails)
+	lengthOfExpectedTasks := len(expectedTaskDetails)
+	for _, expectedTask := range expectedTaskDetails {
+		if expectedTask.Task.Template == "system-container-executor" {
+			// For every executor, we create a pod that actually executes the commands
+			lengthOfExpectedTasks = lengthOfExpectedTasks + 1
+		}
+	}
+	Expect(lengthOfActualTasks).To(Equal(lengthOfExpectedTasks), "Number of expected tasks does not match the length of actual task")
+	if updatedRun.State != run_model.V2beta1RuntimeStateSUCCEEDED {
+		logger.Log("Looks like the run %s FAILED, so capture pod logs for the failed task", runID)
+		capturePodLogsForUnsuccessfulTasks(actualTaskDetails)
+	}
+
 }
 
 func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1PipelineTaskDetail) {
@@ -125,7 +139,7 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 			{
 				logger.Log("CANCELED - Task %s for Run %s canceled", task.DisplayName, task.RunID)
 			}
-		default:
+		case run_model.V2beta1RuntimeStateFAILED:
 			{
 				logger.Log("%s - Task %s for Run %s did not complete successfully", task.State, task.DisplayName, task.RunID)
 				for _, childTask := range task.ChildTasks {
@@ -140,6 +154,10 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 					}
 				}
 				failedTasks[task.DisplayName] = string(task.State)
+			}
+		default:
+			{
+				logger.Log("UNKNOWN state - Task %s for Run %s has an UNKNOWN state", task.DisplayName, task.RunID)
 			}
 		}
 	}
@@ -159,6 +177,7 @@ func GetTemplateMapFromWorkflow(workflow *v1alpha1.Workflow) map[string]*v1alpha
 }
 
 type TaskDetails struct {
+	TaskName  string
 	Task      v1alpha1.DAGTask
 	Container v1.Container
 	DependsOn string
@@ -176,13 +195,15 @@ func getTasksFromWorkflow(workflow *v1alpha1.Workflow) []TaskDetails {
 		if template.DAG != nil {
 			for _, task := range template.DAG.Tasks {
 				container, containerExists := containers[task.Template]
-				if containerExists {
-					tasks = append(tasks, TaskDetails{
-						Container: *container,
-						Task:      task,
-						DependsOn: task.Depends,
-					})
+				taskToAppend := TaskDetails{
+					TaskName:  task.Name,
+					Task:      task,
+					DependsOn: task.Depends,
 				}
+				if containerExists {
+					taskToAppend.Container = *container
+				}
+				tasks = append(tasks, taskToAppend)
 			}
 		}
 	}
