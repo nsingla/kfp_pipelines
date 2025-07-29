@@ -35,7 +35,7 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", "RecurringPipelineRun", FullRegression, S1), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", "RecurringPipelineRun", FullRegression), func() {
 
 	Context("Create reccurring pipeline run >", func() {
 		It("Create a Pipeline Run with cron that runs every 5min", func() {
@@ -65,7 +65,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", "Recu
 	})
 })
 
-var _ = Describe("List Recurring Pipeline Runs >", Label("Positive", "PipelineRun", "RecurringPipelineRun", "ListRecurringPipelineRun", FullRegression, S1), func() {
+var _ = Describe("List Recurring Pipeline Runs >", Label("Positive", "PipelineRun", "RecurringPipelineRun", "ListRecurringPipelineRun", FullRegression), func() {
 
 	Context("Basic Operations >", func() {
 		It("Create 2 runs and list", func() {
@@ -132,7 +132,7 @@ var _ = Describe("List Recurring Pipeline Runs >", Label("Positive", "PipelineRu
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", "RecurringPipelineRun", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", "RecurringPipelineRun", FullRegression), func() {
 
 	Context("Create reccurring pipeline run >", func() {
 		It("Create a Pipeline Run with invalid cron", func() {

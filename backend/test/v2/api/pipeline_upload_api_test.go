@@ -52,10 +52,10 @@ var _ = BeforeEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload", S1), func() {
+var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload"), func() {
 
 	/* Critical Positive Scenarios of uploading a pipeline file */
-	Context("Upload a valid critical pipeline file and verify pipeline metadata after upload >", Label(Smoke, S1), func() {
+	Context("Upload a valid critical pipeline file and verify pipeline metadata after upload >", Label(Smoke), func() {
 		var pipelineDir = "valid/types"
 		criticalPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
 		for _, pipelineFile := range criticalPipelineFiles {
@@ -84,7 +84,7 @@ var _ = Describe("Verify Pipeline Upload >", Label("Positive", "PipelineUpload",
 	})
 })
 
-var _ = Describe("Verify Pipeline Upload Version >", Label("Positive", "PipelineUpload", S1), func() {
+var _ = Describe("Verify Pipeline Upload Version >", Label("Positive", "PipelineUpload"), func() {
 	var pipelineDir = "valid"
 
 	/* Positive Scenarios of uploading a pipeline file */
@@ -104,7 +104,7 @@ var _ = Describe("Verify Pipeline Upload Version >", Label("Positive", "Pipeline
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "PipelineUpload", S2, FullRegression), func() {
+var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "PipelineUpload", FullRegression), func() {
 	var pipelineDir = "invalid"
 	invalidPipelineFiles := utils.GetListOfFileInADir(filepath.Join(pipelineFilesRootDir, pipelineDir))
 
@@ -132,7 +132,7 @@ var _ = Describe("Verify Pipeline Upload Failure >", Label("Negative", "Pipeline
 	})
 })
 
-var _ = Describe("Verify Pipeline Upload Version Failure >", Label("Negative", "PipelineUpload", S2, FullRegression), func() {
+var _ = Describe("Verify Pipeline Upload Version Failure >", Label("Negative", "PipelineUpload", FullRegression), func() {
 	var pipelineDir = "valid/types"
 
 	/* Positive Scenarios of uploading a pipeline file */

@@ -42,7 +42,7 @@ var workflowsDir = filepath.Join(projectDataDir, "compiled-workflows")
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Create Workflow API Tests >", Label("Positive", "Report", FullRegression, S1), func() {
+var _ = Describe("Create Workflow API Tests >", Label("Positive", "Report", FullRegression), func() {
 	workflowFiles := utils.GetListOfFileInADir(workflowsDir)
 	Context("Create Workflow >", func() {
 		for _, workflowFile := range workflowFiles {
@@ -57,7 +57,7 @@ var _ = Describe("Create Workflow API Tests >", Label("Positive", "Report", Full
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Create Workflow Negative Tests >", Label("Negative", "Report", FullRegression, S2), func() {
+var _ = Describe("Create Workflow Negative Tests >", Label("Negative", "Report", FullRegression), func() {
 
 	Context("Create workflow >", func() {
 		It("With invalid workflow schema", func() {

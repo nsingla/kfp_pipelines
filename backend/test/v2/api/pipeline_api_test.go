@@ -39,7 +39,7 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("List Pipelines API Tests >", Label("Positive", "Pipeline", "PipelineList", FullRegression, S1), func() {
+var _ = Describe("List Pipelines API Tests >", Label("Positive", "Pipeline", "PipelineList", FullRegression), func() {
 
 	Context("Basic List Operations >", func() {
 		It("When no pipelines exist", func() {
@@ -93,7 +93,7 @@ var _ = Describe("List Pipelines API Tests >", Label("Positive", "Pipeline", "Pi
 	})
 })
 
-var _ = Describe("List Pipelines Versions API Tests >", Label("Positive", "Pipeline", "PipelineVersionList", FullRegression, S1), func() {
+var _ = Describe("List Pipelines Versions API Tests >", Label("Positive", "Pipeline", "PipelineVersionList", FullRegression), func() {
 
 	Context("Basic List Operations >", func() {
 		It("When no pipeline versions exist", func() {
@@ -149,7 +149,7 @@ var _ = Describe("List Pipelines Versions API Tests >", Label("Positive", "Pipel
 	})
 })
 
-var _ = Describe("Create Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineCreate", FullRegression, S1), func() {
+var _ = Describe("Create Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineCreate", FullRegression), func() {
 
 	Context("Create a pipeline using '/pipelines' >", func() {
 		It("With just name", func() {
@@ -180,7 +180,7 @@ var _ = Describe("Create Pipeline API Tests >", Label("Positive", "Pipeline", "P
 	})
 })
 
-var _ = Describe("Get Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineGet", FullRegression, S1), func() {
+var _ = Describe("Get Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineGet", FullRegression), func() {
 
 	Context("Get by name '/pipelines/{name}' >", func() {
 		It("With full name", func() {
@@ -195,7 +195,7 @@ var _ = Describe("Get Pipeline API Tests >", Label("Positive", "Pipeline", "Pipe
 	})
 })
 
-var _ = Describe("Get Pipeline Version API Tests >", Label("Positive", "Pipeline", "PipelineVersionGet", FullRegression, S1), func() {
+var _ = Describe("Get Pipeline Version API Tests >", Label("Positive", "Pipeline", "PipelineVersionGet", FullRegression), func() {
 
 	Context("Get by id '/pipelines/{pipeline_id}/versions/{pipeline_version_id}' >", func() {
 		It("With valid pipeline id and version id", func() {
@@ -203,7 +203,7 @@ var _ = Describe("Get Pipeline Version API Tests >", Label("Positive", "Pipeline
 	})
 })
 
-var _ = Describe("Delete Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineDelete", FullRegression, S1), func() {
+var _ = Describe("Delete Pipeline API Tests >", Label("Positive", "Pipeline", "PipelineDelete", FullRegression), func() {
 
 	Context("Delete pipeline by ID '/pipelines/{pipeline_id}' >", func() {
 		It("Delete pipeline by ID that does not have any versions", func() {
@@ -218,7 +218,7 @@ var _ = Describe("Delete Pipeline API Tests >", Label("Positive", "Pipeline", "P
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Pipeline", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Pipeline", FullRegression), func() {
 	Context("Create a pipeline with version using '/pipelines/create' >", func() {
 		It("With a valid pipeline and pipeline version name but invalid pipeline spec file", func() {
 		})

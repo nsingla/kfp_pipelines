@@ -7,5 +7,5 @@ import (
 )
 
 func Log(s string, arguments ...any) {
-	ginkgo.GinkgoWriter.Println(fmt.Sprintf(s, arguments))
+	ginkgo.GinkgoWriter.Println(fmt.Sprintf(s, arguments...))
 }

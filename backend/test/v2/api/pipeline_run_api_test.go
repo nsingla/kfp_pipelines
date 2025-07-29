@@ -63,7 +63,7 @@ var _ = BeforeEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression, S1), func() {
+var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullRegression), func() {
 
 	type TestParams struct {
 		pipelineCacheEnabled bool
@@ -239,7 +239,7 @@ var _ = Describe("Verify Pipeline Run >", Label("Positive", "PipelineRun", FullR
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Run Negative Tests >", Label("Negative", "PipelineRun", FullRegression), func() {
 	Context("Unarchive a pipeline run >", func() {
 		It("Unarchive a deleted run", func() {
 		})

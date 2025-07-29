@@ -53,7 +53,7 @@ var _ = BeforeEach(func() {
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", S1, FullRegression), func() {
+var _ = Describe("Upload and Verify Pipeline Run >", Label("Positive", "E2E", FullRegression), func() {
 
 	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", func() {
 		var pipelineDir = "valid"

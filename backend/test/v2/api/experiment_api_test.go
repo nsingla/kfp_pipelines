@@ -35,7 +35,7 @@ import (
 // ########################################################## POSITIVE TESTS ######################################
 // ################################################################################################################
 
-var _ = Describe("List Experiments API Tests >", Label("Positive", "Experiment", "ExperimentList", FullRegression, S1), func() {
+var _ = Describe("List Experiments API Tests >", Label("Positive", "Experiment", "ExperimentList", FullRegression), func() {
 
 	Context("Basic List Operations >", func() {
 		It("When no experiments exist", func() {
@@ -91,7 +91,7 @@ var _ = Describe("List Experiments API Tests >", Label("Positive", "Experiment",
 	})
 })
 
-var _ = Describe("Create Experiment API Tests >", Label("Positive", "Experiment", "ExperimentCreate", FullRegression, S1), func() {
+var _ = Describe("Create Experiment API Tests >", Label("Positive", "Experiment", "ExperimentCreate", FullRegression), func() {
 
 	Context("Create an experiment >", func() {
 		It("With just name", func() {
@@ -105,7 +105,7 @@ var _ = Describe("Create Experiment API Tests >", Label("Positive", "Experiment"
 	})
 })
 
-var _ = Describe("Get Experiment API Tests >", Label("Positive", "Experiment", "ExperimentGet", FullRegression, S1), func() {
+var _ = Describe("Get Experiment API Tests >", Label("Positive", "Experiment", "ExperimentGet", FullRegression), func() {
 
 	Context("Get by ID >", func() {
 		It("With ID", func() {
@@ -113,7 +113,7 @@ var _ = Describe("Get Experiment API Tests >", Label("Positive", "Experiment", "
 	})
 })
 
-var _ = Describe("Archive an experiment Tests >", Label("Positive", "Experiment", "ExperimentArchive", FullRegression, S1), func() {
+var _ = Describe("Archive an experiment Tests >", Label("Positive", "Experiment", "ExperimentArchive", FullRegression), func() {
 
 	Context("By ID >", func() {
 		It("One that does not have any run(s) or recurring run(s)", func() {
@@ -126,7 +126,7 @@ var _ = Describe("Archive an experiment Tests >", Label("Positive", "Experiment"
 		})
 	})
 })
-var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Experiment", "ExperimentUnarchive", FullRegression, S1), func() {
+var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Experiment", "ExperimentUnarchive", FullRegression), func() {
 
 	Context("By ID >", func() {
 		It("One that does not have any run(s) or recurring run(s)", func() {
@@ -138,7 +138,7 @@ var _ = Describe("UnArchive an experiment Tests >", Label("Positive", "Experimen
 	})
 })
 
-var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Experiment", "ExperimentDelete", FullRegression, S1), func() {
+var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Experiment", "ExperimentDelete", FullRegression), func() {
 
 	Context("Delete by ID >", func() {
 		It("Delete an experiment by ID that does not have any run(s) or recurring run(s)", func() {
@@ -151,7 +151,7 @@ var _ = Describe("Delete Experiment API Tests >", Label("Positive", "Experiment"
 // ################################################################################################################
 // ########################################################## NEGATIVE TESTS ######################################
 // ################################################################################################################
-var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Experiment", FullRegression, S2), func() {
+var _ = Describe("Verify Pipeline Negative Tests >", Label("Negative", "Experiment", FullRegression), func() {
 
 	Context("Create experiment >", func() {
 		It("With 500 char name", func() {
