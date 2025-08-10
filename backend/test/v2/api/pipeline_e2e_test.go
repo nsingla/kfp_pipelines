@@ -106,7 +106,7 @@ func validateComponentStatuses(runID string, compiledWorkflow *v1alpha1.Workflow
 			lengthOfExpectedTasks = lengthOfExpectedTasks + 1
 		}
 	}
-	if updatedRun.State != run_model.V2beta1RuntimeStateSUCCEEDED {
+	if *updatedRun.State != run_model.V2beta1RuntimeStateSUCCEEDED {
 		logger.Log("Looks like the run %s FAILED, so capture pod logs for the failed task", runID)
 		capturePodLogsForUnsuccessfulTasks(actualTaskDetails)
 		Fail("Failing test because the pipeline run is not a SUCCESS")
@@ -123,7 +123,7 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 		return time.Time(taskDetails[i].EndTime).After(time.Time(taskDetails[j].EndTime)) // Sort Tasks by End Time in descending order
 	})
 	for _, task := range taskDetails {
-		switch task.State {
+		switch *task.State {
 		case run_model.V2beta1RuntimeStateSUCCEEDED:
 			{
 				logger.Log("SUCCEEDED - Task %s for run %s has finished successfully", task.DisplayName, task.RunID)
@@ -143,7 +143,7 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 			}
 		case run_model.V2beta1RuntimeStateFAILED:
 			{
-				logger.Log("%s - Task %s for Run %s did not complete successfully", task.State, task.DisplayName, task.RunID)
+				logger.Log("%s - Task %s for Run %s did not complete successfully", *task.State, task.DisplayName, task.RunID)
 				for _, childTask := range task.ChildTasks {
 					podName := childTask.PodName
 					if podName != "" {
@@ -155,7 +155,7 @@ func capturePodLogsForUnsuccessfulTasks(taskDetails []*run_model.V2beta1Pipeline
 						logger.Log("Attached pod logs to the report")
 					}
 				}
-				failedTasks[task.DisplayName] = string(task.State)
+				failedTasks[task.DisplayName] = string(*task.State)
 			}
 		default:
 			{

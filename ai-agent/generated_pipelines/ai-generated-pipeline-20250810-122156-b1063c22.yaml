@@ -1,0 +1,91 @@
+# PIPELINE DEFINITION
+# Name: ai-generated-pipeline-20250810-122156-b1063c22
+# Description: AI-generated pipeline with 3 components created at 2025-08-10T12:21:56-04:00
+pipelineInfo:
+    name: ai-generated-pipeline-20250810-122156-b1063c22
+    description: AI-generated pipeline with 3 components created at 2025-08-10T12:21:56-04:00
+components:
+    comp-data_loader-1:
+        executorLabel: exec-data_loader-1
+        inputDefinitions:
+            parameters:
+                source_path:
+                    parameterType: STRING
+        outputDefinitions:
+            parameters:
+                data:
+                    parameterType: STRING
+    comp-data_processor-3:
+        executorLabel: exec-data_processor-3
+        inputDefinitions:
+            parameters:
+                data:
+                    parameterType: STRING
+        outputDefinitions:
+            parameters:
+                processed_data:
+                    parameterType: STRING
+    comp-model_trainer-2:
+        executorLabel: exec-model_trainer-2
+        inputDefinitions:
+            parameters:
+                model_config:
+                    parameterType: STRING
+                training_data:
+                    parameterType: STRING
+        outputDefinitions:
+            parameters:
+                model:
+                    parameterType: STRING
+deploymentSpec:
+    executors:
+        exec-data_loader-1:
+            container:
+                args:
+                    - print('Data loaded successfully')
+                command:
+                    - python
+                    - -c
+                image: python:3.9
+        exec-data_processor-3:
+            container:
+                args:
+                    - import pandas as pd; print('Data processed successfully')
+                command:
+                    - python
+                    - -c
+                image: python:3.9
+        exec-model_trainer-2:
+            container:
+                args:
+                    - import sklearn; print('Model trained successfully')
+                command:
+                    - python
+                    - -c
+                image: python:3.9
+root:
+    dag:
+        tasks:
+            data_loader-1:
+                componentRef:
+                    name: comp-data_loader-1
+                taskInfo:
+                    name: data_loader-1
+                cachingOptions:
+                    enableCache: true
+            data_processor-3:
+                componentRef:
+                    name: comp-data_processor-3
+                taskInfo:
+                    name: data_processor-3
+                cachingOptions:
+                    enableCache: true
+            model_trainer-2:
+                componentRef:
+                    name: comp-model_trainer-2
+                taskInfo:
+                    name: model_trainer-2
+                cachingOptions:
+                    enableCache: true
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.13.0
