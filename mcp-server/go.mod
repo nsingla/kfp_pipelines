@@ -5,6 +5,7 @@ go 1.24.2
 require (
 	github.com/go-openapi/runtime v0.21.1
 	github.com/go-openapi/strfmt v0.21.1
+	github.com/kubeflow/model-registry/pkg/openapi v0.0.0-20250811100642-16866854a787
 	github.com/kubeflow/pipelines v0.0.0
 	github.com/metoro-io/mcp-golang v0.14.0
 	github.com/sirupsen/logrus v1.9.3
