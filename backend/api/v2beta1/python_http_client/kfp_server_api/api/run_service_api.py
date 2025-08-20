@@ -36,6 +36,407 @@ class RunServiceApi(object):
             api_client = ApiClient()
         self.api_client = api_client
 
+    def create_task(self, task, **kwargs):  # noqa: E501
+        """Creates a new task.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.create_task(task, async_req=True)
+        >>> result = thread.get()
+
+        :param task: (required)
+        :type task: V2beta1PipelineTaskDetail
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: V2beta1PipelineTaskDetail
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.create_task_with_http_info(task, **kwargs)  # noqa: E501
+
+    def create_task_with_http_info(self, task, **kwargs):  # noqa: E501
+        """Creates a new task.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.create_task_with_http_info(task, async_req=True)
+        >>> result = thread.get()
+
+        :param task: (required)
+        :type task: V2beta1PipelineTaskDetail
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(V2beta1PipelineTaskDetail, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'task'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout'
+            ]
+        )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method create_task" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'task' is set
+        if self.api_client.client_side_validation and ('task' not in local_var_params or  # noqa: E501
+                                                        local_var_params['task'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `task` when calling `create_task`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        if 'task' in local_var_params:
+            body_params = local_var_params['task']
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # HTTP header `Content-Type`
+        header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['Bearer']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/apis/v2beta1/tasks', 'POST',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='V2beta1PipelineTaskDetail',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def get_task(self, task_id, **kwargs):  # noqa: E501
+        """Gets a specific task by ID.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.get_task(task_id, async_req=True)
+        >>> result = thread.get()
+
+        :param task_id: (required)
+        :type task_id: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: V2beta1PipelineTaskDetail
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.get_task_with_http_info(task_id, **kwargs)  # noqa: E501
+
+    def get_task_with_http_info(self, task_id, **kwargs):  # noqa: E501
+        """Gets a specific task by ID.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.get_task_with_http_info(task_id, async_req=True)
+        >>> result = thread.get()
+
+        :param task_id: (required)
+        :type task_id: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(V2beta1PipelineTaskDetail, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'task_id'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout'
+            ]
+        )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method get_task" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'task_id' is set
+        if self.api_client.client_side_validation and ('task_id' not in local_var_params or  # noqa: E501
+                                                        local_var_params['task_id'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `task_id` when calling `get_task`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+        if 'task_id' in local_var_params:
+            path_params['task_id'] = local_var_params['task_id']  # noqa: E501
+
+        query_params = []
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['Bearer']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/apis/v2beta1/tasks/{task_id}', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='V2beta1PipelineTaskDetail',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def list_tasks(self, **kwargs):  # noqa: E501
+        """Lists tasks with optional filtering.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_tasks(async_req=True)
+        >>> result = thread.get()
+
+        :param parent_id: Optional, List all tasks with this parent task.
+        :type parent_id: str
+        :param run_id: Optional. List all tasks for this run.
+        :type run_id: str
+        :param page_size:
+        :type page_size: int
+        :param page_token:
+        :type page_token: str
+        :param filter:
+        :type filter: str
+        :param order_by:
+        :type order_by: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: V2beta1ListTasksResponse
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.list_tasks_with_http_info(**kwargs)  # noqa: E501
+
+    def list_tasks_with_http_info(self, **kwargs):  # noqa: E501
+        """Lists tasks with optional filtering.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_tasks_with_http_info(async_req=True)
+        >>> result = thread.get()
+
+        :param parent_id: Optional, List all tasks with this parent task.
+        :type parent_id: str
+        :param run_id: Optional. List all tasks for this run.
+        :type run_id: str
+        :param page_size:
+        :type page_size: int
+        :param page_token:
+        :type page_token: str
+        :param filter:
+        :type filter: str
+        :param order_by:
+        :type order_by: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(V2beta1ListTasksResponse, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'parent_id',
+            'run_id',
+            'page_size',
+            'page_token',
+            'filter',
+            'order_by'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout'
+            ]
+        )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method list_tasks" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'parent_id' in local_var_params and local_var_params['parent_id'] is not None:  # noqa: E501
+            query_params.append(('parent_id', local_var_params['parent_id']))  # noqa: E501
+        if 'run_id' in local_var_params and local_var_params['run_id'] is not None:  # noqa: E501
+            query_params.append(('run_id', local_var_params['run_id']))  # noqa: E501
+        if 'page_size' in local_var_params and local_var_params['page_size'] is not None:  # noqa: E501
+            query_params.append(('page_size', local_var_params['page_size']))  # noqa: E501
+        if 'page_token' in local_var_params and local_var_params['page_token'] is not None:  # noqa: E501
+            query_params.append(('page_token', local_var_params['page_token']))  # noqa: E501
+        if 'filter' in local_var_params and local_var_params['filter'] is not None:  # noqa: E501
+            query_params.append(('filter', local_var_params['filter']))  # noqa: E501
+        if 'order_by' in local_var_params and local_var_params['order_by'] is not None:  # noqa: E501
+            query_params.append(('order_by', local_var_params['order_by']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['Bearer']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/apis/v2beta1/tasks', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='V2beta1ListTasksResponse',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
     def run_service_archive_run(self, run_id, **kwargs):  # noqa: E501
         """Archives a run in an experiment given by run ID and experiment ID.  # noqa: E501
 
@@ -1240,6 +1641,143 @@ class RunServiceApi(object):
             post_params=form_params,
             files=local_var_files,
             response_type='object',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats)
+
+    def update_task(self, task_id, task, **kwargs):  # noqa: E501
+        """Updates an existing task.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.update_task(task_id, task, async_req=True)
+        >>> result = thread.get()
+
+        :param task_id: (required)
+        :type task_id: str
+        :param task: (required)
+        :type task: V2beta1PipelineTaskDetail
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: V2beta1PipelineTaskDetail
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.update_task_with_http_info(task_id, task, **kwargs)  # noqa: E501
+
+    def update_task_with_http_info(self, task_id, task, **kwargs):  # noqa: E501
+        """Updates an existing task.  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.update_task_with_http_info(task_id, task, async_req=True)
+        >>> result = thread.get()
+
+        :param task_id: (required)
+        :type task_id: str
+        :param task: (required)
+        :type task: V2beta1PipelineTaskDetail
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(V2beta1PipelineTaskDetail, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'task_id',
+            'task'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout'
+            ]
+        )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method update_task" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'task_id' is set
+        if self.api_client.client_side_validation and ('task_id' not in local_var_params or  # noqa: E501
+                                                        local_var_params['task_id'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `task_id` when calling `update_task`")  # noqa: E501
+        # verify the required parameter 'task' is set
+        if self.api_client.client_side_validation and ('task' not in local_var_params or  # noqa: E501
+                                                        local_var_params['task'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `task` when calling `update_task`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+        if 'task_id' in local_var_params:
+            path_params['task_id'] = local_var_params['task_id']  # noqa: E501
+
+        query_params = []
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        if 'task' in local_var_params:
+            body_params = local_var_params['task']
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # HTTP header `Content-Type`
+        header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = ['Bearer']  # noqa: E501
+
+        return self.api_client.call_api(
+            '/apis/v2beta1/tasks/{task_id}', 'PATCH',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='V2beta1PipelineTaskDetail',  # noqa: E501
             auth_settings=auth_settings,
             async_req=local_var_params.get('async_req'),
             _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501

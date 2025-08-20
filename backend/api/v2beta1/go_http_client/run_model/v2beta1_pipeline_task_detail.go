@@ -20,7 +20,10 @@ import (
 // swagger:model v2beta1PipelineTaskDetail
 type V2beta1PipelineTaskDetail struct {
 
-	// Sequence of dependen tasks.
+	// cache fingerprint
+	CacheFingerprint string `json:"cache_fingerprint,omitempty"`
+
+	// Sequence of dependent tasks.
 	ChildTasks []*PipelineTaskDetailChildTask `json:"child_tasks"`
 
 	// Creation time of a task.
@@ -39,25 +42,21 @@ type V2beta1PipelineTaskDetail struct {
 	// Only populated when the task is in FAILED or CANCELED state.
 	Error *GooglerpcStatus `json:"error,omitempty"`
 
-	// Execution id of the corresponding entry in ML metadata store.
-	ExecutionID string `json:"execution_id,omitempty"`
+	// inputs
+	Inputs *PipelineTaskDetailInputOutputs `json:"inputs,omitempty"`
 
-	// Execution information of a task.
-	ExecutorDetail *V2beta1PipelineTaskExecutorDetail `json:"executor_detail,omitempty"`
+	// name
+	Name string `json:"name,omitempty"`
 
-	// Input artifacts of the task.
-	Inputs map[string]V2beta1ArtifactList `json:"inputs,omitempty"`
-
-	// Output artifacts of the task.
-	Outputs map[string]V2beta1ArtifactList `json:"outputs,omitempty"`
+	// outputs
+	Outputs *PipelineTaskDetailInputOutputs `json:"outputs,omitempty"`
 
 	// ID of the parent task if the task is within a component scope.
 	// Empty if the task is at the root level.
 	ParentTaskID string `json:"parent_task_id,omitempty"`
 
-	// Name of the corresponding pod assigned by the orchestration engine.
-	// Also known as node_id.
-	PodName string `json:"pod_name,omitempty"`
+	// pods
+	Pods []*PipelineTaskDetailTaskPod `json:"pods"`
 
 	// ID of the parent run.
 	RunID string `json:"run_id,omitempty"`
@@ -66,15 +65,25 @@ type V2beta1PipelineTaskDetail struct {
 	// Format: date-time
 	StartTime strfmt.DateTime `json:"start_time,omitempty"`
 
-	// Runtime state of a task.
-	State *V2beta1RuntimeState `json:"state,omitempty"`
-
 	// A sequence of task statuses. This field keeps a record
 	// of state transitions.
 	StateHistory []*V2beta1RuntimeStatus `json:"state_history"`
 
+	// Runtime state of a Task
+	Status *V2beta1RuntimeState `json:"status,omitempty"`
+
+	// Custom status metadata, this can be used to provide
+	// additional status info for a given task during runtime
+	StatusMetadata map[string]interface{} `json:"status_metadata,omitempty"`
+
 	// System-generated ID of a task.
 	TaskID string `json:"task_id,omitempty"`
+
+	// type
+	Type *PipelineTaskDetailTaskType `json:"type,omitempty"`
+
+	// type attributes
+	TypeAttributes *PipelineTaskDetailTypeAttributes `json:"type_attributes,omitempty"`
 }
 
 // Validate validates this v2beta1 pipeline task detail
@@ -97,10 +106,6 @@ func (m *V2beta1PipelineTaskDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateExecutorDetail(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateInputs(formats); err != nil {
 		res = append(res, err)
 	}
@@ -109,15 +114,27 @@ func (m *V2beta1PipelineTaskDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validatePods(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateStartTime(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateState(formats); err != nil {
+	if err := m.validateStateHistory(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateStateHistory(formats); err != nil {
+	if err := m.validateStatus(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTypeAttributes(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -196,46 +213,20 @@ func (m *V2beta1PipelineTaskDetail) validateError(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *V2beta1PipelineTaskDetail) validateExecutorDetail(formats strfmt.Registry) error {
-	if swag.IsZero(m.ExecutorDetail) { // not required
-		return nil
-	}
-
-	if m.ExecutorDetail != nil {
-		if err := m.ExecutorDetail.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("executor_detail")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("executor_detail")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (m *V2beta1PipelineTaskDetail) validateInputs(formats strfmt.Registry) error {
 	if swag.IsZero(m.Inputs) { // not required
 		return nil
 	}
 
-	for k := range m.Inputs {
-
-		if err := validate.Required("inputs"+"."+k, "body", m.Inputs[k]); err != nil {
+	if m.Inputs != nil {
+		if err := m.Inputs.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("inputs")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("inputs")
+			}
 			return err
 		}
-		if val, ok := m.Inputs[k]; ok {
-			if err := val.Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("inputs" + "." + k)
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("inputs" + "." + k)
-				}
-				return err
-			}
-		}
-
 	}
 
 	return nil
@@ -246,17 +237,36 @@ func (m *V2beta1PipelineTaskDetail) validateOutputs(formats strfmt.Registry) err
 		return nil
 	}
 
-	for k := range m.Outputs {
-
-		if err := validate.Required("outputs"+"."+k, "body", m.Outputs[k]); err != nil {
+	if m.Outputs != nil {
+		if err := m.Outputs.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("outputs")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("outputs")
+			}
 			return err
 		}
-		if val, ok := m.Outputs[k]; ok {
-			if err := val.Validate(formats); err != nil {
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) validatePods(formats strfmt.Registry) error {
+	if swag.IsZero(m.Pods) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Pods); i++ {
+		if swag.IsZero(m.Pods[i]) { // not required
+			continue
+		}
+
+		if m.Pods[i] != nil {
+			if err := m.Pods[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("outputs" + "." + k)
+					return ve.ValidateName("pods" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("outputs" + "." + k)
+					return ce.ValidateName("pods" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -274,25 +284,6 @@ func (m *V2beta1PipelineTaskDetail) validateStartTime(formats strfmt.Registry) e
 
 	if err := validate.FormatOf("start_time", "body", "date-time", m.StartTime.String(), formats); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (m *V2beta1PipelineTaskDetail) validateState(formats strfmt.Registry) error {
-	if swag.IsZero(m.State) { // not required
-		return nil
-	}
-
-	if m.State != nil {
-		if err := m.State.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("state")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("state")
-			}
-			return err
-		}
 	}
 
 	return nil
@@ -324,6 +315,63 @@ func (m *V2beta1PipelineTaskDetail) validateStateHistory(formats strfmt.Registry
 	return nil
 }
 
+func (m *V2beta1PipelineTaskDetail) validateStatus(formats strfmt.Registry) error {
+	if swag.IsZero(m.Status) { // not required
+		return nil
+	}
+
+	if m.Status != nil {
+		if err := m.Status.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("status")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) validateType(formats strfmt.Registry) error {
+	if swag.IsZero(m.Type) { // not required
+		return nil
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) validateTypeAttributes(formats strfmt.Registry) error {
+	if swag.IsZero(m.TypeAttributes) { // not required
+		return nil
+	}
+
+	if m.TypeAttributes != nil {
+		if err := m.TypeAttributes.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type_attributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type_attributes")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this v2beta1 pipeline task detail based on the context it is used
 func (m *V2beta1PipelineTaskDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -336,10 +384,6 @@ func (m *V2beta1PipelineTaskDetail) ContextValidate(ctx context.Context, formats
 		res = append(res, err)
 	}
 
-	if err := m.contextValidateExecutorDetail(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.contextValidateInputs(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -348,11 +392,23 @@ func (m *V2beta1PipelineTaskDetail) ContextValidate(ctx context.Context, formats
 		res = append(res, err)
 	}
 
-	if err := m.contextValidateState(ctx, formats); err != nil {
+	if err := m.contextValidatePods(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
 	if err := m.contextValidateStateHistory(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateStatus(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTypeAttributes(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -408,37 +464,22 @@ func (m *V2beta1PipelineTaskDetail) contextValidateError(ctx context.Context, fo
 	return nil
 }
 
-func (m *V2beta1PipelineTaskDetail) contextValidateExecutorDetail(ctx context.Context, formats strfmt.Registry) error {
+func (m *V2beta1PipelineTaskDetail) contextValidateInputs(ctx context.Context, formats strfmt.Registry) error {
 
-	if m.ExecutorDetail != nil {
+	if m.Inputs != nil {
 
-		if swag.IsZero(m.ExecutorDetail) { // not required
+		if swag.IsZero(m.Inputs) { // not required
 			return nil
 		}
 
-		if err := m.ExecutorDetail.ContextValidate(ctx, formats); err != nil {
+		if err := m.Inputs.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("executor_detail")
+				return ve.ValidateName("inputs")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("executor_detail")
+				return ce.ValidateName("inputs")
 			}
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (m *V2beta1PipelineTaskDetail) contextValidateInputs(ctx context.Context, formats strfmt.Registry) error {
-
-	for k := range m.Inputs {
-
-		if val, ok := m.Inputs[k]; ok {
-			if err := val.ContextValidate(ctx, formats); err != nil {
-				return err
-			}
-		}
-
 	}
 
 	return nil
@@ -446,35 +487,45 @@ func (m *V2beta1PipelineTaskDetail) contextValidateInputs(ctx context.Context, f
 
 func (m *V2beta1PipelineTaskDetail) contextValidateOutputs(ctx context.Context, formats strfmt.Registry) error {
 
-	for k := range m.Outputs {
+	if m.Outputs != nil {
 
-		if val, ok := m.Outputs[k]; ok {
-			if err := val.ContextValidate(ctx, formats); err != nil {
-				return err
-			}
+		if swag.IsZero(m.Outputs) { // not required
+			return nil
 		}
 
+		if err := m.Outputs.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("outputs")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("outputs")
+			}
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (m *V2beta1PipelineTaskDetail) contextValidateState(ctx context.Context, formats strfmt.Registry) error {
+func (m *V2beta1PipelineTaskDetail) contextValidatePods(ctx context.Context, formats strfmt.Registry) error {
 
-	if m.State != nil {
+	for i := 0; i < len(m.Pods); i++ {
 
-		if swag.IsZero(m.State) { // not required
-			return nil
-		}
+		if m.Pods[i] != nil {
 
-		if err := m.State.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("state")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("state")
+			if swag.IsZero(m.Pods[i]) { // not required
+				return nil
 			}
-			return err
+
+			if err := m.Pods[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("pods" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("pods" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
 		}
+
 	}
 
 	return nil
@@ -500,6 +551,69 @@ func (m *V2beta1PipelineTaskDetail) contextValidateStateHistory(ctx context.Cont
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) contextValidateStatus(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Status != nil {
+
+		if swag.IsZero(m.Status) { // not required
+			return nil
+		}
+
+		if err := m.Status.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("status")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+
+		if swag.IsZero(m.Type) { // not required
+			return nil
+		}
+
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) contextValidateTypeAttributes(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.TypeAttributes != nil {
+
+		if swag.IsZero(m.TypeAttributes) { // not required
+			return nil
+		}
+
+		if err := m.TypeAttributes.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type_attributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type_attributes")
+			}
+			return err
+		}
 	}
 
 	return nil

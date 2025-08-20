@@ -114,6 +114,11 @@ service ArtifactService {
       summary: "Creates a new artifact."
       tags: "ArtifactService"
     };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "log_metric"
+      summary: "Logs a metric for a specific task."
+      tags: "ArtifactService"
+    };
   }
 }
 

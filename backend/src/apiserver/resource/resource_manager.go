@@ -85,6 +85,8 @@ type ClientManagerInterface interface {
 	JobStore() storage.JobStoreInterface
 	RunStore() storage.RunStoreInterface
 	TaskStore() storage.TaskStoreInterface
+	ArtifactStore() storage.ArtifactStoreInterface
+	ArtifactTaskStore() storage.ArtifactTaskStoreInterface
 	ResourceReferenceStore() storage.ResourceReferenceStoreInterface
 	DBStatusStore() storage.DBStatusStoreInterface
 	DefaultExperimentStore() storage.DefaultExperimentStoreInterface
@@ -112,6 +114,8 @@ type ResourceManager struct {
 	jobStore                  storage.JobStoreInterface
 	runStore                  storage.RunStoreInterface
 	taskStore                 storage.TaskStoreInterface
+	artifactStore             storage.ArtifactStoreInterface
+	artifactTaskStore         storage.ArtifactTaskStoreInterface
 	resourceReferenceStore    storage.ResourceReferenceStoreInterface
 	dBStatusStore             storage.DBStatusStoreInterface
 	defaultExperimentStore    storage.DefaultExperimentStoreInterface
@@ -135,6 +139,8 @@ func NewResourceManager(clientManager ClientManagerInterface, options *ResourceM
 		jobStore:                  clientManager.JobStore(),
 		runStore:                  clientManager.RunStore(),
 		taskStore:                 clientManager.TaskStore(),
+		artifactStore:             clientManager.ArtifactStore(),
+		artifactTaskStore:         clientManager.ArtifactTaskStore(),
 		resourceReferenceStore:    clientManager.ResourceReferenceStore(),
 		dBStatusStore:             clientManager.DBStatusStore(),
 		defaultExperimentStore:    clientManager.DefaultExperimentStore(),
@@ -794,14 +800,14 @@ func (r *ResourceManager) DeleteRun(ctx context.Context, runId string) error {
 
 // Creates a task entry.
 func (r *ResourceManager) CreateTask(t *model.Task) (*model.Task, error) {
-	run, err := r.GetRun(t.RunId)
+	run, err := r.GetRun(t.RunUUID)
 	if err != nil {
-		return nil, util.Wrapf(err, "Failed to create a task for run %v", t.RunId)
+		return nil, util.Wrapf(err, "Failed to create a task for run %v", t.RunUUID)
 	}
 	if run.ExperimentId == "" {
 		defaultExperimentId, err := r.GetDefaultExperimentId()
 		if err != nil {
-			return nil, util.Wrapf(err, "Failed to create a task in run %v. Specify experiment id for the run or check if the default experiment exists", t.RunId)
+			return nil, util.Wrapf(err, "Failed to create a task in run %v. Specify experiment id for the run or check if the default experiment exists", t.RunUUID)
 		}
 		run.ExperimentId = defaultExperimentId
 	}
@@ -810,28 +816,43 @@ func (r *ResourceManager) CreateTask(t *model.Task) (*model.Task, error) {
 	if t.Namespace == "" {
 		namespace, err := r.GetNamespaceFromExperimentId(run.ExperimentId)
 		if err != nil {
-			return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunId)
+			return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunUUID)
 		}
 		t.Namespace = namespace
 	}
 	if common.IsMultiUserMode() {
 		if t.Namespace == "" {
-			return nil, util.NewInternalServerError(util.NewInvalidInputError("Task cannot have an empty namespace in multi-user mode"), "Failed to create a task in run %v", t.RunId)
+			return nil, util.NewInternalServerError(util.NewInvalidInputError("Task cannot have an empty namespace in multi-user mode"), "Failed to create a task in run %v", t.RunUUID)
 		}
 	}
 	if err := r.CheckExperimentBelongsToNamespace(run.ExperimentId, t.Namespace); err != nil {
-		return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunId)
+		return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunUUID)
 	}
 
 	newTask, err := r.taskStore.CreateTask(t)
 	if err != nil {
-		return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunId)
+		return nil, util.Wrapf(err, "Failed to create a task in run %v", t.RunUUID)
 	}
 	return newTask, nil
 }
 
 // Fetches tasks with a given set of filtering and listing options.
-func (r *ResourceManager) ListTasks(filterContext *model.FilterContext, opts *list.Options) ([]*model.Task, int, string, error) {
+func (r *ResourceManager) ListTasks(runId, parentId string, opts *list.Options) ([]*model.Task, int, string, error) {
+	var filterContext *model.FilterContext
+
+	if runId != "" {
+		filterContext = &model.FilterContext{
+			ReferenceKey: &model.ReferenceKey{Type: model.RunResourceType, ID: runId},
+		}
+	} else if parentId != "" {
+		filterContext = &model.FilterContext{
+			ReferenceKey: &model.ReferenceKey{Type: model.TaskResourceType, ID: parentId},
+		}
+	} else {
+		// This shouldn't happen as the server should validate this, but just in case
+		return nil, 0, "", util.NewInvalidInputError("Either run_id or parent_id must be provided")
+	}
+
 	tasks, totalSize, nextPageToken, err := r.taskStore.ListTasks(filterContext, opts)
 	if err != nil {
 		return nil, 0, "", util.Wrap(err, "Failed to list tasks")
@@ -1264,16 +1285,6 @@ func (r *ResourceManager) DeleteJob(ctx context.Context, jobId string) error {
 	return nil
 }
 
-// Creates new tasks or updates existing ones.
-// This is not a part of internal API exposed to persistence agent only.
-func (r *ResourceManager) CreateOrUpdateTasks(t []*model.Task) ([]*model.Task, error) {
-	tasks, err := r.taskStore.CreateOrUpdateTasks(t)
-	if err != nil {
-		return nil, util.Wrap(err, "Failed to create or update tasks")
-	}
-	return tasks, nil
-}
-
 // Reports a workflow CR.
 // This is called to update runs.
 func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec util.ExecutionSpec) (util.ExecutionSpec, error) {
@@ -1606,15 +1617,25 @@ func (r *ResourceManager) CreateDefaultExperiment(namespace string) (string, err
 	return defaultExperiment.UUID, nil
 }
 
-// TODO(gkcalat): deprecate this as we no longer have metrics in the v2beta1 run message.
-// Read metrics as ordinary artifacts instead.
-// Creates a run metric entry.
-func (r *ResourceManager) ReportMetric(metric *model.RunMetric) error {
-	err := r.runStore.CreateMetric(metric)
+// ReportMetric Read metrics as ordinary artifacts instead.
+// Creates a run metric entry. Deprecated.
+func (r *ResourceManager) ReportMetric(metric *model.RunMetricV1) error {
+	err := r.runStore.CreateV1Metric(metric)
 	if err != nil {
 		return util.Wrap(err, "Failed to report a run metric")
 	}
 	return nil
+}
+
+// Updates a task entry.
+func (r *ResourceManager) UpdateTask(task *model.Task) (*model.Task, error) {
+	// Verify task exists
+	_, err := r.GetTask(task.UUID)
+	if err != nil {
+		return nil, util.Wrapf(err, "Failed to update task with id %v", task.UUID)
+	}
+	// Update task
+	return r.taskStore.UpdateTask(task)
 }
 
 // ReadArtifact parses run's workflow to find artifact file path and reads the content of the file
@@ -2040,11 +2061,71 @@ func (r *ResourceManager) GetValidExperimentNamespacePair(experimentId string, n
 	return experimentId, namespace, nil
 }
 
-// Fetches a task entry.
+// GetTask Fetches a task entry.
 func (r *ResourceManager) GetTask(taskId string) (*model.Task, error) {
 	task, err := r.taskStore.GetTask(taskId)
 	if err != nil {
 		return nil, util.Wrapf(err, "Failed to fetch task %v", taskId)
 	}
 	return task, nil
+}
+
+// GetTaskChildren fetches all immediate child tasks of the given task UUID.
+func (r *ResourceManager) GetTaskChildren(taskId string) ([]*model.Task, error) {
+	children, err := r.taskStore.GetChildTasks(taskId)
+	if err != nil {
+		return nil, util.Wrapf(err, "Failed to fetch children of task %v", taskId)
+	}
+	return children, nil
+}
+
+// ListArtifactTasks Fetches artifact tasks with given filtering and listing options.
+func (r *ResourceManager) ListArtifactTasks(filterContexts []*model.FilterContext, opts *list.Options) ([]*model.ArtifactTask, int, string, error) {
+	artifactTasks, totalSize, nextPageToken, err := r.artifactTaskStore.ListArtifactTasks(filterContexts, opts)
+	if err != nil {
+		return nil, 0, "", util.Wrap(err, "Failed to list artifact tasks")
+	}
+	return artifactTasks, totalSize, nextPageToken, nil
+}
+
+// CreateArtifactTask Creates an artifact-task relationship entry.
+func (r *ResourceManager) CreateArtifactTask(artifactTask *model.ArtifactTask) (*model.ArtifactTask, error) {
+	newAT, err := r.artifactTaskStore.CreateArtifactTask(artifactTask)
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to create artifact-task relationship")
+	}
+	return newAT, nil
+}
+
+// GetArtifact Fetches an artifact with a given id.
+func (r *ResourceManager) GetArtifact(artifactId string) (*model.Artifact, error) {
+	artifact, err := r.artifactStore.GetArtifact(artifactId)
+	if err != nil {
+		return nil, util.Wrapf(err, "Failed to fetch artifact %v", artifactId)
+	}
+	return artifact, nil
+}
+
+// CreateArtifact Creates an artifact entry.
+func (r *ResourceManager) CreateArtifact(artifact *model.Artifact) (*model.Artifact, error) {
+	newArtifact, err := r.artifactStore.CreateArtifact(artifact)
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to create artifact")
+	}
+	return newArtifact, nil
+}
+
+// ListArtifacts Fetches artifacts with given filtering and listing options.
+func (r *ResourceManager) ListArtifacts(filterContexts []*model.FilterContext, opts *list.Options) ([]*model.Artifact, int, string, error) {
+	// Use the first filter context for now (artifacts are typically filtered by namespace)
+	var filterContext *model.FilterContext
+	if len(filterContexts) > 0 {
+		filterContext = filterContexts[0]
+	}
+
+	artifacts, totalSize, nextPageToken, err := r.artifactStore.ListArtifacts(filterContext, opts)
+	if err != nil {
+		return nil, 0, "", util.Wrap(err, "Failed to list artifacts")
+	}
+	return artifacts, totalSize, nextPageToken, nil
 }

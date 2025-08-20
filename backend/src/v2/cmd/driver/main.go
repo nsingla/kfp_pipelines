@@ -184,6 +184,18 @@ func drive() (err error) {
 	if err != nil {
 		return err
 	}
+	devMode := os.Getenv("DEV_MODE")
+	if devMode == "" {
+		devMode = "false"
+	}
+	devExecutionIdSTR := os.Getenv("DEV_EXECUTION_ID")
+	if devExecutionIdSTR == "" {
+		devExecutionIdSTR = "0"
+	}
+	devExecutionId, err := strconv.ParseInt(devExecutionIdSTR, 10, 64)
+	if err != nil {
+		return err
+	}
 	options := driver.Options{
 		PipelineName:     *pipelineName,
 		RunID:            *runID,
@@ -199,6 +211,8 @@ func drive() (err error) {
 		CacheDisabled:    *cacheDisabledFlag,
 		DriverType:       *driverType,
 		TaskName:         *taskName,
+		DevMode:          devMode == "true",
+		DevExecutionId:   devExecutionId,
 	}
 	var execution *driver.Execution
 	var driverErr error

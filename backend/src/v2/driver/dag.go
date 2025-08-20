@@ -170,10 +170,16 @@ func DAG(ctx context.Context, opts Options, mlmd *metadata.Client) (execution *E
 	glog.V(4).Infof("dag: %v", dag)
 
 	// TODO(Bobgy): change execution state to pending, because this is driver, execution hasn't started.
-	createdExecution, err := mlmd.CreateExecution(ctx, pipeline, ecfg)
-	if err != nil {
-		return execution, err
+	var createdExecution *metadata.Execution
+	if opts.DevMode {
+		createdExecution, err = mlmd.GetExecution(ctx, opts.DevExecutionId)
+	} else {
+		createdExecution, err = mlmd.CreateExecution(ctx, pipeline, ecfg)
 	}
+	if err != nil {
+		return nil, err
+	}
+
 	glog.Infof("Created execution: %s", createdExecution)
 	execution.ID = createdExecution.GetID()
 	return execution, nil

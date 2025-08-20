@@ -19,13 +19,9 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"time"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-	api "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 )
@@ -116,49 +112,28 @@ func getFingerPrint(opts Options, executorInput *pipelinespec.ExecutorInput, cac
 	return fingerPrint, err
 }
 
-func getFingerPrintsAndID(execution *Execution, opts *Options, cacheClient cacheutils.Client, pvcNames []string) (string, string, error) {
+func getFingerPrintsAndID(execution *Execution, opts *Options, cacheClient cacheutils.Client, mlmd *metadata.Client, pvcNames []string) (string, string, error) {
 	if !opts.CacheDisabled && execution.WillTrigger() && opts.Task.GetCachingOptions().GetEnableCache() {
 		glog.Infof("Task {%s} enables cache", opts.Task.GetTaskInfo().GetName())
 		fingerPrint, err := getFingerPrint(*opts, execution.ExecutorInput, cacheClient, pvcNames)
 		if err != nil {
 			return "", "", fmt.Errorf("failure while getting fingerPrint: %w", err)
 		}
-		cachedMLMDExecutionID, err := cacheClient.GetExecutionCache(fingerPrint, "pipeline/"+opts.PipelineName, opts.Namespace)
+		cachedMLMDExecutionID, err := mlmd.GetExecutionFromFingerprint(
+			context.TODO(),
+			fingerPrint,
+			opts.PipelineName,
+			opts.Namespace,
+		)
 		if err != nil {
 			return "", "", fmt.Errorf("failure while getting executionCache: %w", err)
 		}
-		return fingerPrint, cachedMLMDExecutionID, nil
+		var cachedMLMDExecutionIDString string
+		if cachedMLMDExecutionID != nil {
+			cachedMLMDExecutionIDString = strconv.FormatInt(*cachedMLMDExecutionID, 10)
+		}
+		return fingerPrint, cachedMLMDExecutionIDString, nil
 	} else {
 		return "", "", nil
 	}
-}
-
-func createCache(
-	ctx context.Context,
-	execution *metadata.Execution,
-	opts *Options,
-	taskStartedTime int64,
-	fingerPrint string,
-	cacheClient cacheutils.Client,
-) error {
-	id := execution.GetID()
-	if id == 0 {
-		return fmt.Errorf("failed to get id from createdExecution")
-	}
-	task := &api.Task{
-		//TODO how to differentiate between shared pipeline and namespaced pipeline
-		PipelineName:    "pipeline/" + opts.PipelineName,
-		Namespace:       opts.Namespace,
-		RunId:           opts.RunID,
-		MlmdExecutionID: strconv.FormatInt(id, 10),
-		CreatedAt:       timestamppb.New(time.Unix(taskStartedTime, 0)),
-		FinishedAt:      timestamppb.New(time.Unix(time.Now().Unix(), 0)),
-		Fingerprint:     fingerPrint,
-	}
-	err := cacheClient.CreateExecutionCache(ctx, task)
-	if err != nil {
-		return err
-	}
-	glog.Infof("Created cache entry.")
-	return nil
 }

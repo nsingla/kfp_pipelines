@@ -131,6 +131,8 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 	ecfg.ParentDagID = dag.Execution.GetID()
 	ecfg.IterationIndex = iterationIndex
 	ecfg.NotTriggered = !execution.WillTrigger()
+	ecfg.Namespace = opts.Namespace
+	ecfg.PipelineInfoName = opts.PipelineName
 
 	if isKubernetesPlatformOp {
 		return execution, kubernetesPlatformOps(ctx, mlmd, cacheClient, execution, ecfg, &opts)
@@ -145,6 +147,7 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 		}
 	}
 
+	var fingerPrint, cachedMLMDExecutionID string
 	if !opts.CacheDisabled {
 		// Generate fingerprint and MLMD ID for cache
 		// Start by getting the names of the PVCs that need to be mounted.
@@ -169,16 +172,22 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 			pvcNames = append(pvcNames, GetWorkspacePVCName(opts.RunName))
 		}
 
-		fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(execution, &opts, cacheClient, pvcNames)
+		fingerPrint, cachedMLMDExecutionID, err = getFingerPrintsAndID(execution, &opts, cacheClient, mlmd, pvcNames)
 		if err != nil {
 			return execution, err
 		}
-		ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
-		ecfg.FingerPrint = fingerPrint
 	}
 
-	// TODO(Bobgy): change execution state to pending, because this is driver, execution hasn't started.
-	createdExecution, err := mlmd.CreateExecution(ctx, pipeline, ecfg)
+	var createdExecution *metadata.Execution
+	if opts.DevMode {
+		createdExecution, err = mlmd.GetExecution(ctx, opts.DevExecutionId)
+	} else {
+		createdExecution, err = mlmd.CreateExecution(ctx, pipeline, ecfg)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return execution, err
 	}
@@ -188,21 +197,20 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 		return execution, nil
 	}
 
-	// Use cache and skip launcher if all contions met:
+	// Use cache and skip launcher if all conditions met:
 	// (1) Cache is enabled globally
 	// (2) Cache is enabled for the task
 	// (3) CachedMLMDExecutionID is non-empty, which means a cache entry exists
 	cached := false
 	execution.Cached = &cached
 	if !opts.CacheDisabled {
-		if opts.Task.GetCachingOptions().GetEnableCache() && ecfg.CachedMLMDExecutionID != "" {
+		if opts.Task.GetCachingOptions().GetEnableCache() && cachedMLMDExecutionID != "" {
+			ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
+			ecfg.FingerPrint = fingerPrint
 			executorOutput, outputArtifacts, err := reuseCachedOutputs(ctx, execution.ExecutorInput, mlmd, ecfg.CachedMLMDExecutionID)
 			if err != nil {
 				return execution, err
 			}
-			// TODO(Bobgy): upload output artifacts.
-			// TODO(Bobgy): when adding artifacts, we will need execution.pipeline to be non-nil, because we need
-			// to publish output artifacts to the context too.
 			if err := mlmd.PublishExecution(ctx, createdExecution, executorOutput.GetParameterValues(), outputArtifacts, pb.Execution_CACHED); err != nil {
 				return execution, fmt.Errorf("failed to publish cached execution: %w", err)
 			}
@@ -228,6 +236,7 @@ func Container(ctx context.Context, opts Options, mlmd *metadata.Client, cacheCl
 		opts.PublishLogs,
 		strconv.FormatBool(opts.CacheDisabled),
 		taskConfig,
+		fingerPrint,
 	)
 	if err != nil {
 		return execution, err

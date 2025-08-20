@@ -27,10 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/golang/glog"
-	api "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/client_manager"
 	"google.golang.org/protobuf/proto"
 
@@ -52,8 +49,9 @@ type LauncherV2Options struct {
 	MLMDServerPort,
 	PipelineName,
 	RunID string
-	PublishLogs   string
-	CacheDisabled bool
+	PublishLogs       string
+	CacheDisabled     bool
+	CachedFingerprint string
 }
 
 type LauncherV2 struct {
@@ -175,7 +173,6 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 			glog.Errorf("Skipping publish since execution is nil. Original err is: %v", err)
 			return
 		}
-
 		if perr := l.publish(ctx, execution, executorOutput, outputArtifacts, status); perr != nil {
 			if err != nil {
 				err = fmt.Errorf("failed to publish execution with error %s after execution failed: %s", perr.Error(), err.Error())
@@ -195,13 +192,17 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 		if err != nil {
 			glog.Errorf("failed to update DAG state: %s", err.Error())
 		}
+		if status == pb.Execution_COMPLETE && l.options.CachedFingerprint != "" {
+			err := l.clientManager.MetadataClient().UpdateExecutionCache(ctx, execution.GetID(), l.options.CachedFingerprint)
+			if err != nil {
+				glog.Errorf("failed to update execution cache: %s", err.Error())
+			}
+		}
 	}()
-	executedStartedTime := time.Now().Unix()
 	execution, err = l.prePublish(ctx)
 	if err != nil {
 		return err
 	}
-	fingerPrint := execution.FingerPrint()
 	storeSessionInfo, err := objectstore.GetSessionInfoFromString(execution.GetPipeline().GetStoreSessionInfo())
 	if err != nil {
 		return err
@@ -235,25 +236,6 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 		return err
 	}
 	status = pb.Execution_COMPLETE
-	// if fingerPrint is not empty, it means this task enables cache but it does not hit cache, we need to create cache entry for this task
-	if fingerPrint != "" {
-		id := execution.GetID()
-		if id == 0 {
-			return fmt.Errorf("failed to get id from createdExecution")
-		}
-		task := &api.Task{
-			//TODO how to differentiate between shared pipeline and namespaced pipeline
-			PipelineName:    "pipeline/" + l.options.PipelineName,
-			Namespace:       l.options.Namespace,
-			RunId:           l.options.RunID,
-			MlmdExecutionID: strconv.FormatInt(id, 10),
-			CreatedAt:       timestamppb.New(time.Unix(executedStartedTime, 0)),
-			FinishedAt:      timestamppb.New(time.Unix(time.Now().Unix(), 0)),
-			Fingerprint:     fingerPrint,
-		}
-		return l.clientManager.CacheClient().CreateExecutionCache(ctx, task)
-	}
-
 	return nil
 }
 

@@ -66,7 +66,9 @@ type Options struct {
 
 	PublishLogs string
 
-	CacheDisabled bool
+	CacheDisabled  bool
+	DevMode        bool
+	DevExecutionId int64
 
 	DriverType string
 
@@ -208,19 +210,7 @@ func getTaskConfigOptions(
 // to container base template generated in compiler/container.go. Therefore, only
 // dynamic values are patched here. The volume mounts / configmap mounts are
 // defined in compiler, because they are static.
-func initPodSpecPatch(
-	container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec,
-	componentSpec *pipelinespec.ComponentSpec,
-	executorInput *pipelinespec.ExecutorInput,
-	executionID int64,
-	pipelineName string,
-	runID string,
-	runName string,
-	pipelineLogLevel string,
-	publishLogs string,
-	cacheDisabled string,
-	taskConfig *TaskConfig,
-) (*k8score.PodSpec, error) {
+func initPodSpecPatch(container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec, componentSpec *pipelinespec.ComponentSpec, executorInput *pipelinespec.ExecutorInput, executionID int64, pipelineName string, runID string, runName string, pipelineLogLevel string, publishLogs string, cacheDisabled string, taskConfig *TaskConfig, fingerPrint string) (*k8score.PodSpec, error) {
 	executorInputJSON, err := protojson.Marshal(executorInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init podSpecPatch: %w", err)
@@ -250,7 +240,6 @@ func initPodSpecPatch(
 	userCmdArgs = append(userCmdArgs, container.Args...)
 	launcherCmd := []string{
 		component.KFPLauncherPath,
-		// TODO(Bobgy): no need to pass pipeline_name and run_id, these info can be fetched via pipeline context and pipeline run context which have been created by root DAG driver.
 		"--pipeline_name", pipelineName,
 		"--run_id", runID,
 		"--execution_id", fmt.Sprintf("%v", executionID),
@@ -265,6 +254,7 @@ func initPodSpecPatch(
 		"--mlmd_server_port",
 		fmt.Sprintf("$(%s)", component.EnvMetadataPort),
 		"--publish_logs", publishLogs,
+		"--fingerprint", fingerPrint,
 	}
 	if cacheDisabled == "true" {
 		launcherCmd = append(launcherCmd, "--cache_disabled")

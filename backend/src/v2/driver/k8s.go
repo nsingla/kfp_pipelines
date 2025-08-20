@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/golang/glog"
 	"github.com/google/uuid"
@@ -688,8 +687,6 @@ func createPVC(
 		}
 	}()
 
-	taskStartedTime := time.Now().Unix()
-
 	inputs := execution.ExecutorInput.Inputs
 	glog.Infof("Input parameter values: %+v", inputs.ParameterValues)
 
@@ -753,12 +750,10 @@ func createPVC(
 	// Get execution fingerprint and MLMD ID for caching
 	// If pvcName includes a randomly generated UUID, it is added in the execution input as a key-value pair for this purpose only
 	// The original execution is not changed.
-	fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(&execution, opts, cacheClient, nil)
+	fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(&execution, opts, cacheClient, mlmd, nil)
 	if err != nil {
 		return "", createdExecution, pb.Execution_FAILED, err
 	}
-	ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
-	ecfg.FingerPrint = fingerPrint
 
 	pipeline, err := mlmd.GetPipeline(ctx, opts.PipelineName, opts.RunID, "", "", "", "")
 	if err != nil {
@@ -783,7 +778,9 @@ func createPVC(
 	// (3) CachedMLMDExecutionID is non-empty, which means a cache entry exists
 	cached := false
 	execution.Cached = &cached
-	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && ecfg.CachedMLMDExecutionID != "" {
+	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && cachedMLMDExecutionID != "" {
+		ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
+		ecfg.FingerPrint = fingerPrint
 		executorOutput, outputArtifacts, err := reuseCachedOutputs(ctx, execution.ExecutorInput, mlmd, ecfg.CachedMLMDExecutionID)
 		if err != nil {
 			return "", createdExecution, pb.Execution_FAILED, err
@@ -823,14 +820,6 @@ func createPVC(
 	}
 	glog.Infof("Created PVC %s\n", createdPVC.ObjectMeta.Name)
 
-	// Create a cache entry
-	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() {
-		err = createCache(ctx, createdExecution, opts, taskStartedTime, fingerPrint, cacheClient)
-		if err != nil {
-			return "", createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to create cache entry for create pvc: %w", err)
-		}
-	}
-
 	return createdPVC.ObjectMeta.Name, createdExecution, pb.Execution_COMPLETE, nil
 }
 
@@ -854,8 +843,6 @@ func deletePVC(
 		}
 	}()
 
-	taskStartedTime := time.Now().Unix()
-
 	inputs := execution.ExecutorInput.Inputs
 	glog.Infof("Input parameter values: %+v", inputs.ParameterValues)
 
@@ -869,12 +856,10 @@ func deletePVC(
 	// Get execution fingerprint and MLMD ID for caching
 	// If pvcName includes a randomly generated UUID, it is added in the execution input as a key-value pair for this purpose only
 	// The original execution is not changed.
-	fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(&execution, opts, cacheClient, nil)
+	fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(&execution, opts, cacheClient, mlmd, nil)
 	if err != nil {
 		return createdExecution, pb.Execution_FAILED, err
 	}
-	ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
-	ecfg.FingerPrint = fingerPrint
 
 	pipeline, err := mlmd.GetPipeline(ctx, opts.PipelineName, opts.RunID, "", "", "", "")
 	if err != nil {
@@ -899,14 +884,13 @@ func deletePVC(
 	// (3) CachedMLMDExecutionID is non-empty, which means a cache entry exists
 	cached := false
 	execution.Cached = &cached
-	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && ecfg.CachedMLMDExecutionID != "" {
+	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && cachedMLMDExecutionID != "" {
+		ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
+		ecfg.FingerPrint = fingerPrint
 		executorOutput, outputArtifacts, err := reuseCachedOutputs(ctx, execution.ExecutorInput, mlmd, ecfg.CachedMLMDExecutionID)
 		if err != nil {
 			return createdExecution, pb.Execution_FAILED, err
 		}
-		// TODO(Bobgy): upload output artifacts.
-		// TODO(Bobgy): when adding artifacts, we will need execution.pipeline to be non-nil, because we need
-		// to publish output artifacts to the context too.
 		if err := mlmd.PublishExecution(ctx, createdExecution, executorOutput.GetParameterValues(), outputArtifacts, pb.Execution_CACHED); err != nil {
 			return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to publish cached execution: %w", err)
 		}
@@ -924,16 +908,6 @@ func deletePVC(
 	err = k8sClient.CoreV1().PersistentVolumeClaims(opts.Namespace).Delete(context.TODO(), pvcName, metav1.DeleteOptions{})
 	if err != nil {
 		return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to delete pvc %s: %v", pvcName, err)
-	}
-
-	glog.Infof("Deleted PVC %s\n", pvcName)
-
-	// Create a cache entry
-	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && ecfg.CachedMLMDExecutionID != "" {
-		err = createCache(ctx, createdExecution, opts, taskStartedTime, fingerPrint, cacheClient)
-		if err != nil {
-			return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to create cache entry for delete pvc: %w", err)
-		}
 	}
 
 	return createdExecution, pb.Execution_COMPLETE, nil

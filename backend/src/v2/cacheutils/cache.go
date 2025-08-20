@@ -27,8 +27,6 @@ const (
 )
 
 type Client interface {
-	GetExecutionCache(fingerPrint, pipelineName, namespace string) (string, error)
-	CreateExecutionCache(ctx context.Context, task *api.Task) error
 	GenerateCacheKey(
 		inputs *pipelinespec.ExecutorInput_Inputs,
 		outputs *pipelinespec.ExecutorInput_Outputs,

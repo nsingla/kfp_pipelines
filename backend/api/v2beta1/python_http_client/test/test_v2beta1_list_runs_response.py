@@ -112,6 +112,21 @@ class TestV2beta1ListRunsResponse(unittest.TestCase):
                         state_history = [
                             kfp_server_api.models.v2beta1_runtime_status.v2beta1RuntimeStatus(
                                 update_time = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), )
+                            ], 
+                        pipeline_reference = kfp_server_api.models.v2beta1_pipeline_version_reference.v2beta1PipelineVersionReference(
+                            pipeline_id = '0', 
+                            pipeline_version_id = '0', ), 
+                        tasks = [
+                            kfp_server_api.models.v2beta1_pipeline_task_detail.v2beta1PipelineTaskDetail(
+                                run_id = '0', 
+                                task_id = '0', 
+                                display_name = '0', 
+                                create_time = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                start_time = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                end_time = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
+                                execution_id = '0', 
+                                parent_task_id = '0', 
+                                pod_name = '0', )
                             ], )
                     ], 
                 total_size = 56, 

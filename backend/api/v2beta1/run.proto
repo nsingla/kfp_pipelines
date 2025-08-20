@@ -24,6 +24,7 @@ import "google/protobuf/struct.proto";
 import "google/rpc/status.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "backend/api/v2beta1/runtime_config.proto";
+import "backend/api/v2beta1/artifact.proto";
 
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   schemes: [1, 2], // http + https
@@ -127,6 +128,51 @@ service RunService {
     };
   }
 
+  rpc CreateTask(CreateTaskRequest) returns (PipelineTaskDetail) {
+    option (google.api.http) = {
+      post: "/apis/v2beta1/tasks"
+      body: "task"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "create_task"
+      summary: "Creates a new task."
+      tags: "RunService"
+    };
+  }
+
+  rpc UpdateTask(UpdateTaskRequest) returns (PipelineTaskDetail) {
+    option (google.api.http) = {
+      patch: "/apis/v2beta1/tasks/{task_id}"
+      body: "task"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "update_task"
+      summary: "Updates an existing task."
+      tags: "RunService"
+    };
+  }
+
+  rpc GetTask(GetTaskRequest) returns (PipelineTaskDetail) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/tasks/{task_id}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "get_task"
+      summary: "Gets a specific task by ID."
+      tags: "RunService"
+    };
+  }
+
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/tasks"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "list_tasks"
+      summary: "Lists tasks with optional filtering."
+      tags: "RunService"
+    };
+  }
 }
 
 message Run {
@@ -198,7 +244,8 @@ message Run {
   google.rpc.Status error = 14;
 
   // Output. Runtime details of a run.
-  RunDetails run_details = 15;
+  // Either remove or deprecate this
+  RunDetails run_details = 15 [deprecated = true];
 
   // ID of the recurring run that triggered this run.
   string recurring_run_id = 16;
@@ -206,6 +253,10 @@ message Run {
   // Output. A sequence of run statuses. This field keeps a record
   // of state transitions.
   repeated RuntimeStatus state_history = 17;
+
+  // Output only. Reference to the pipeline used for this run.
+  PipelineVersionReference pipeline_reference = 19;
+  repeated PipelineTaskDetail tasks = 20;
 }
 
 // Reference to an existing pipeline version.
@@ -278,71 +329,140 @@ message RunDetails {
 
 // Runtime information of a task execution.
 message PipelineTaskDetail {
-  // ID of the parent run.
-  string run_id = 1;
-
-  // System-generated ID of a task.
-  string task_id = 2;
-
+  string name = 1;
   // User specified name of a task that is defined in
   // [Pipeline.spec][].
-  string display_name = 3;
+  string display_name = 2;
 
-  // Creation time of a task.
-  google.protobuf.Timestamp create_time = 4;
+  // System-generated ID of a task.
+  string task_id = 3;
 
-  // Starting time of a task.
-  google.protobuf.Timestamp start_time = 5;
-
-  // Completion time of a task.
-  google.protobuf.Timestamp end_time = 6;
-
-  // Execution information of a task.
-  PipelineTaskExecutorDetail executor_detail = 7;
-
-  // Runtime state of a task.
-  RuntimeState state = 8;
-
-  // Execution id of the corresponding entry in ML metadata store.
-  int64 execution_id = 9;
-
-  // The error that occurred during task execution.
-  // Only populated when the task is in FAILED or CANCELED state.
-  google.rpc.Status error = 10;
-
-  // Input artifacts of the task.
-  map<string, ArtifactList> inputs = 11;
-
-  // Output artifacts of the task.
-  map<string, ArtifactList> outputs = 12;
-
-  // ID of the parent task if the task is within a component scope.
-  // Empty if the task is at the root level.
-  string parent_task_id = 13;
-
-  // A sequence of task statuses. This field keeps a record
-  // of state transitions.
-  repeated RuntimeStatus state_history = 14;
+  // ID of the parent run.
+  string run_id = 4;
 
   // Name of the corresponding pod assigned by the orchestration engine.
   // Also known as node_id.
-  string pod_name = 15;
+  enum TaskPodType {
+    DRIVER = 0;
+    EXECUTOR = 1;
+  }
+  message TaskPod {
+    string name = 1;
+    string uid = 2;
+    string type = 3;
+  }
+  repeated TaskPod pods = 5;
+
+  string cache_fingerprint = 6;
+
+  // Creation time of a task.
+  google.protobuf.Timestamp create_time = 7;
+
+  // Starting time of a task.
+  google.protobuf.Timestamp start_time = 8;
+
+  // Completion time of a task.
+  google.protobuf.Timestamp end_time = 9;
+
+  // Runtime state of a Task
+  RuntimeState status = 10;
+
+  // Custom status metadata, this can be used to provide
+  // additional status info for a given task during runtime
+  map<string, google.protobuf.Value> status_metadata = 11;
+
+  // A sequence of task statuses. This field keeps a record
+  // of state transitions.
+  repeated RuntimeStatus state_history = 12;
+
+  enum TaskType {
+    // Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run
+    ROOT = 0;
+    RUNTIME = 1;
+    CONDITION_BRANCH = 2;
+    CONDITION = 3;
+    LOOP = 4;
+    LOOP_ITERATION = 5;
+    EXIT_HANDLER = 6;
+    // Generic DAG task type for types like Nested Pipelines
+    // where there is no declarative way to detect this within
+    // a driver.
+    DAG = 7;
+  }
+  TaskType type = 13;
+
+  message TypeAttributes {
+    // Optional. Applies to type LOOP_ITERATION
+    int64 iteration_index = 1;
+    // Optional. Applies to type LOOP
+    int64 iteration_count = 2;
+  }
+
+  TypeAttributes type_attributes = 14;
+
+  // The error that occurred during task execution.
+  // Only populated when the task is in FAILED or CANCELED state.
+  google.rpc.Status error = 15;
+
+  // ID of the parent task if the task is within a component scope.
+  // Empty if the task is at the root level.
+  string parent_task_id = 16;
 
   // A dependent task that requires this one to succeed.
   // Represented by either task_id or pod_name.
   message ChildTask {
-    oneof child_task {
-      // System-generated ID of a task.
-      string task_id = 1;
+    // System-generated ID of a task.
+    string task_id = 1;
 
-      // Name of the corresponding pod assigned by the orchestration engine.
-      // Also known as node_id.
-      string pod_name = 2;
-    }
+    string name = 2;
+
+    // Name of the corresponding pod assigned by the orchestration engine.
+    // Also known as node_id.
+    repeated TaskPod pods = 3;
   }
 
-  // Sequence of dependen tasks.
-  repeated ChildTask child_tasks = 16;
+  // Sequence of dependent tasks.
+  repeated ChildTask child_tasks = 17;
+
+  message InputOutputs {
+
+    message IOProducer {
+      string task_name = 1;
+      // This would be the equivalent of output_parameter_key from the upstream task
+      // when it's a parameter input, or output_artifact_key when it is an Artifact.
+      string key = 2;
+    }
+
+    message Parameter {
+      string value = 1;
+      // Optional, this is only included on Runtime Tasks when the parameter name is known.
+      optional string name = 2;
+      // Not all Parameters have task producers,
+      // For example they can also be Runtime Constants.
+      // Whereas in the case of a PipelineChannel, they
+      // do have a producer.
+      optional IOProducer producer = 3;
+    }
+    message IOArtifact {
+      // Optional, this is only included on Runtime Tasks when the parameter name is known.
+      string parameter_name = 1;
+
+      Artifact value = 2;
+
+      // All IO artifacts have a producer, so the following
+      // fields are required. In the case of importer
+      // where the artifact is set to reimport = true
+      // the name & key are importer-[0-9]+ and "artifact"
+      IOProducer producer = 3;
+    }
+    repeated Parameter parameters = 1;
+    // Output Only. To create Artifacts for a task are created
+    // via ArtifactTasks.
+    repeated IOArtifact artifacts = 2;
+  }
+
+  InputOutputs inputs = 18;
+  InputOutputs outputs = 19;
 }
 
 // Runtime information of a pipeline task executor.
@@ -484,4 +604,38 @@ message RetryRunRequest {
 
  // The ID of the run to be retried.
  string run_id = 2;
+}
+
+message CreateTaskRequest {
+  PipelineTaskDetail task = 1;
+}
+
+message UpdateTaskRequest {
+  string task_id = 1;
+  PipelineTaskDetail task = 2;
+}
+
+message GetTaskRequest {
+  string task_id = 1;
+}
+
+message ListTasksRequest {
+  // Required. Must specify either parent_id or run_id to filter tasks.
+  oneof parent_filter {
+    // List all tasks with this parent task.
+    string parent_id = 1;
+    // List all tasks for this run.
+    string run_id = 2;
+  }
+
+  int32 page_size = 3;
+  string page_token = 4;
+  string filter = 5;
+  string order_by = 6;
+}
+
+message ListTasksResponse {
+  repeated PipelineTaskDetail tasks = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
 }

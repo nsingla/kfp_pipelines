@@ -126,7 +126,12 @@ func RootDAG(ctx context.Context, opts Options, mlmd *metadata.Client) (executio
 	}
 	ecfg.ExecutionType = metadata.DagExecutionTypeName
 	ecfg.Name = fmt.Sprintf("run/%s", opts.RunID)
-	exec, err := mlmd.CreateExecution(ctx, pipeline, ecfg)
+	var exec *metadata.Execution
+	if opts.DevMode {
+		exec, err = mlmd.GetExecution(ctx, opts.DevExecutionId)
+	} else {
+		exec, err = mlmd.CreateExecution(ctx, pipeline, ecfg)
+	}
 	if err != nil {
 		return nil, err
 	}

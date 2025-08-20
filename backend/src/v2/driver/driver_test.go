@@ -265,19 +265,7 @@ func Test_initPodSpecPatch_acceleratorConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			taskConfig := &TaskConfig{}
 
-			podSpec, err := initPodSpecPatch(
-				tt.args.container,
-				tt.args.componentSpec,
-				tt.args.executorInput,
-				tt.args.executionID,
-				tt.args.pipelineName,
-				tt.args.runID,
-				"my-run-name",
-				tt.args.pipelineLogLevel,
-				tt.args.publishLogs,
-				"false",
-				taskConfig,
-			)
+			podSpec, err := initPodSpecPatch(tt.args.container, tt.args.componentSpec, tt.args.executorInput, tt.args.executionID, tt.args.pipelineName, tt.args.runID, "my-run-name", tt.args.pipelineLogLevel, tt.args.publishLogs, "false", taskConfig, "", "")
 			if tt.wantErr {
 				assert.Nil(t, podSpec)
 				assert.NotNil(t, err)
@@ -381,19 +369,7 @@ func Test_initPodSpecPatch_resource_placeholders(t *testing.T) {
 
 	taskConfig := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskConfig,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskConfig, "", "")
 	assert.Nil(t, err)
 	assert.Len(t, podSpec.Containers, 1)
 
@@ -428,19 +404,7 @@ func Test_initPodSpecPatch_legacy_resources(t *testing.T) {
 	executorInput := &pipelinespec.ExecutorInput{}
 	taskConfig := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskConfig,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskConfig, "", "")
 	assert.Nil(t, err)
 	assert.Len(t, podSpec.Containers, 1)
 
@@ -477,19 +441,7 @@ func Test_initPodSpecPatch_modelcar_input_artifact(t *testing.T) {
 	}
 	taskConfig := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskConfig,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskConfig, "", "")
 	assert.Nil(t, err)
 
 	assert.Len(t, podSpec.InitContainers, 1)
@@ -520,20 +472,7 @@ func Test_initPodSpecPatch_modelcar_input_artifact(t *testing.T) {
 // Validate that setting publishLogs to true propagates to the driver container
 // commands in the podSpec.
 func Test_initPodSpecPatch_publishLogs(t *testing.T) {
-	podSpec, err := initPodSpecPatch(
-		&pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec{},
-		&pipelinespec.ComponentSpec{},
-		&pipelinespec.ExecutorInput{},
-		// executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"true",
-		"false",
-		nil,
-	)
+	podSpec, err := initPodSpecPatch(&pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec{}, &pipelinespec.ComponentSpec{}, &pipelinespec.ExecutorInput{}, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "true", "false", nil, "", "")
 	assert.Nil(t, err)
 	cmd := podSpec.Containers[0].Command
 	assert.Contains(t, cmd, "--publish_logs")
@@ -645,19 +584,7 @@ func Test_initPodSpecPatch_resourceRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			taskConfig := &TaskConfig{}
 
-			podSpec, err := initPodSpecPatch(
-				tt.args.container,
-				tt.args.componentSpec,
-				tt.args.executorInput,
-				tt.args.executionID,
-				tt.args.pipelineName,
-				tt.args.runID,
-				"my-run-name",
-				tt.args.pipelineLogLevel,
-				tt.args.publishLogs,
-				"false",
-				taskConfig,
-			)
+			podSpec, err := initPodSpecPatch(tt.args.container, tt.args.componentSpec, tt.args.executorInput, tt.args.executionID, tt.args.pipelineName, tt.args.runID, "my-run-name", tt.args.pipelineLogLevel, tt.args.publishLogs, "false", taskConfig, "", "")
 			assert.Nil(t, err)
 			assert.NotEmpty(t, podSpec)
 			podSpecString, err := json.Marshal(podSpec)
@@ -700,19 +627,7 @@ func Test_initPodSpecPatch_TaskConfig_ForwardsResourcesOnly(t *testing.T) {
 	executorInput := &pipelinespec.ExecutorInput{}
 
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 	assert.NotNil(t, podSpec)
 	assert.Len(t, podSpec.Containers, 1)
@@ -761,19 +676,7 @@ func Test_initPodSpecPatch_inputTaskFinalStatus(t *testing.T) {
 		},
 	}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"0254beba-0be4-4065-8d97-7dc5e3adf300",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		nil,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", nil, "", "")
 	require.Nil(t, err)
 
 	expectedExecutorInput := map[string]interface{}{
@@ -958,19 +861,7 @@ func Test_initPodSpecPatch_WorkspaceRequiresRunName(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	_, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"run-id",
-		"", // runName intentionally empty
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	_, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run-id", "", "1", "false", "false", taskCfg, "", "")
 	require.NotNil(t, err)
 }
 
@@ -1081,10 +972,7 @@ func TestWorkspaceMount_PassthroughVolumes_CaptureOnly(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(
-		containerSpec, componentSpec, executorInput,
-		27, "test", "run", "my-run-name", "1", "false", "false", taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 
 	// Should not mount workspace to pod (no volumes on pod), only capture to TaskConfig
@@ -1124,10 +1012,7 @@ func TestWorkspaceMount_PassthroughVolumes_ApplyAndCapture(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(
-		containerSpec, componentSpec, executorInput,
-		27, "test", "run", "my-run-name", "1", "false", "false", taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 	// Should mount workspace to pod and also capture to TaskConfig
 	assert.NotEmpty(t, podSpec.Volumes)
@@ -1178,19 +1063,7 @@ func Test_initPodSpecPatch_TaskConfig_Env_Passthrough_CaptureOnly(t *testing.T) 
 	}
 	executorInput := &pipelinespec.ExecutorInput{}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"run",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 
 	// Env should be captured to TaskConfig only, not applied to pod
@@ -1222,19 +1095,7 @@ func Test_initPodSpecPatch_TaskConfig_Resources_Passthrough_ApplyAndCapture(t *t
 	}
 	executorInput := &pipelinespec.ExecutorInput{}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"run",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 	// Resources should be both on pod and in TaskConfig
 	assert.NotEmpty(t, podSpec.Containers[0].Resources.Requests)
@@ -1297,19 +1158,7 @@ func Test_initPodSpecPatch_TaskConfig_Affinity_NodeSelector_Tolerations_Passthro
 
 	taskCfg := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"run",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 
 	err = extendPodSpecPatch(
@@ -1393,19 +1242,7 @@ func Test_initPodSpecPatch_TaskConfig_Affinity_NodeSelector_Tolerations_ApplyAnd
 	executorInput := &pipelinespec.ExecutorInput{Inputs: &pipelinespec.ExecutorInput_Inputs{ParameterValues: map[string]*structpb.Value{}}}
 	taskCfg := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(
-		containerSpec,
-		componentSpec,
-		executorInput,
-		27,
-		"test",
-		"run",
-		"my-run-name",
-		"1",
-		"false",
-		"false",
-		taskCfg,
-	)
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "", "")
 	assert.Nil(t, err)
 
 	err = extendPodSpecPatch(

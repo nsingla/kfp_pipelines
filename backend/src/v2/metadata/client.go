@@ -80,6 +80,8 @@ var (
 	}
 )
 
+var _ ClientInterface = &Client{}
+
 type ClientInterface interface {
 	GetPipeline(ctx context.Context, pipelineName, runID, namespace, runResource, pipelineRoot, storeSessionInfo string) (*Pipeline, error)
 	GetDAG(ctx context.Context, executionID int64) (*DAG, error)
@@ -99,6 +101,8 @@ type ClientInterface interface {
 	RecordArtifact(ctx context.Context, outputName, schema string, runtimeArtifact *pipelinespec.RuntimeArtifact, state pb.Artifact_State, bucketConfig *objectstore.Config) (*OutputArtifact, error)
 	GetOrInsertArtifactType(ctx context.Context, schema string) (typeID int64, err error)
 	FindMatchedArtifact(ctx context.Context, artifactToMatch *pb.Artifact, pipelineContextId int64) (matchedArtifact *pb.Artifact, err error)
+	UpdateExecutionCache(ctx context.Context, executionID int64, fingerprint string) error
+	GetExecutionFromFingerprint(ctx context.Context, fingerprint string, pipelineName string, namespace string) (*int64, error)
 }
 
 // Client is an MLMD service client.
@@ -142,6 +146,7 @@ type ExecutionConfig struct {
 	OutputArtifacts  map[string]*pipelinespec.DagOutputsSpec_DagOutputArtifactSpec
 	InputArtifactIDs map[string][]int64
 	IterationIndex   *int // Index of the iteration.
+	PipelineInfoName string
 
 	// ContainerExecution custom properties
 	Image, CachedMLMDExecutionID, FingerPrint string
@@ -433,10 +438,6 @@ func intValue(i int64) *pb.Value {
 	return &pb.Value{Value: &pb.Value_IntValue{IntValue: i}}
 }
 
-func doubleValue(f float64) *pb.Value {
-	return &pb.Value{Value: &pb.Value_DoubleValue{DoubleValue: f}}
-}
-
 // Event path is conceptually artifact name for the execution.
 // We cannot store the name as a property of artifact "a", because for example:
 // 1. In first task "preprocess", there's an output artifact "processed_data".
@@ -537,12 +538,12 @@ const (
 	keyInputs                = "inputs"
 	keyOutputs               = "outputs"
 	keyParameterProducerTask = "parameter_producer_task"
-	keyOutputArtifacts       = "output_artifacts"
 	keyArtifactProducerTask  = "artifact_producer_task"
 	keyParentDagID           = "parent_dag_id" // Parent DAG Execution ID.
 	keyIterationIndex        = "iteration_index"
 	keyIterationCount        = "iteration_count"
 	keyTotalDagTasks         = "total_dag_tasks"
+	keyPipelineInfoName      = "pipeline_info_name"
 )
 
 // CreateExecution creates a new MLMD execution under the specified Pipeline.
@@ -587,6 +588,7 @@ func (c *Client) CreateExecution(ctx context.Context, pipeline *Pipeline, config
 		e.CustomProperties[keyPodName] = StringValue(config.PodName)
 		e.CustomProperties[keyPodUID] = StringValue(config.PodUID)
 		e.CustomProperties[keyNamespace] = StringValue(config.Namespace)
+		e.CustomProperties[keyPipelineInfoName] = StringValue(config.PipelineInfoName)
 		e.CustomProperties[keyImage] = StringValue(config.Image)
 		if config.CachedMLMDExecutionID != "" {
 			e.CustomProperties[keyCachedExecutionID] = StringValue(config.CachedMLMDExecutionID)
@@ -748,12 +750,26 @@ func (c *Client) UpdateDAGExecutionsState(ctx context.Context, dag *DAG, pipelin
 
 // PutDAGExecutionState updates the given DAG Id to the state provided.
 func (c *Client) PutDAGExecutionState(ctx context.Context, executionID int64, state pb.Execution_State) error {
-
 	e, err := c.GetExecution(ctx, executionID)
 	if err != nil {
 		return err
 	}
 	e.execution.LastKnownState = state.Enum()
+	_, err = c.svc.PutExecution(ctx, &pb.PutExecutionRequest{
+		Execution: e.execution,
+	})
+	return err
+}
+
+func (c *Client) UpdateExecutionCache(ctx context.Context, executionID int64, fingerprint string) error {
+	e, err := c.GetExecution(ctx, executionID)
+	if err != nil {
+		return err
+	}
+	if e.execution.CustomProperties == nil {
+		e.execution.CustomProperties = make(map[string]*pb.Value)
+	}
+	e.execution.CustomProperties[keyCacheFingerPrint] = StringValue(fingerprint)
 	_, err = c.svc.PutExecution(ctx, &pb.PutExecutionRequest{
 		Execution: e.execution,
 	})
@@ -787,6 +803,33 @@ func (c *Client) GetExecution(ctx context.Context, id int64) (*Execution, error)
 		return nil, err
 	}
 	return &Execution{execution: execution, pipeline: pipeline}, nil
+}
+
+func (c *Client) GetExecutionFromFingerprint(ctx context.Context, fingerprint string, pipelineName string, namespace string) (*int64, error) {
+	if fingerprint == "" && pipelineName == "" && namespace == "" {
+		return nil, fmt.Errorf("invalid arguments, fingerprints, pipeline and namespace cannot be empty")
+	}
+
+	query := fmt.Sprintf(
+		"custom_properties.%s.string_value = '%s' AND custom_properties.%s.string_value = '%s' AND custom_properties.%s.string_value = '%s'",
+		keyCacheFingerPrint, fingerprint,
+		"namespace", namespace,
+		"pipeline_info_name", pipelineName,
+	)
+	res, err := c.svc.GetExecutions(ctx, &pb.GetExecutionsRequest{
+		Options: &pb.ListOperationOptions{
+			FilterQuery: &query,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get executions with fingerprint=%v: %w", fingerprint, err)
+	}
+	executions := res.GetExecutions()
+	if len(executions) == 0 {
+		return nil, nil
+	}
+	id := executions[0].GetId()
+	return &id, nil
 }
 
 func (c *Client) GetPipelineFromExecution(ctx context.Context, id int64) (*Pipeline, error) {

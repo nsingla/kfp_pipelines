@@ -50,7 +50,9 @@ class V2beta1Run(object):
         'error': 'GooglerpcStatus',
         'run_details': 'V2beta1RunDetails',
         'recurring_run_id': 'str',
-        'state_history': 'list[V2beta1RuntimeStatus]'
+        'state_history': 'list[V2beta1RuntimeStatus]',
+        'pipeline_reference': 'V2beta1PipelineVersionReference',
+        'tasks': 'list[V2beta1PipelineTaskDetail]'
     }
 
     attribute_map = {
@@ -71,10 +73,12 @@ class V2beta1Run(object):
         'error': 'error',
         'run_details': 'run_details',
         'recurring_run_id': 'recurring_run_id',
-        'state_history': 'state_history'
+        'state_history': 'state_history',
+        'pipeline_reference': 'pipeline_reference',
+        'tasks': 'tasks'
     }
 
-    def __init__(self, experiment_id=None, run_id=None, display_name=None, storage_state=None, description=None, pipeline_version_id=None, pipeline_spec=None, pipeline_version_reference=None, runtime_config=None, service_account=None, created_at=None, scheduled_at=None, finished_at=None, state=None, error=None, run_details=None, recurring_run_id=None, state_history=None, local_vars_configuration=None):  # noqa: E501
+    def __init__(self, experiment_id=None, run_id=None, display_name=None, storage_state=None, description=None, pipeline_version_id=None, pipeline_spec=None, pipeline_version_reference=None, runtime_config=None, service_account=None, created_at=None, scheduled_at=None, finished_at=None, state=None, error=None, run_details=None, recurring_run_id=None, state_history=None, pipeline_reference=None, tasks=None, local_vars_configuration=None):  # noqa: E501
         """V2beta1Run - a model defined in OpenAPI"""  # noqa: E501
         if local_vars_configuration is None:
             local_vars_configuration = Configuration()
@@ -98,6 +102,8 @@ class V2beta1Run(object):
         self._run_details = None
         self._recurring_run_id = None
         self._state_history = None
+        self._pipeline_reference = None
+        self._tasks = None
         self.discriminator = None
 
         if experiment_id is not None:
@@ -136,6 +142,10 @@ class V2beta1Run(object):
             self.recurring_run_id = recurring_run_id
         if state_history is not None:
             self.state_history = state_history
+        if pipeline_reference is not None:
+            self.pipeline_reference = pipeline_reference
+        if tasks is not None:
+            self.tasks = tasks
 
     @property
     def experiment_id(self):
@@ -538,6 +548,48 @@ class V2beta1Run(object):
         """
 
         self._state_history = state_history
+
+    @property
+    def pipeline_reference(self):
+        """Gets the pipeline_reference of this V2beta1Run.  # noqa: E501
+
+
+        :return: The pipeline_reference of this V2beta1Run.  # noqa: E501
+        :rtype: V2beta1PipelineVersionReference
+        """
+        return self._pipeline_reference
+
+    @pipeline_reference.setter
+    def pipeline_reference(self, pipeline_reference):
+        """Sets the pipeline_reference of this V2beta1Run.
+
+
+        :param pipeline_reference: The pipeline_reference of this V2beta1Run.  # noqa: E501
+        :type pipeline_reference: V2beta1PipelineVersionReference
+        """
+
+        self._pipeline_reference = pipeline_reference
+
+    @property
+    def tasks(self):
+        """Gets the tasks of this V2beta1Run.  # noqa: E501
+
+
+        :return: The tasks of this V2beta1Run.  # noqa: E501
+        :rtype: list[V2beta1PipelineTaskDetail]
+        """
+        return self._tasks
+
+    @tasks.setter
+    def tasks(self, tasks):
+        """Sets the tasks of this V2beta1Run.
+
+
+        :param tasks: The tasks of this V2beta1Run.  # noqa: E501
+        :type tasks: list[V2beta1PipelineTaskDetail]
+        """
+
+        self._tasks = tasks
 
     def to_dict(self):
         """Returns the model properties as a dict"""

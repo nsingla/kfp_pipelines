@@ -30,6 +30,380 @@
     "application/json"
   ],
   "paths": {
+    "/apis/v2beta1/artifact_tasks": {
+      "get": {
+        "summary": "Lists artifact-task relationships.",
+        "operationId": "list_artifact_tasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListArtifactTasksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_ids",
+            "description": "Optional, filter artifact task by a set of task_ids\nWe can also likely just rely on filter for this and omit this field",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "run_ids",
+            "description": "Optional, filter artifact task by a set of run_ids",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "artifact_ids",
+            "description": "Optional, filter artifact task by a set of artifact_ids\nWe can also likely just rely on filter for this and omit this field",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "type",
+            "description": "Optional. Only list artifact tasks that have artifacts of this type.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "INPUT",
+              "OUTPUT"
+            ],
+            "default": "INPUT"
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      },
+      "post": {
+        "summary": "Creates an artifact-task relationship.",
+        "operationId": "create_artifact_task",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ArtifactTask"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactTaskRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
+    "/apis/v2beta1/artifacts": {
+      "get": {
+        "summary": "Finds all artifacts within the specified namespace.",
+        "operationId": "list_artifacts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListArtifactResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "description": "Optional input. Namespace for the artifacts.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_token",
+            "description": "A page token to request the results page.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The number of artifacts to be listed per page. If there are more artifacts\nthan this number, the response message will contain a valid value in the\nnextPageToken field.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "sort_by",
+            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/artifacts/blob/master/backend/api/filter.proto)).",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a new artifact.",
+        "operationId": "create_artifact",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1Artifact"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
+    "/apis/v2beta1/artifacts/{artifact_id}": {
+      "get": {
+        "summary": "Finds a specific Artifact by ID.",
+        "operationId": "get_artifact",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1Artifact"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "description": "Required. The ID of the artifact to be retrieved.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
+    "/apis/v2beta1/metrics": {
+      "get": {
+        "summary": "Lists all metrics.",
+        "operationId": "list_metrics",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListArtifactResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "description": "Optional input. Namespace for the artifacts.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_token",
+            "description": "A page token to request the results page.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The number of artifacts to be listed per page. If there are more artifacts\nthan this number, the response message will contain a valid value in the\nnextPageToken field.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "sort_by",
+            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/artifacts/blob/master/backend/api/filter.proto)).",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      },
+      "post": {
+        "summary": "Logs a metric for a specific task.",
+        "operationId": "log_metric",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1Artifact"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
+    "/apis/v2beta1/metrics/{artifact_id}": {
+      "get": {
+        "summary": "Gets a metric by task ID and name.",
+        "operationId": "get_metric",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1Artifact"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "description": "Required. The ID of the artifact to be retrieved.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
     "/apis/v2beta1/auth": {
       "get": {
         "operationId": "AuthService_Authorize",
@@ -1561,6 +1935,169 @@
         ]
       }
     },
+    "/apis/v2beta1/tasks": {
+      "get": {
+        "summary": "Lists tasks with optional filtering.",
+        "operationId": "list_tasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListTasksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "parent_id",
+            "description": "List all tasks with this parent task.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "run_id",
+            "description": "List all tasks for this run.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a new task.",
+        "operationId": "create_task",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+            }
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/tasks/{task_id}": {
+      "get": {
+        "summary": "Gets a specific task by ID.",
+        "operationId": "get_task",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates an existing task.",
+        "operationId": "update_task",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "task",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+            }
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
     "/apis/v2beta1/visualizations/{namespace}": {
       "post": {
         "operationId": "VisualizationService_CreateVisualizationV1",
@@ -1601,25 +2138,21 @@
     }
   },
   "definitions": {
-    "AuthorizeRequestResources": {
+    "ArtifactArtifactType": {
       "type": "string",
       "enum": [
-        "UNASSIGNED_RESOURCES",
-        "VIEWERS"
+        "TYPE_UNSPECIFIED",
+        "Artifact",
+        "Model",
+        "Dataset",
+        "HTML",
+        "Markdown",
+        "Metric",
+        "ClassificationMetric",
+        "SlicedClassificationMetric"
       ],
-      "default": "UNASSIGNED_RESOURCES",
-      "description": "Type of resources in pipelines system."
-    },
-    "AuthorizeRequestVerb": {
-      "type": "string",
-      "enum": [
-        "UNASSIGNED_VERB",
-        "CREATE",
-        "GET",
-        "DELETE"
-      ],
-      "default": "UNASSIGNED_VERB",
-      "description": "Type of verbs that act on the resources."
+      "default": "TYPE_UNSPECIFIED",
+      "description": " - TYPE_UNSPECIFIED: default; treated as \"not set\"\nreject if unset."
     },
     "googlerpcStatus": {
       "type": "object",
@@ -1663,6 +2196,199 @@
       },
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(&foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := &pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := &pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": <string>,\n      \"lastName\": <string>\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "v2beta1Artifact": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "title": "Output only. The unique server generated id of the artifact.\nNote: Updated id name to be consistent with other api naming patterns (with prefix)",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Required. The client provided name of the artifact.\nNote: it seems in MLMD when name was set, it had to be unique for that type_id\nthis restriction is removed here\nIf this is a \"Metric\" artifact, the name of the metric\nis treated as the Key in its K/V pair."
+        },
+        "description": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/ArtifactArtifactType",
+          "title": "Required. The name of an ArtifactType. E.g. Dataset"
+        },
+        "uri": {
+          "type": "string",
+          "description": "The uniform resource identifier of the physical artifact.\nMay be empty if there is no physical artifact."
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Optional. User provided custom properties which are not defined by its type."
+        },
+        "number_value": {
+          "type": "number",
+          "format": "double",
+          "title": "Used primarily for metrics"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. Create time of the artifact in millisecond since epoch.\nNote: The type and name is updated from mlmd artifact to be consistent with other backend apis.",
+          "readOnly": true
+        },
+        "namespace": {
+          "type": "string"
+        }
+      },
+      "title": "Note to be confused with RuntimeArtifact in pipelinespec"
+    },
+    "v2beta1ArtifactTask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The unique server generated id of the ArtifactTask.",
+          "readOnly": true
+        },
+        "artifact_id": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v2beta1ArtifactTaskType"
+        },
+        "producer_task_name": {
+          "type": "string",
+          "description": "The task that produced this artifact\nFor example in the case of a pipeline channel\nthat is an output artifact you might have as\ninput something like the following in the IR:\n  taskOutputArtifact:\n    outputArtifactKey: output_dataset\n    producerTask: create-dataset\nThese fields are used to track this lineage.\n\nFor outputs, the producer task is the component name\nof the task that produced the artifact."
+        },
+        "producer_key": {
+          "type": "string",
+          "description": "For outputs, the key is the name of the parameter\nin the component spec (found in OutputDefinitions)\nused to output the artifact.",
+          "title": "The key is often the parameter name used\nas input/output on the component, but\ncan also take on the value of of other values.\nFor example:\n * \"param-#\" when using parameters in a ParallelFor\n * \"Output\" when using Pythonic Artifacts"
+        },
+        "artifact_key": {
+          "type": "string",
+          "description": "The parameter name for the input/output artifact\nThis maybe the same as the Artifact name if the\nartifact name is not specified. It is used to\nresolve artifact pipeline channels."
+        }
+      }
+    },
+    "v2beta1ArtifactTaskType": {
+      "type": "string",
+      "enum": [
+        "INPUT",
+        "OUTPUT"
+      ],
+      "default": "INPUT",
+      "title": "Describes the I/O relationship between\nthis Artifact and Task"
+    },
+    "v2beta1CreateArtifactRequest": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "$ref": "#/definitions/v2beta1Artifact",
+          "description": "Required. The artifact to create."
+        },
+        "run_id": {
+          "type": "string",
+          "description": "An artifact is always created in the context of a\nrun."
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v2beta1ArtifactTaskType"
+        },
+        "producer_task_name": {
+          "type": "string"
+        },
+        "producer_key": {
+          "type": "string"
+        }
+      }
+    },
+    "v2beta1CreateArtifactTaskRequest": {
+      "type": "object",
+      "properties": {
+        "artifact_task": {
+          "$ref": "#/definitions/v2beta1ArtifactTask",
+          "description": "Required. The artifact-task relationship to create."
+        }
+      },
+      "title": "Request to create an artifact-task relationship"
+    },
+    "v2beta1ListArtifactResponse": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1Artifact"
+          },
+          "description": "The list of artifacts returned."
+        },
+        "total_size": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The total number of artifacts available. This field is not always populated."
+        },
+        "next_page_token": {
+          "type": "string",
+          "description": "A token to retrieve the next page of results, or empty if there are no\nmore results in the list."
+        }
+      }
+    },
+    "v2beta1ListArtifactTasksResponse": {
+      "type": "object",
+      "properties": {
+        "artifact_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1ArtifactTask"
+          }
+        },
+        "total_size": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "next_page_token": {
+          "type": "string"
+        }
+      }
+    },
+    "AuthorizeRequestResources": {
+      "type": "string",
+      "enum": [
+        "UNASSIGNED_RESOURCES",
+        "VIEWERS"
+      ],
+      "default": "UNASSIGNED_RESOURCES",
+      "description": "Type of resources in pipelines system."
+    },
+    "AuthorizeRequestVerb": {
+      "type": "string",
+      "enum": [
+        "UNASSIGNED_VERB",
+        "CREATE",
+        "GET",
+        "DELETE"
+      ],
+      "default": "UNASSIGNED_VERB",
+      "description": "Type of verbs that act on the resources."
     },
     "v2beta1Experiment": {
       "type": "object",
@@ -1856,14 +2582,6 @@
           "title": "Returns the pipeline storage type (database or kubernetes)"
         }
       }
-    },
-    "protobufNullValue": {
-      "type": "string",
-      "enum": [
-        "NULL_VALUE"
-      ],
-      "default": "NULL_VALUE",
-      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     },
     "v2beta1CreatePipelineAndVersionRequest": {
       "type": "object",
@@ -2214,6 +2932,50 @@
       },
       "description": "Trigger defines what starts a pipeline run."
     },
+    "InputOutputsIOArtifact": {
+      "type": "object",
+      "properties": {
+        "parameter_name": {
+          "type": "string",
+          "description": "Optional, this is only included on Runtime Tasks when the parameter name is known."
+        },
+        "value": {
+          "$ref": "#/definitions/v2beta1Artifact"
+        },
+        "producer": {
+          "$ref": "#/definitions/InputOutputsIOProducer",
+          "title": "All IO artifacts have a producer, so the following\nfields are required. In the case of importer\nwhere the artifact is set to reimport = true\nthe name & key are importer-[0-9]+ and \"artifact\""
+        }
+      }
+    },
+    "InputOutputsIOProducer": {
+      "type": "object",
+      "properties": {
+        "task_name": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "description": "This would be the equivalent of output_parameter_key from the upstream task\nwhen it's a parameter input, or output_artifact_key when it is an Artifact."
+        }
+      }
+    },
+    "InputOutputsParameter": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional, this is only included on Runtime Tasks when the parameter name is known."
+        },
+        "producer": {
+          "$ref": "#/definitions/InputOutputsIOProducer",
+          "description": "Not all Parameters have task producers,\nFor example they can also be Runtime Constants.\nWhereas in the case of a PipelineChannel, they\ndo have a producer."
+        }
+      }
+    },
     "PipelineTaskDetailChildTask": {
       "type": "object",
       "properties": {
@@ -2221,26 +2983,83 @@
           "type": "string",
           "description": "System-generated ID of a task."
         },
-        "pod_name": {
-          "type": "string",
+        "name": {
+          "type": "string"
+        },
+        "pods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/PipelineTaskDetailTaskPod"
+          },
           "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
         }
       },
       "description": "A dependent task that requires this one to succeed.\nRepresented by either task_id or pod_name."
     },
-    "v2beta1ArtifactList": {
+    "PipelineTaskDetailInputOutputs": {
       "type": "object",
       "properties": {
-        "artifact_ids": {
+        "parameters": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "int64"
+            "type": "object",
+            "$ref": "#/definitions/InputOutputsParameter"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/InputOutputsIOArtifact"
           },
-          "description": "A list of artifact metadata ids."
+          "description": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks."
         }
-      },
-      "description": "A list of artifact metadata."
+      }
+    },
+    "PipelineTaskDetailTaskPod": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "PipelineTaskDetailTaskType": {
+      "type": "string",
+      "enum": [
+        "ROOT",
+        "RUNTIME",
+        "CONDITION_BRANCH",
+        "CONDITION",
+        "LOOP",
+        "LOOP_ITERATION",
+        "EXIT_HANDLER",
+        "DAG"
+      ],
+      "default": "ROOT",
+      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
+    },
+    "PipelineTaskDetailTypeAttributes": {
+      "type": "object",
+      "properties": {
+        "iteration_index": {
+          "type": "string",
+          "format": "int64",
+          "title": "Optional. Applies to type LOOP_ITERATION"
+        },
+        "iteration_count": {
+          "type": "string",
+          "format": "int64",
+          "title": "Optional. Applies to type LOOP"
+        }
+      }
     },
     "v2beta1ListRunsResponse": {
       "type": "object",
@@ -2264,20 +3083,52 @@
         }
       }
     },
+    "v2beta1ListTasksResponse": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+          }
+        },
+        "next_page_token": {
+          "type": "string"
+        },
+        "total_size": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
     "v2beta1PipelineTaskDetail": {
       "type": "object",
       "properties": {
-        "run_id": {
+        "name": {
+          "type": "string"
+        },
+        "display_name": {
           "type": "string",
-          "description": "ID of the parent run."
+          "description": "User specified name of a task that is defined in\n[Pipeline.spec][]."
         },
         "task_id": {
           "type": "string",
           "description": "System-generated ID of a task."
         },
-        "display_name": {
+        "run_id": {
           "type": "string",
-          "description": "User specified name of a task that is defined in\n[Pipeline.spec][]."
+          "description": "ID of the parent run."
+        },
+        "pods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/PipelineTaskDetailTaskPod"
+          }
+        },
+        "cache_fingerprint": {
+          "type": "string"
         },
         "create_time": {
           "type": "string",
@@ -2294,40 +3145,14 @@
           "format": "date-time",
           "description": "Completion time of a task."
         },
-        "executor_detail": {
-          "$ref": "#/definitions/v2beta1PipelineTaskExecutorDetail",
-          "description": "Execution information of a task."
-        },
-        "state": {
+        "status": {
           "$ref": "#/definitions/v2beta1RuntimeState",
-          "description": "Runtime state of a task."
+          "title": "Runtime state of a Task"
         },
-        "execution_id": {
-          "type": "string",
-          "format": "int64",
-          "description": "Execution id of the corresponding entry in ML metadata store."
-        },
-        "error": {
-          "$ref": "#/definitions/googlerpcStatus",
-          "description": "The error that occurred during task execution.\nOnly populated when the task is in FAILED or CANCELED state."
-        },
-        "inputs": {
+        "status_metadata": {
           "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v2beta1ArtifactList"
-          },
-          "description": "Input artifacts of the task."
-        },
-        "outputs": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v2beta1ArtifactList"
-          },
-          "description": "Output artifacts of the task."
-        },
-        "parent_task_id": {
-          "type": "string",
-          "description": "ID of the parent task if the task is within a component scope.\nEmpty if the task is at the root level."
+          "additionalProperties": {},
+          "title": "Custom status metadata, this can be used to provide\nadditional status info for a given task during runtime"
         },
         "state_history": {
           "type": "array",
@@ -2337,9 +3162,19 @@
           },
           "description": "A sequence of task statuses. This field keeps a record\nof state transitions."
         },
-        "pod_name": {
+        "type": {
+          "$ref": "#/definitions/PipelineTaskDetailTaskType"
+        },
+        "type_attributes": {
+          "$ref": "#/definitions/PipelineTaskDetailTypeAttributes"
+        },
+        "error": {
+          "$ref": "#/definitions/googlerpcStatus",
+          "description": "The error that occurred during task execution.\nOnly populated when the task is in FAILED or CANCELED state."
+        },
+        "parent_task_id": {
           "type": "string",
-          "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
+          "description": "ID of the parent task if the task is within a component scope.\nEmpty if the task is at the root level."
         },
         "child_tasks": {
           "type": "array",
@@ -2347,38 +3182,16 @@
             "type": "object",
             "$ref": "#/definitions/PipelineTaskDetailChildTask"
           },
-          "description": "Sequence of dependen tasks."
+          "description": "Sequence of dependent tasks."
+        },
+        "inputs": {
+          "$ref": "#/definitions/PipelineTaskDetailInputOutputs"
+        },
+        "outputs": {
+          "$ref": "#/definitions/PipelineTaskDetailInputOutputs"
         }
       },
       "description": "Runtime information of a task execution."
-    },
-    "v2beta1PipelineTaskExecutorDetail": {
-      "type": "object",
-      "properties": {
-        "main_job": {
-          "type": "string",
-          "description": "The name of the job for the main container execution."
-        },
-        "pre_caching_check_job": {
-          "type": "string",
-          "description": "The name of the job for the pre-caching-check container\nexecution. This job will be available if the\nRun.pipeline_spec specifies the `pre_caching_check` hook in\nthe lifecycle events."
-        },
-        "failed_main_jobs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The names of the previously failed job for the main container\nexecutions. The list includes the all attempts in chronological order."
-        },
-        "failed_pre_caching_check_jobs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The names of the previously failed job for the\npre-caching-check container executions. This job will be available if the\nRun.pipeline_spec specifies the `pre_caching_check` hook in\nthe lifecycle events.\nThe list includes the all attempts in chronological order."
-        }
-      },
-      "description": "Runtime information of a pipeline task executor."
     },
     "v2beta1ReadArtifactResponse": {
       "type": "object",
@@ -2458,7 +3271,7 @@
         },
         "run_details": {
           "$ref": "#/definitions/v2beta1RunDetails",
-          "description": "Output. Runtime details of a run."
+          "title": "Output. Runtime details of a run.\nEither remove or deprecate this"
         },
         "recurring_run_id": {
           "type": "string",
@@ -2471,6 +3284,18 @@
             "$ref": "#/definitions/v2beta1RuntimeStatus"
           },
           "description": "Output. A sequence of run statuses. This field keeps a record\nof state transitions."
+        },
+        "pipeline_reference": {
+          "$ref": "#/definitions/v2beta1PipelineVersionReference",
+          "description": "Output only. Reference to the pipeline used for this run.",
+          "readOnly": true
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+          }
         }
       }
     },

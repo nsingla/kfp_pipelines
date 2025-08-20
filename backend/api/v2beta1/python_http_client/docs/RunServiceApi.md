@@ -4,6 +4,9 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**create_task**](RunServiceApi.md#create_task) | **POST** /apis/v2beta1/tasks | Creates a new task.
+[**get_task**](RunServiceApi.md#get_task) | **GET** /apis/v2beta1/tasks/{task_id} | Gets a specific task by ID.
+[**list_tasks**](RunServiceApi.md#list_tasks) | **GET** /apis/v2beta1/tasks | Lists tasks with optional filtering.
 [**run_service_archive_run**](RunServiceApi.md#run_service_archive_run) | **POST** /apis/v2beta1/runs/{run_id}:archive | Archives a run in an experiment given by run ID and experiment ID.
 [**run_service_create_run**](RunServiceApi.md#run_service_create_run) | **POST** /apis/v2beta1/runs | Creates a new run in an experiment specified by experiment ID. If experiment ID is not specified, the run is created in the default experiment.
 [**run_service_delete_run**](RunServiceApi.md#run_service_delete_run) | **DELETE** /apis/v2beta1/runs/{run_id} | Deletes a run in an experiment given by run ID and experiment ID.
@@ -13,7 +16,246 @@ Method | HTTP request | Description
 [**run_service_retry_run**](RunServiceApi.md#run_service_retry_run) | **POST** /apis/v2beta1/runs/{run_id}:retry | Re-initiates a failed or terminated run.
 [**run_service_terminate_run**](RunServiceApi.md#run_service_terminate_run) | **POST** /apis/v2beta1/runs/{run_id}:terminate | Terminates an active run.
 [**run_service_unarchive_run**](RunServiceApi.md#run_service_unarchive_run) | **POST** /apis/v2beta1/runs/{run_id}:unarchive | Restores an archived run in an experiment given by run ID and experiment ID.
+[**update_task**](RunServiceApi.md#update_task) | **PATCH** /apis/v2beta1/tasks/{task_id} | Updates an existing task.
 
+
+# **create_task**
+> V2beta1PipelineTaskDetail create_task(task)
+
+Creates a new task.
+
+### Example
+
+* Api Key Authentication (Bearer):
+```python
+from __future__ import print_function
+import time
+import kfp_server_api
+from kfp_server_api.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: Bearer
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost",
+    api_key = {
+        'authorization': 'YOUR_API_KEY'
+    }
+)
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['authorization'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with kfp_server_api.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kfp_server_api.RunServiceApi(api_client)
+    task = kfp_server_api.V2beta1PipelineTaskDetail() # V2beta1PipelineTaskDetail | 
+
+    try:
+        # Creates a new task.
+        api_response = api_instance.create_task(task)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling RunServiceApi->create_task: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **task** | [**V2beta1PipelineTaskDetail**](V2beta1PipelineTaskDetail.md)|  | 
+
+### Return type
+
+[**V2beta1PipelineTaskDetail**](V2beta1PipelineTaskDetail.md)
+
+### Authorization
+
+[Bearer](../README.md#Bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | A successful response. |  -  |
+**0** | An unexpected error response. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_task**
+> V2beta1PipelineTaskDetail get_task(task_id)
+
+Gets a specific task by ID.
+
+### Example
+
+* Api Key Authentication (Bearer):
+```python
+from __future__ import print_function
+import time
+import kfp_server_api
+from kfp_server_api.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: Bearer
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost",
+    api_key = {
+        'authorization': 'YOUR_API_KEY'
+    }
+)
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['authorization'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with kfp_server_api.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kfp_server_api.RunServiceApi(api_client)
+    task_id = 'task_id_example' # str | 
+
+    try:
+        # Gets a specific task by ID.
+        api_response = api_instance.get_task(task_id)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling RunServiceApi->get_task: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **task_id** | **str**|  | 
+
+### Return type
+
+[**V2beta1PipelineTaskDetail**](V2beta1PipelineTaskDetail.md)
+
+### Authorization
+
+[Bearer](../README.md#Bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | A successful response. |  -  |
+**0** | An unexpected error response. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **list_tasks**
+> V2beta1ListTasksResponse list_tasks(parent_id=parent_id, run_id=run_id, page_size=page_size, page_token=page_token, filter=filter, order_by=order_by)
+
+Lists tasks with optional filtering.
+
+### Example
+
+* Api Key Authentication (Bearer):
+```python
+from __future__ import print_function
+import time
+import kfp_server_api
+from kfp_server_api.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: Bearer
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost",
+    api_key = {
+        'authorization': 'YOUR_API_KEY'
+    }
+)
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['authorization'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with kfp_server_api.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kfp_server_api.RunServiceApi(api_client)
+    parent_id = 'parent_id_example' # str | Optional, List all tasks with this parent task. (optional)
+run_id = 'run_id_example' # str | Optional. List all tasks for this run. (optional)
+page_size = 56 # int |  (optional)
+page_token = 'page_token_example' # str |  (optional)
+filter = 'filter_example' # str |  (optional)
+order_by = 'order_by_example' # str |  (optional)
+
+    try:
+        # Lists tasks with optional filtering.
+        api_response = api_instance.list_tasks(parent_id=parent_id, run_id=run_id, page_size=page_size, page_token=page_token, filter=filter, order_by=order_by)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling RunServiceApi->list_tasks: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **parent_id** | **str**| Optional, List all tasks with this parent task. | [optional] 
+ **run_id** | **str**| Optional. List all tasks for this run. | [optional] 
+ **page_size** | **int**|  | [optional] 
+ **page_token** | **str**|  | [optional] 
+ **filter** | **str**|  | [optional] 
+ **order_by** | **str**|  | [optional] 
+
+### Return type
+
+[**V2beta1ListTasksResponse**](V2beta1ListTasksResponse.md)
+
+### Authorization
+
+[Bearer](../README.md#Bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | A successful response. |  -  |
+**0** | An unexpected error response. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **run_service_archive_run**
 > object run_service_archive_run(run_id, experiment_id=experiment_id)
@@ -719,6 +961,84 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | A successful response. |  -  |
+**0** | An unexpected error response. |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_task**
+> V2beta1PipelineTaskDetail update_task(task_id, task)
+
+Updates an existing task.
+
+### Example
+
+* Api Key Authentication (Bearer):
+```python
+from __future__ import print_function
+import time
+import kfp_server_api
+from kfp_server_api.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: Bearer
+configuration = kfp_server_api.Configuration(
+    host = "http://localhost",
+    api_key = {
+        'authorization': 'YOUR_API_KEY'
+    }
+)
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['authorization'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with kfp_server_api.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = kfp_server_api.RunServiceApi(api_client)
+    task_id = 'task_id_example' # str | 
+task = kfp_server_api.V2beta1PipelineTaskDetail() # V2beta1PipelineTaskDetail | 
+
+    try:
+        # Updates an existing task.
+        api_response = api_instance.update_task(task_id, task)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling RunServiceApi->update_task: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **task_id** | **str**|  | 
+ **task** | [**V2beta1PipelineTaskDetail**](V2beta1PipelineTaskDetail.md)|  | 
+
+### Return type
+
+[**V2beta1PipelineTaskDetail**](V2beta1PipelineTaskDetail.md)
+
+### Authorization
+
+[Bearer](../README.md#Bearer)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details

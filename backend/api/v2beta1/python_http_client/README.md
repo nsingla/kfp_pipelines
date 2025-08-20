@@ -78,16 +78,15 @@ configuration = kfp_server_api.Configuration(
 # Enter a context with an instance of the API client
 with kfp_server_api.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = kfp_server_api.AuthServiceApi(api_client)
-    namespace = 'namespace_example' # str | Namespace the resource belongs to. (optional)
-resources = 'UNASSIGNED_RESOURCES' # str | Resource type asking for authorization. (optional) (default to 'UNASSIGNED_RESOURCES')
-verb = 'UNASSIGNED_VERB' # str | Verb on the resource asking for authorization. (optional) (default to 'UNASSIGNED_VERB')
+    api_instance = kfp_server_api.ArtifactServiceApi(api_client)
+    body = kfp_server_api.V2beta1CreateArtifactRequest() # V2beta1CreateArtifactRequest | 
 
     try:
-        api_response = api_instance.auth_service_authorize(namespace=namespace, resources=resources, verb=verb)
+        # Creates a new artifact.
+        api_response = api_instance.create_artifact(body)
         pprint(api_response)
     except ApiException as e:
-        print("Exception when calling AuthServiceApi->auth_service_authorize: %s\n" % e)
+        print("Exception when calling ArtifactServiceApi->create_artifact: %s\n" % e)
     
 ```
 
@@ -97,6 +96,14 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*ArtifactServiceApi* | [**create_artifact**](docs/ArtifactServiceApi.md#create_artifact) | **POST** /apis/v2beta1/artifacts | Creates a new artifact.
+*ArtifactServiceApi* | [**get_artifact**](docs/ArtifactServiceApi.md#get_artifact) | **GET** /apis/v2beta1/artifacts/{artifact_id} | Finds a specific Artifact by ID.
+*ArtifactServiceApi* | [**get_metric**](docs/ArtifactServiceApi.md#get_metric) | **GET** /apis/v2beta1/metrics/{task_id}/{name} | Gets a metric by task ID and name.
+*ArtifactServiceApi* | [**list_artifact_tasks**](docs/ArtifactServiceApi.md#list_artifact_tasks) | **GET** /apis/v2beta1/artifact_tasks | Lists artifact-task relationships.
+*ArtifactServiceApi* | [**list_artifacts**](docs/ArtifactServiceApi.md#list_artifacts) | **GET** /apis/v2beta1/artifacts | Finds all artifacts within the specified namespace.
+*ArtifactServiceApi* | [**list_metrics**](docs/ArtifactServiceApi.md#list_metrics) | **GET** /apis/v2beta1/metrics | Lists all metrics.
+*ArtifactServiceApi* | [**log_metric**](docs/ArtifactServiceApi.md#log_metric) | **POST** /apis/v2beta1/metrics | Logs a metric for a specific task.
+*ArtifactServiceApi* | [**update_artifact**](docs/ArtifactServiceApi.md#update_artifact) | **PUT** /apis/v2beta1/artifacts/{artifact.artifact_id} | Updates an existing artifact.
 *AuthServiceApi* | [**auth_service_authorize**](docs/AuthServiceApi.md#auth_service_authorize) | **GET** /apis/v2beta1/auth | 
 *ExperimentServiceApi* | [**experiment_service_archive_experiment**](docs/ExperimentServiceApi.md#experiment_service_archive_experiment) | **POST** /apis/v2beta1/experiments/{experiment_id}:archive | Archives an experiment and the experiment&#39;s runs and recurring runs.
 *ExperimentServiceApi* | [**experiment_service_create_experiment**](docs/ExperimentServiceApi.md#experiment_service_create_experiment) | **POST** /apis/v2beta1/experiments | Creates a new experiment.
@@ -125,6 +132,9 @@ Class | Method | HTTP request | Description
 *RecurringRunServiceApi* | [**recurring_run_service_list_recurring_runs**](docs/RecurringRunServiceApi.md#recurring_run_service_list_recurring_runs) | **GET** /apis/v2beta1/recurringruns | Finds all recurring runs given experiment and namespace.  If experiment ID is not specified, find all recurring runs across all experiments.
 *ReportServiceApi* | [**report_service_report_scheduled_workflow**](docs/ReportServiceApi.md#report_service_report_scheduled_workflow) | **POST** /apis/v2beta1/scheduledworkflows | 
 *ReportServiceApi* | [**report_service_report_workflow**](docs/ReportServiceApi.md#report_service_report_workflow) | **POST** /apis/v2beta1/workflows | 
+*RunServiceApi* | [**create_task**](docs/RunServiceApi.md#create_task) | **POST** /apis/v2beta1/tasks | Creates a new task.
+*RunServiceApi* | [**get_task**](docs/RunServiceApi.md#get_task) | **GET** /apis/v2beta1/tasks/{task_id} | Gets a specific task by ID.
+*RunServiceApi* | [**list_tasks**](docs/RunServiceApi.md#list_tasks) | **GET** /apis/v2beta1/tasks | Lists tasks with optional filtering.
 *RunServiceApi* | [**run_service_archive_run**](docs/RunServiceApi.md#run_service_archive_run) | **POST** /apis/v2beta1/runs/{run_id}:archive | Archives a run in an experiment given by run ID and experiment ID.
 *RunServiceApi* | [**run_service_create_run**](docs/RunServiceApi.md#run_service_create_run) | **POST** /apis/v2beta1/runs | Creates a new run in an experiment specified by experiment ID. If experiment ID is not specified, the run is created in the default experiment.
 *RunServiceApi* | [**run_service_delete_run**](docs/RunServiceApi.md#run_service_delete_run) | **DELETE** /apis/v2beta1/runs/{run_id} | Deletes a run in an experiment given by run ID and experiment ID.
@@ -134,11 +144,13 @@ Class | Method | HTTP request | Description
 *RunServiceApi* | [**run_service_retry_run**](docs/RunServiceApi.md#run_service_retry_run) | **POST** /apis/v2beta1/runs/{run_id}:retry | Re-initiates a failed or terminated run.
 *RunServiceApi* | [**run_service_terminate_run**](docs/RunServiceApi.md#run_service_terminate_run) | **POST** /apis/v2beta1/runs/{run_id}:terminate | Terminates an active run.
 *RunServiceApi* | [**run_service_unarchive_run**](docs/RunServiceApi.md#run_service_unarchive_run) | **POST** /apis/v2beta1/runs/{run_id}:unarchive | Restores an archived run in an experiment given by run ID and experiment ID.
+*RunServiceApi* | [**update_task**](docs/RunServiceApi.md#update_task) | **PATCH** /apis/v2beta1/tasks/{task_id} | Updates an existing task.
 *VisualizationServiceApi* | [**visualization_service_create_visualization_v1**](docs/VisualizationServiceApi.md#visualization_service_create_visualization_v1) | **POST** /apis/v2beta1/visualizations/{namespace} | 
 
 
 ## Documentation For Models
 
+ - [ArtifactArtifactType](docs/ArtifactArtifactType.md)
  - [AuthorizeRequestResources](docs/AuthorizeRequestResources.md)
  - [AuthorizeRequestVerb](docs/AuthorizeRequestVerb.md)
  - [GooglerpcStatus](docs/GooglerpcStatus.md)
@@ -149,18 +161,31 @@ Class | Method | HTTP request | Description
  - [ProtobufAny](docs/ProtobufAny.md)
  - [ProtobufNullValue](docs/ProtobufNullValue.md)
  - [RecurringRunMode](docs/RecurringRunMode.md)
+ - [RequiredTheArtifactToUpdateTheArtifactIdFieldIsRequired](docs/RequiredTheArtifactToUpdateTheArtifactIdFieldIsRequired.md)
+ - [V2beta1Artifact](docs/V2beta1Artifact.md)
  - [V2beta1ArtifactList](docs/V2beta1ArtifactList.md)
+ - [V2beta1ArtifactTask](docs/V2beta1ArtifactTask.md)
+ - [V2beta1ArtifactTaskType](docs/V2beta1ArtifactTaskType.md)
+ - [V2beta1CreateArtifactRequest](docs/V2beta1CreateArtifactRequest.md)
  - [V2beta1CreatePipelineAndVersionRequest](docs/V2beta1CreatePipelineAndVersionRequest.md)
  - [V2beta1CronSchedule](docs/V2beta1CronSchedule.md)
  - [V2beta1Experiment](docs/V2beta1Experiment.md)
  - [V2beta1ExperimentStorageState](docs/V2beta1ExperimentStorageState.md)
  - [V2beta1Filter](docs/V2beta1Filter.md)
  - [V2beta1GetHealthzResponse](docs/V2beta1GetHealthzResponse.md)
+ - [V2beta1ListArtifactResponse](docs/V2beta1ListArtifactResponse.md)
+ - [V2beta1ListArtifactTasksResponse](docs/V2beta1ListArtifactTasksResponse.md)
  - [V2beta1ListExperimentsResponse](docs/V2beta1ListExperimentsResponse.md)
+ - [V2beta1ListMetricsResponse](docs/V2beta1ListMetricsResponse.md)
  - [V2beta1ListPipelineVersionsResponse](docs/V2beta1ListPipelineVersionsResponse.md)
  - [V2beta1ListPipelinesResponse](docs/V2beta1ListPipelinesResponse.md)
  - [V2beta1ListRecurringRunsResponse](docs/V2beta1ListRecurringRunsResponse.md)
  - [V2beta1ListRunsResponse](docs/V2beta1ListRunsResponse.md)
+ - [V2beta1ListTasksResponse](docs/V2beta1ListTasksResponse.md)
+ - [V2beta1LogMetricRequest](docs/V2beta1LogMetricRequest.md)
+ - [V2beta1Metric](docs/V2beta1Metric.md)
+ - [V2beta1MetricSchema](docs/V2beta1MetricSchema.md)
+ - [V2beta1MetricType](docs/V2beta1MetricType.md)
  - [V2beta1PeriodicSchedule](docs/V2beta1PeriodicSchedule.md)
  - [V2beta1Pipeline](docs/V2beta1Pipeline.md)
  - [V2beta1PipelineTaskDetail](docs/V2beta1PipelineTaskDetail.md)
