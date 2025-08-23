@@ -1,0 +1,9 @@
+[
+  {
+    "mode": "PIPELINE_RUN",
+    "startTime": 0,
+    "runTime": 5,
+    "numTimes": 2,
+    "pipelineFileName": "add_numbers.yaml"
+  }
+]
