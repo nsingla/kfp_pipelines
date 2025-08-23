@@ -1,11 +1,7 @@
 [project]
-name = "python-rest-client"
+name = "kfp-perf-tests"
 dynamic = ["version"]
-description = "Utility tool to make rest calls"
-authors = [
-    {name = "Nelesh Singla", email = "neleshsingla86@gmail.com"}
-]
-license = {text = "Proprietary"}
+description = "KFP Performance Test Framework"
 requires-python = ">=3.11.9"
 dependencies = [
     "attrs==24.2.0",
