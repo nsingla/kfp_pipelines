@@ -29,14 +29,14 @@ class PipelineRunner(BaseRunner):
         self.metricsToReturn: dict[str, list] = dict()
         self.elapsed_times: list[float] = list()
 
-    def upload_pipeline(self) -> V2beta1Pipeline:
+    async def upload_pipeline(self) -> V2beta1Pipeline:
         pipeline_name: str = f"PerfTestPipeline-{str(time.time())}"
         self.logger.info(f"Uploading Pipeline with name: {pipeline_name}")
         pipeline = self.client.upload_pipeline(pipeline_name=pipeline_name, pipeline_package_path=f"{TestConfig.test_data_dir}/{self.test_scenario}", namespace=TestConfig.NAMESPACE)
         self.logger.info(f"Uploaded Pipeline ID: {pipeline.pipeline_id}")
         return pipeline
 
-    def run_pipeline(self, pipeline_id: str) -> V2beta1Run:
+    async def run_pipeline(self, pipeline_id: str) -> V2beta1Run:
         pipeline_versions:  list[V2beta1PipelineVersion] = self.client.list_pipeline_versions(pipeline_id=pipeline_id).pipeline_versions
         random_pipeline_version: V2beta1PipelineVersion = random.choice(pipeline_versions)
         self.logger.info(f"Creating Pipeline Run for Pipeline with ID: {pipeline_id}, with version ID: {random_pipeline_version} and experiment ID: {self.experiment_id}")
