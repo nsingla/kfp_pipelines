@@ -37,7 +37,7 @@ class TestPerformance:
                 for scenario in scenarios:
                     thread_number += 1
                     logger.info("Running Scenario: " + scenario.mode.name)
-                    if scenario.mode == TestMode.PIPELINE_RUN:
+                    if scenario.mode == TestMode.PIPELINE_RUN or scenario.mode == TestMode.EXPERIMENT:
                         logger.info(
                             f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
                         pipeline_uploader_runner = pipeline_runner.PipelineRunner(scenario)
