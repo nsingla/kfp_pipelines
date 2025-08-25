@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from datetime import datetime
-from runners import base_runner, pipeline_runner
+from runners import base_runner, pipeline_runner, random_get_runner
 from models.test_scenario import TestScenario
 from utils.json_utils import JsonDeserializationUtils
 from enums.test_mode import TestMode
@@ -51,6 +51,11 @@ class TestPerformance:
                             f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
                         pipeline_uploader_runner = pipeline_runner.PipelineRunner(scenario)
                         futures.append(executor.submit(pipeline_uploader_runner.run))
+                    elif scenario.mode == TestMode.RANDOM_GETS:
+                        logger.info(
+                            f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
+                        random_runner = random_get_runner.RandomGetRunner(scenario)
+                        futures.append(executor.submit(random_runner.run))
             for future in as_completed(futures):
                 logger.info(future.result())
         except Exception as e:
