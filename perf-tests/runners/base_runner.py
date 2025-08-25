@@ -1,4 +1,3 @@
-import kfp
 import time
 from abc import abstractmethod
 import datetime
@@ -7,6 +6,7 @@ from config.test_config import TestConfig
 from logging import Logger
 from logger import logger
 from models.test_scenario import TestScenario
+from factory.client_factory import ClientFactory
 
 logger: Logger = logger.Logger().logger
 
@@ -24,14 +24,9 @@ class BaseRunner:
         :param test_scenario: the path of the scenario json file.
         """
 
-        verify_ssl = False if TestConfig.LOCAL else True
         self.logger = logger
-        if TestConfig.IS_KUBEFLOW_MODE:
-            logger.info("Multi User Mode")
-            self.client = kfp.Client(host=TestConfig.KFP_url, namespace=TestConfig.NAMESPACE, verify_ssl=verify_ssl)
-        else:
-            logger.info("Single User Mode")
-            self.client = kfp.Client(host=TestConfig.KFP_url, namespace=TestConfig.NAMESPACE, verify_ssl=verify_ssl)
+        client_factory = ClientFactory()
+        self.kfp_client = client_factory.kfp_client
         self.test_scenario = test_scenario
         self.test_start_date = self.test_start + datetime.timedelta(minutes=test_scenario.start_time)
         self.test_end_date = self.test_start_date + datetime.timedelta(minutes=test_scenario.run_time)

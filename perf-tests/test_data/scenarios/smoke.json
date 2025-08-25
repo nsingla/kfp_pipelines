@@ -14,8 +14,13 @@
     "pipelineFileName": "add_numbers.yaml"
   },
   {
-    "mode": "PIPELINE_RUN",
+    "mode": "RANDOM_GET",
     "startTime": 2,
+    "runTime": 8
+  },
+  {
+    "mode": "PIPELINE_RUN",
+    "startTime": 5,
     "runTime": 5,
     "numTimes": 1,
     "pipelineFileName": "pipeline_with_large_datasets.yaml",
