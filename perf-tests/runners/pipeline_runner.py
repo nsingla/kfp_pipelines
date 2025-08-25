@@ -40,7 +40,7 @@ class PipelineRunner(BaseRunner):
         pipeline_versions:  list[V2beta1PipelineVersion] = self.client.list_pipeline_versions(pipeline_id=pipeline_id).pipeline_versions
         random_pipeline_version: V2beta1PipelineVersion = random.choice(pipeline_versions)
         self.logger.info(f"Creating Pipeline Run for Pipeline with ID: {pipeline_id}, with version ID: {random_pipeline_version} and experiment ID: {self.experiment_id}")
-        run = self.client.run_pipeline(pipeline_id=pipeline_id, version_id=random_pipeline_version.pipeline_version_id, experiment_id=self.experiment_id, enable_caching=TestConfig.CACHE_ENABLED)
+        run = self.client.run_pipeline(pipeline_id=pipeline_id, version_id=random_pipeline_version.pipeline_version_id, experiment_id=self.experiment_id, enable_caching=TestConfig.CACHE_ENABLED, params=self.test_scenario.params)
         self.logger.info(f"Run {run.run_id} created for Pipeline with ID: {pipeline_id}, with version ID: {random_pipeline_version} and experiment ID: {self.experiment_id}")
         return run
 
