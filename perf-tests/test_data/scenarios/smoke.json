@@ -5,5 +5,23 @@
     "runTime": 5,
     "numTimes": 2,
     "pipelineFileName": "add_numbers.yaml"
+  },
+  {
+    "mode": "EXPERIMENT",
+    "startTime": 2,
+    "runTime": 5,
+    "numTimes": 2,
+    "pipelineFileName": "add_numbers.yaml"
+  },
+  {
+    "mode": "PIPELINE_RUN",
+    "startTime": 2,
+    "runTime": 5,
+    "numTimes": 1,
+    "pipelineFileName": "pipeline_with_large_datasets.yaml",
+    "params": {
+      "dataset_name": "20231101.en",
+      "dataset_repo": "wikimedia/wikipedia"
+    }
   }
 ]
