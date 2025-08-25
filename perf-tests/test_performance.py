@@ -18,6 +18,16 @@ class TestPerformance:
     pytest class contains the test method to run multithreading script.
     """
 
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        """
+        Setup method to run before each test.
+        """
+        base_runner.BaseRunner.test_start = datetime.now()
+        logger.info("Setting up test environment")
+        yield
+        logger.info(f"Test completed in {datetime.now() - base_runner.BaseRunner.test_start}")
+        logger.shutdown_handler()
 
     @pytest.mark.performance
     def test_scenario(self):
@@ -29,7 +39,6 @@ class TestPerformance:
         try:
             scenarios: list[TestScenario] = JsonDeserializationUtils.get_list_from_file(f"{TestConfig.test_scenario_directory}/{TestConfig.test_scenario_file_name}",
                                                                                           TestScenario)
-            base_runner.BaseRunner.test_start = datetime.now()
 
             with (ThreadPoolExecutor(max_workers=len(scenarios)) as executor):
                 futures = []

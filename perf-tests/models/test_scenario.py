@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from pydantic import BaseModel, Field, ConfigDict
 from serde.enum_serde import EnumSerDe
 from enums.test_mode import TestMode
@@ -13,3 +13,4 @@ class TestScenario(BaseModel):
     num_times: Optional[int] = Field(alias="numTimes", default=1)
     start_time: int = Field(alias="startTime")
     run_time: int = Field(alias="runTime")
+    params: Optional[dict[str, Any]] = Field(alias="params", default=None)
