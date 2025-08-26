@@ -98,3 +98,5 @@ backend/src/crd/kubernetes/bin
 **/*.html
 reports/
 logs/
+
+*.lock
