@@ -10,7 +10,7 @@ class TestConfig:
     KFP_url = f"http://{KFP_API_HOST}:{KFP_API_PORT}"
     NAMESPACE: str = os.getenv("NAMESPACE", "kubeflow")
     LOCAL: bool = bool(os.getenv("local", "True"))
-    CACHE_ENABLED: bool = bool(os.getenv("cacheEnabled", "True"))
+    CACHE_ENABLED: bool = bool(os.getenv("cacheEnabled", "False"))
 
     # Test Files
     current_directory = Path.cwd()

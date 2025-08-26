@@ -7,7 +7,7 @@ from kfp_server_api import V2beta1Pipeline, V2beta1PipelineVersion, V2beta1Run, 
 from config.test_config import TestConfig
 from models.test_scenario import TestScenario
 
-from base_runner import BaseRunner
+from runners.base_runner import BaseRunner
 
 class RandomGetRunner(BaseRunner):
     page_size: int = 1000
