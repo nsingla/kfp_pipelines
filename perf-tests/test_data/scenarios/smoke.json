@@ -4,17 +4,19 @@
     "startTime": 0,
     "runTime": 5,
     "numTimes": 2,
-    "pipelineFileName": "add_numbers.yaml"
+    "pipelineFileName": "add_numbers.yaml",
+    "params": {"a":4,"b":5}
   },
   {
     "mode": "EXPERIMENT",
     "startTime": 2,
     "runTime": 5,
     "numTimes": 2,
-    "pipelineFileName": "add_numbers.yaml"
+    "pipelineFileName": "add_numbers.yaml",
+    "params": {"a":4,"b":5}
   },
   {
-    "mode": "RANDOM_GET",
+    "mode": "RANDOM_GETS",
     "startTime": 2,
     "runTime": 8
   },

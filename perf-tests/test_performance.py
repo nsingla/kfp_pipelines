@@ -1,6 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from datetime import datetime
-from runners import base_runner, pipeline_runner, random_get_runner
+from runners.base_runner import BaseRunner
+from runners.pipeline_runner import PipelineRunner
+from runners.random_get_runner import RandomGetRunner
 from models.test_scenario import TestScenario
 from utils.json_utils import JsonDeserializationUtils
 from enums.test_mode import TestMode
@@ -9,8 +11,10 @@ from logging import Logger
 
 import pytest
 from config.test_config import TestConfig
+from factory.client_factory import ClientFactory
 
-logger: Logger = logger.Logger(True).logger
+logger = logger.Logger(True)
+colored_logger: Logger = logger.logger
 
 
 class TestPerformance:
@@ -23,11 +27,14 @@ class TestPerformance:
         """
         Setup method to run before each test.
         """
-        base_runner.BaseRunner.test_start = datetime.now()
-        logger.info("Setting up test environment")
+        BaseRunner.test_start = datetime.now()
+        colored_logger.info("Setting up test environment")
         yield
-        logger.info(f"Test completed in {datetime.now() - base_runner.BaseRunner.test_start}")
+        colored_logger.info(f"Test completed in {datetime.now() - BaseRunner.test_start}")
         logger.shutdown_handler()
+
+    def test_nelesh(self):
+        ClientFactory().kfp_client.create_run_from_pipeline_package(f"{TestConfig.pipeline_files_directory}/add_numbers.yaml", enable_caching=TestConfig.CACHE_ENABLED, arguments={"a":4,"b":5})
 
     @pytest.mark.performance
     def test_scenario(self):
@@ -45,19 +52,19 @@ class TestPerformance:
                 thread_number = 0
                 for scenario in scenarios:
                     thread_number += 1
-                    logger.info("Running Scenario: " + scenario.mode.name)
+                    colored_logger.info("Running Scenario: " + scenario.mode.name)
                     if scenario.mode == TestMode.PIPELINE_RUN or scenario.mode == TestMode.EXPERIMENT:
-                        logger.info(
+                        colored_logger.info(
                             f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
-                        pipeline_uploader_runner = pipeline_runner.PipelineRunner(scenario)
+                        pipeline_uploader_runner = PipelineRunner(scenario)
                         futures.append(executor.submit(pipeline_uploader_runner.run))
                     elif scenario.mode == TestMode.RANDOM_GETS:
-                        logger.info(
+                        colored_logger.info(
                             f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
-                        random_runner = random_get_runner.RandomGetRunner(scenario)
+                        random_runner = RandomGetRunner(scenario)
                         futures.append(executor.submit(random_runner.run))
             for future in as_completed(futures):
-                logger.info(future.result())
+                colored_logger.info(future.result())
         except Exception as e:
             test_failed = True
             exception_to_throw = e
