@@ -2,10 +2,14 @@ import time
 from abc import abstractmethod
 import datetime
 
+
+from kfp_server_api import V2beta1Experiment
+
 from config.test_config import TestConfig
 from logging import Logger
 from logger import logger
 from models.test_scenario import TestScenario
+from enums.test_mode import TestMode
 from factory.client_factory import ClientFactory
 
 logger: Logger = logger.Logger().logger
@@ -24,12 +28,22 @@ class BaseRunner:
         :param test_scenario: the path of the scenario json file.
         """
 
+        self.metricsToReturn: dict[str, list] = dict()
         client_factory = ClientFactory()
         self.logger = client_factory.logger
         self.kfp_client = client_factory.kfp_client
         self.test_scenario = test_scenario
         self.test_start_date = self.test_start + datetime.timedelta(minutes=test_scenario.start_time)
         self.test_end_date = self.test_start_date + datetime.timedelta(minutes=test_scenario.run_time)
+        if self.test_scenario.mode == TestMode.EXPERIMENT:
+            experiment_name: str = f"PerfTestExperiment-{str(time.time())}"
+            self.experiment_id = self.kfp_client.create_experiment(name=experiment_name, description="Experiment to capture performance test pipeline runs", namespace=TestConfig.NAMESPACE).experiment_id
+        else:
+            experiments: list[V2beta1Experiment] = self.kfp_client.list_experiments(page_size=1000).experiments
+            for exp in experiments:
+                if exp.display_name.lower() == "default":
+                    self.experiment_id = exp.experiment_id
+                    break
 
     def start(self):
         """
@@ -57,3 +71,10 @@ class BaseRunner:
         different runners.
         """
         pass
+
+    async def call_and_capture_time(self, metric_name: str, func, *args, **kwargs):
+        start = time.perf_counter()
+        result = await func(*args, **kwargs)
+        elapsed_time = time.perf_counter() - start
+        self.metricsToReturn[metric_name].append(elapsed_time)
+        return result

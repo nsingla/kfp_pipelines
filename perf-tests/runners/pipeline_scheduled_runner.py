@@ -1,31 +1,28 @@
 import asyncio
 import datetime
-import os.path
-import random
 
 import time
 
-from kfp_server_api import V2beta1Pipeline, V2beta1PipelineVersion, V2beta1Run, V2beta1RuntimeState, V2beta1Experiment
+from kfp_server_api import V2beta1RecurringRun, V2beta1RuntimeState
 from config.test_config import TestConfig
 from models.test_scenario import TestScenario
 
-from enums.test_mode import TestMode
 from runners.base_runner import BaseRunner
 
-class PipelineRunner(BaseRunner):
+class PipelineScheduledRunner(BaseRunner):
 
     experiment_id: str = None
     polling_wait_time_for_run_to_finish: int = 5000
-    metric_run_times: str = "RunTimes"
 
     def __init__(self, test_scenario: TestScenario):
         super().__init__(test_scenario)
         self.runs_created: list[str] = list()
 
-    def create_run(self) -> V2beta1Run:
+    def create_recurring_run(self) -> V2beta1RecurringRun:
         pipeline_file_path = f"{TestConfig.pipeline_files_directory}/{self.test_scenario.pipeline_file}"
-        self.logger.info(f"Creating Pipeline Run under experiment ID: {self.experiment_id}")
-        run = self.call_and_capture_time("CreateRun", self.kfp_client.create_run_from_pipeline_package, pipeline_file_path, experiment_id=self.experiment_id, enable_caching=TestConfig.CACHE_ENABLED, arguments=self.test_scenario.params)
+        job_name = f"PerfTestScheduledRun-{time.time()}"
+        self.logger.info(f"Creating Scheduled Pipeline Run under experiment ID: {self.experiment_id}")
+        run = self.call_and_capture_time("CreateRecurringRun", self.kfp_client.create_recurring_run, job_name=job_name, pipeline_package_path=pipeline_file_path, experiment_id=self.experiment_id, enable_caching=TestConfig.CACHE_ENABLED, params=self.test_scenario.params, cron_expression=self.test_scenario.cron)
         self.logger.info(f"Run {run.run_id} created for Pipeline under experiment ID: {self.experiment_id}")
         self.runs_created.append(run.run_id)
         return run
@@ -38,8 +35,8 @@ class PipelineRunner(BaseRunner):
             pipeline_state = self.kfp_client.get_run(run_id).state
 
     async def upload_and_run_pipeline(self):
-        created_run = self.create_run()
-        await self.call_and_capture_time("RunCompletionTime", self.wait_for_run_to_finish, run_id=created_run.run_id)
+        created_run = self.create_recurring_run()
+        await self.call_and_capture_time("RecurringRunCompletionTime", self.wait_for_run_to_finish, run_id=created_run.run_id)
 
     async def stop(self):
         while datetime.datetime.now() < self.test_end_date:
