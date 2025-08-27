@@ -14,3 +14,4 @@ class TestScenario(BaseModel):
     start_time: int = Field(alias="startTime")
     run_time: int = Field(alias="runTime")
     params: Optional[dict[str, Any]] = Field(alias="params", default=None)
+    cron: Optional[str] = Field(default=None)
