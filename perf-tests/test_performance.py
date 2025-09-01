@@ -53,16 +53,30 @@ class TestPerformance:
                 for scenario in scenarios:
                     thread_number += 1
                     colored_logger.info("Running Scenario: " + scenario.mode.name)
-                    if scenario.mode == TestMode.PIPELINE_RUN or scenario.mode == TestMode.EXPERIMENT:
-                        colored_logger.info(
+                    match scenario.mode:
+                        case TestMode.PIPELINE_RUN:
+                        case TestMode.EXPERIMENT:
+                            colored_logger.info(
+                                f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
+                            pipeline_run_runner = PipelineRunner(scenario)
+                            futures.append(executor.submit(pipeline_run_runner.run))
+                        case TestMode.PIPELINE_UPLOAD:
+                            colored_logger.info(
+                                f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
+                            pipeline_uploader_runner = PipelineUploaderRunner(scenario)
+                            futures.append(executor.submit(pipeline_uploader_runner.run))
+                        case TestMode.PIPELINE_SCHEDULED_RUN:
+                            colored_logger.info(
+                                f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
+                            pipeline_scheduled_run_runner = PipelineScheduledRunRunner(scenario)
+                            futures.append(executor.submit(pipeline_scheduled_run_runner.run))
+                        case TestMode.RANDOM_GETS:
+                            colored_logger.info(
                             f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
-                        pipeline_uploader_runner = PipelineRunner(scenario)
-                        futures.append(executor.submit(pipeline_uploader_runner.run))
-                    elif scenario.mode == TestMode.RANDOM_GETS:
-                        colored_logger.info(
-                            f"Thread {thread_number}: Run Pipeline Operation: {scenario.model_dump(exclude_none=True)}")
-                        random_runner = RandomGetRunner(scenario)
-                        futures.append(executor.submit(random_runner.run))
+                            random_runner = RandomGetRunner(scenario)
+                            futures.append(executor.submit(random_runner.run))
+                    
+                        
             for future in as_completed(futures):
                 colored_logger.info(future.result())
         except Exception as e:

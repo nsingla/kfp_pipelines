@@ -8,11 +8,15 @@ The performance test framework is built to run concurrent, configurable test sce
 
 ## Architecture
 
+The framework follows a modular, extensible architecture designed for concurrent test execution and comprehensive performance measurement.
+
+![Performance Test Architecture](PerfTestArch.png)
+
 ### Core Components
 
 ```
 perf-tests/
-├── test_performance.py      # Main test entry point
+├── test_performance.py      # Main test entry point and orchestration
 ├── runners/                 # Test execution engines
 │   ├── base_runner.py      # Abstract base class for all runners
 │   └── pipeline_runner.py  # Pipeline-specific test runner
@@ -33,6 +37,14 @@ perf-tests/
     ├── scenarios/          # JSON test scenario files
     └── pipeline_files/     # Pipeline YAML definitions
 ```
+
+### Architecture Overview
+
+The framework operates on three main layers:
+
+1. **Configuration Layer**: JSON-based test scenarios and environment configuration
+2. **Execution Layer**: Concurrent test runners managed by thread pools
+3. **Data Layer**: Structured logging, metrics collection, and result aggregation
 
 ## Test Scenario JSON Configuration
 
@@ -56,17 +68,50 @@ The framework uses JSON files to define test scenarios. These files specify the 
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `mode` | string | Test execution mode (PIPELINE_RUN, EXPERIMENT, RANDOM_GETS) | Yes |
-| `startTime` | integer | Delay in minutes before starting the test | Yes |
-| `runTime` | integer | Duration in minutes to run the test | Yes |
-| `numTimes` | integer | Number of pipeline runs to execute | No |
-| `pipelineFileName` | string | Name of the pipeline YAML file to use | No |
+| `mode` | string | Test execution mode (PIPELINE_RUN, EXPERIMENT, RANDOM_GETS, PIPELINE_UPLOAD, PIPELINE_SCHEDULED_RUN) | Yes |
+| `startTime` | integer | Delay in minutes before starting the test (must be ≥ 0) | Yes |
+| `runTime` | integer | Duration in minutes to run the test (must be > 0) | Yes |
+| `numTimes` | integer | Number of pipeline runs to execute or number of pipelines to upload (must be > 0) | No* |
+| `pipelineFileName` | string | Name of the pipeline YAML file to use | No* |
+| `params` | object | Additional parameters for pipeline execution | No |
+| `cron` | string | Cron expression for scheduled runs (required for PIPELINE_SCHEDULED_RUN) | No* |
+
+*Required for most modes except RANDOM_GETS. See validation rules below.
 
 ### Test Modes
 
 1. **PIPELINE_RUN**: Executes pipeline runs in the default experiment
 2. **EXPERIMENT**: Creates a new experiment and runs pipelines within it
 3. **RANDOM_GETS**: Performs random GET operations (not yet implemented)
+4. **PIPELINE_UPLOAD**: Uploads multiple pipeline definitions
+5. **PIPELINE_SCHEDULED_RUN**: Creates scheduled pipeline runs using cron expressions
+
+### Validation Rules
+
+The framework automatically validates test scenarios based on the following rules:
+
+#### General Validation
+- `startTime` must be non-negative (≥ 0)
+- `runTime` must be positive (> 0)
+- `numTimes` must be positive (> 0) when specified
+
+#### Mode-Specific Requirements
+- **PIPELINE_RUN**: Requires `pipelineFileName` and `numTimes`
+- **EXPERIMENT**: Requires `pipelineFileName` and `numTimes`
+- **PIPELINE_UPLOAD**: Requires `pipelineFileName` and `numTimes`
+- **PIPELINE_SCHEDULED_RUN**: Requires `pipelineFileName`, `numTimes`, and `cron`
+- **RANDOM_GETS**: No additional requirements
+
+#### Cron Expression Validation
+When using `PIPELINE_SCHEDULED_RUN` mode, the `cron` field must follow standard cron format:
+```
+minute hour day month day_of_week
+```
+- minute: 0-59
+- hour: 0-23
+- day: 1-31
+- month: 1-12
+- day_of_week: 0-6 (Sunday = 0)
 
 ### Example Scenario Files
 
@@ -88,6 +133,49 @@ This scenario:
 - Runs for 5 minutes
 - Executes 2 pipeline runs
 - Uses the `add_numbers.yaml` pipeline
+
+#### Load Test (`load_test.json`)
+```json
+[
+  {
+    "mode": "PIPELINE_RUN",
+    "startTime": 0,
+    "runTime": 30,
+    "numTimes": 10,
+    "pipelineFileName": "complex_pipeline.yaml"
+  },
+  {
+    "mode": "EXPERIMENT",
+    "startTime": 5,
+    "runTime": 25,
+    "numTimes": 5,
+    "pipelineFileName": "ml_training.yaml"
+  }
+]
+```
+
+This scenario demonstrates concurrent execution of multiple test types with staggered start times.
+
+#### Scheduled Run Test (`scheduled_test.json`)
+```json
+[
+  {
+    "mode": "PIPELINE_SCHEDULED_RUN",
+    "startTime": 0,
+    "runTime": 60,
+    "numTimes": 3,
+    "pipelineFileName": "data_processing.yaml",
+    "cron": "0 */2 * * *"
+  }
+]
+```
+
+This scenario:
+- Starts immediately (0 minute delay)
+- Runs for 60 minutes
+- Creates 3 scheduled pipeline runs
+- Uses the `data_processing.yaml` pipeline
+- Schedules runs every 2 hours using cron expression "0 */2 * * *"
 
 ## Runner Architecture
 
@@ -134,10 +222,12 @@ class TestScenario(BaseModel):
 ```
 
 Uses Pydantic for:
-- Data validation
+- Data validation with custom model validators
 - JSON deserialization
 - Type safety
 - Field aliasing (camelCase JSON to snake_case Python)
+- Automatic validation of test mode requirements
+- Cron expression format validation
 
 ## Configuration Management
 
@@ -204,6 +294,15 @@ Features:
 5. **Monitoring**: Track execution progress and collect metrics
 6. **Results Collection**: Gather performance metrics from all runners
 
+### Execution Timeline
+
+```
+Time 0:    Scenario 1 starts (PIPELINE_RUN)
+Time 5:    Scenario 2 starts (EXPERIMENT)
+Time 10:   Scenario 1 completes
+Time 30:   Scenario 2 completes
+```
+
 ## Running Tests
 
 ### Prerequisites
@@ -233,6 +332,9 @@ pytest test_performance.py::TestPerformance::test_scenario -v
 
 # Run with specific scenario file
 SCENARIO_FILE_NAME=load_test.json pytest test_performance.py::TestPerformance::test_scenario -v
+
+# Run with custom configuration
+API_HOST=my-kfp-cluster API_PORT=443 pytest test_performance.py::TestPerformance::test_scenario -v
 ```
 
 ## Creating Custom Test Scenarios
@@ -271,6 +373,15 @@ The framework collects various performance metrics:
 - **Concurrent Operations**: Number of simultaneous operations
 - **Success/Failure Rates**: Test execution success metrics
 - **Resource Utilization**: System resource usage during tests
+- **Pipeline Upload Times**: Time to upload pipeline definitions
+- **Run Creation Latency**: Time to create pipeline runs
+
+### Metrics Collection
+
+Metrics are collected at multiple levels:
+- **Individual Run Level**: Per-pipeline execution metrics
+- **Scenario Level**: Aggregated metrics per test scenario
+- **Framework Level**: Overall test execution performance
 
 ## Extending the Framework
 
@@ -287,6 +398,22 @@ The framework collects various performance metrics:
 2. Update `metricsToReturn` dictionary
 3. Modify logging to capture new data points
 
+### Example: Adding Custom Runner
+
+```python
+class CustomRunner(BaseRunner):
+    def start(self):
+        # Implement custom start logic if you want to override default start behavior
+        pass
+    def run(self):
+        # Implement custom test logic
+        pass
+    
+    def stop(self):
+        # Implement cleanup logic
+        pass
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -295,10 +422,22 @@ The framework collects various performance metrics:
 2. **Namespace Issues**: Ensure correct namespace is set
 3. **Pipeline Upload Failures**: Check pipeline YAML syntax
 4. **Timing Issues**: Verify start/run time calculations
+5. **Permission Errors**: Check KFP API access permissions
 
 ### Debug Mode
 
-Enable debug logging by setting appropriate log level in configuration.
+Enable debug logging by setting appropriate log level in configuration:
+
+```python
+# In logging_config.py
+LOG_LEVEL = logging.DEBUG
+```
+
+### Performance Tuning
+
+- **Concurrency**: Adjust thread pool size based on system resources
+- **Timing**: Use staggered start times to avoid resource contention
+- **Monitoring**: Monitor system resources during test execution
 
 ## Contributing
 
@@ -308,4 +447,20 @@ When contributing to the performance test framework:
 2. Add appropriate logging for new features
 3. Update documentation for new functionality
 4. Include test scenarios for new test modes
-5. Ensure backward compatibility with existing configurations 
+5. Ensure backward compatibility with existing configurations
+6. Add comprehensive error handling
+7. Include performance benchmarks for new features
+
+### Development Guidelines
+
+- Use type hints for all function parameters and return values
+- Follow PEP 8 coding standards
+- Add docstrings for all public methods
+- Include unit tests for new functionality
+- Update this README for any architectural changes
+
+## Related Documentation
+
+- [KFP SDK Documentation](https://kubeflow-pipelines.readthedocs.io/)
+- [Performance Testing Best Practices](docs/performance-testing.md)
+- [Architecture Decisions](docs/architecture-decisions.md) 
