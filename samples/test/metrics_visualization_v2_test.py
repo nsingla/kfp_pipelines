@@ -17,14 +17,13 @@ from __future__ import annotations
 import unittest
 import unittest.mock as mock
 
-import kfp
 from kfp.samples.test.utils import KfpTask
 from kfp.samples.test.utils import run_pipeline_func
 from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .metrics_visualization_v2 import metrics_visualization_pipeline
+from test_data.components.metrics_visualization_v2 import metrics_visualization_pipeline
 
 
 def verify(t: unittest.TestCase, run: kfp_server_api.ApiRun,

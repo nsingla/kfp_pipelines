@@ -198,7 +198,7 @@ jobs:
         id: build-sample-modelcar-image
         if: ${{ steps.deploy.outcome == 'success' }}
         run: |
-          docker build -f samples/v2/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
+          docker build -f test_data/components/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
           kind --name kfp load docker-image registry.domain.local/modelcar:test
         continue-on-error: true
 

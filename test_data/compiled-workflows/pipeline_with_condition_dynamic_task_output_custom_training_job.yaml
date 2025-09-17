@@ -6,26 +6,26 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: components-bd65112bbc0d0923fa0ea45c093bd74f6f773ae9d69864eeca1ebf5b3e0d2dcb
+    - name: components-4ff7c4319829a8830447ba783584f0f40734ff010482a6b9b234ceda17ba214c
       value: '{"executorLabel":"exec-accelerator-count","outputDefinitions":{"parameters":{"Output":{"parameterType":"NUMBER_INTEGER"}}}}'
-    - name: implementations-bd65112bbc0d0923fa0ea45c093bd74f6f773ae9d69864eeca1ebf5b3e0d2dcb
+    - name: implementations-4ff7c4319829a8830447ba783584f0f40734ff010482a6b9b234ceda17ba214c
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","accelerator_count"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.13.0'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
         -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
         accelerator_count() -\u003e int:\n    return 1\n\n"],"image":"python:3.9"}'
-    - name: components-a906e47ab9ae1c7250e454d3466ecfd04e1bdaad95ff8373292249509aef84f0
+    - name: components-2212d778fdcf0682a268c7b100e165b811b818a3b68c0bfd48dd5681e999936b
       value: '{"executorLabel":"exec-accelerator-type","outputDefinitions":{"parameters":{"Output":{"parameterType":"STRING"}}}}'
-    - name: implementations-a906e47ab9ae1c7250e454d3466ecfd04e1bdaad95ff8373292249509aef84f0
+    - name: implementations-2212d778fdcf0682a268c7b100e165b811b818a3b68c0bfd48dd5681e999936b
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","accelerator_type"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.13.0'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
@@ -86,13 +86,13 @@ spec:
         \"{{$.inputs.parameters[''encryption_spec_key_name'']}}\"}}","--project","{{$.inputs.parameters[''project'']}}","--location","{{$.inputs.parameters[''location'']}}","--gcp_resources","{{$.outputs.parameters[''gcp_resources''].output_file}}"],"command":["python3","-u","-m","google_cloud_pipeline_components.container.v1.custom_job.launcher"],"image":"gcr.io/ml-pipeline/google-cloud-pipeline-components:2.14.1"}'
     - name: components-comp-condition-1
       value: '{"dag":{"tasks":{"custom-training-job":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-custom-training-job"},"inputs":{"parameters":{"display_name":{"runtimeValue":{"constant":"add-numbers"}},"encryption_spec_key_name":{"componentInputParameter":"pipelinechannel--encryption_spec_key_name"},"location":{"componentInputParameter":"pipelinechannel--location"},"pipelinechannel--accelerator-count-Output":{"componentInputParameter":"pipelinechannel--accelerator-count-Output"},"pipelinechannel--accelerator-type-Output":{"componentInputParameter":"pipelinechannel--accelerator-type-Output"},"pipelinechannel--machine-type-Output":{"componentInputParameter":"pipelinechannel--machine-type-Output"},"project":{"componentInputParameter":"pipelinechannel--project"},"worker_pool_specs":{"runtimeValue":{"constant":[{"container_spec":{"args":["foo"],"command":["echo"],"image_uri":"gcr.io/ml-pipeline/google-cloud-pipeline-components:2.5.0"},"machine_spec":{"accelerator_count":"{{$.inputs.parameters[''pipelinechannel--accelerator-count-Output'']}}","accelerator_type":"{{$.inputs.parameters[''pipelinechannel--accelerator-type-Output'']}}","machine_type":"{{$.inputs.parameters[''pipelinechannel--machine-type-Output'']}}"},"replica_count":1}]}}}},"taskInfo":{"name":"custom-training-job"}}}},"inputDefinitions":{"parameters":{"pipelinechannel--accelerator-count-Output":{"parameterType":"NUMBER_INTEGER"},"pipelinechannel--accelerator-type-Output":{"parameterType":"STRING"},"pipelinechannel--encryption_spec_key_name":{"parameterType":"STRING"},"pipelinechannel--flip-biased-coin-op-Output":{"parameterType":"STRING"},"pipelinechannel--location":{"parameterType":"STRING"},"pipelinechannel--machine-type-Output":{"parameterType":"STRING"},"pipelinechannel--project":{"parameterType":"STRING"}}}}'
-    - name: components-a34b14897c3c729b01d4f83a2c66d05293087d32e806433b5fbf5133ae8d3a33
+    - name: components-51b3f8664f2ff23be29076a65342b8eb091ec17bd73e4295c973baea3dd5f073
       value: '{"executorLabel":"exec-flip-biased-coin-op","outputDefinitions":{"parameters":{"Output":{"parameterType":"STRING"}}}}'
-    - name: implementations-a34b14897c3c729b01d4f83a2c66d05293087d32e806433b5fbf5133ae8d3a33
+    - name: implementations-51b3f8664f2ff23be29076a65342b8eb091ec17bd73e4295c973baea3dd5f073
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","flip_biased_coin_op"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.13.0'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
@@ -100,13 +100,13 @@ spec:
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
         flip_biased_coin_op() -\u003e str:\n    \"\"\"Flip a coin and output heads.\"\"\"\n    return
         ''heads''\n\n"],"image":"python:3.9"}'
-    - name: components-7e26d83a9218730385ce7df0a9ef1cfbe837bc3a801aafd136c5266bdb0a50f4
+    - name: components-cc24d59ed416d6169227e7ef954078b09337657b6eb903c1ee2afe6e0d9a5972
       value: '{"executorLabel":"exec-machine-type","outputDefinitions":{"parameters":{"Output":{"parameterType":"STRING"}}}}'
-    - name: implementations-7e26d83a9218730385ce7df0a9ef1cfbe837bc3a801aafd136c5266bdb0a50f4
+    - name: implementations-cc24d59ed416d6169227e7ef954078b09337657b6eb903c1ee2afe6e0d9a5972
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","machine_type"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.13.0'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
@@ -405,11 +405,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-bd65112bbc0d0923fa0ea45c093bd74f6f773ae9d69864eeca1ebf5b3e0d2dcb}}'
+            value: '{{workflow.parameters.components-4ff7c4319829a8830447ba783584f0f40734ff010482a6b9b234ceda17ba214c}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-accelerator-count"},"taskInfo":{"name":"accelerator-count"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-bd65112bbc0d0923fa0ea45c093bd74f6f773ae9d69864eeca1ebf5b3e0d2dcb}}'
+            value: '{{workflow.parameters.implementations-4ff7c4319829a8830447ba783584f0f40734ff010482a6b9b234ceda17ba214c}}'
           - name: task-name
             value: accelerator-count
           - name: parent-dag-id
@@ -429,11 +429,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-a906e47ab9ae1c7250e454d3466ecfd04e1bdaad95ff8373292249509aef84f0}}'
+            value: '{{workflow.parameters.components-2212d778fdcf0682a268c7b100e165b811b818a3b68c0bfd48dd5681e999936b}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-accelerator-type"},"taskInfo":{"name":"accelerator-type"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-a906e47ab9ae1c7250e454d3466ecfd04e1bdaad95ff8373292249509aef84f0}}'
+            value: '{{workflow.parameters.implementations-2212d778fdcf0682a268c7b100e165b811b818a3b68c0bfd48dd5681e999936b}}'
           - name: task-name
             value: accelerator-type
           - name: parent-dag-id
@@ -478,11 +478,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-a34b14897c3c729b01d4f83a2c66d05293087d32e806433b5fbf5133ae8d3a33}}'
+            value: '{{workflow.parameters.components-51b3f8664f2ff23be29076a65342b8eb091ec17bd73e4295c973baea3dd5f073}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-flip-biased-coin-op"},"taskInfo":{"name":"flip-biased-coin-op"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-a34b14897c3c729b01d4f83a2c66d05293087d32e806433b5fbf5133ae8d3a33}}'
+            value: '{{workflow.parameters.implementations-51b3f8664f2ff23be29076a65342b8eb091ec17bd73e4295c973baea3dd5f073}}'
           - name: task-name
             value: flip-biased-coin-op
           - name: parent-dag-id
@@ -502,11 +502,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-7e26d83a9218730385ce7df0a9ef1cfbe837bc3a801aafd136c5266bdb0a50f4}}'
+            value: '{{workflow.parameters.components-cc24d59ed416d6169227e7ef954078b09337657b6eb903c1ee2afe6e0d9a5972}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-machine-type"},"taskInfo":{"name":"machine-type"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-7e26d83a9218730385ce7df0a9ef1cfbe837bc3a801aafd136c5266bdb0a50f4}}'
+            value: '{{workflow.parameters.implementations-cc24d59ed416d6169227e7ef954078b09337657b6eb903c1ee2afe6e0d9a5972}}'
           - name: task-name
             value: machine-type
           - name: parent-dag-id

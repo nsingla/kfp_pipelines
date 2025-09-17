@@ -16,6 +16,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,7 +73,12 @@ var _ = Describe("Verify Spec Compilation to Workflow >", Label(POSITIVE, WORKFL
 					pipelineSpecs, platformSpec := workflowutils.LoadPipelineSpecsFromIR(pipelineSpecFilePath, param.compilerOptions.CacheDisabled, nil)
 					compiledWorkflow := workflowutils.GetCompiledArgoWorkflow(pipelineSpecs, platformSpec, &param.compilerOptions)
 					if *createMissingGoldenFiles || *updateGoldenFiles {
-						configuredWorkflow := workflowutils.ConfigureCacheSettings(compiledWorkflow, true)
+						var configuredWorkflow *v1alpha1.Workflow
+						if param.compilerOptions.CacheDisabled {
+							configuredWorkflow = workflowutils.ConfigureCacheSettings(compiledWorkflow, true)
+						} else {
+							configuredWorkflow = compiledWorkflow
+						}
 						_, err := os.Stat(compiledWorkflowFilePath)
 						if err != nil {
 							logger.Log("Creating/Updating Compiled Workflow File '%s'", compiledWorkflowFilePath)

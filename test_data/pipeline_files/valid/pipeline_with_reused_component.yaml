@@ -4,140 +4,182 @@
 #    a: int [Default: 2.0]
 #    b: int [Default: 5.0]
 components:
-  comp-add:
-    executorLabel: exec-add
+  comp-add-numbers:
+    executorLabel: exec-add-numbers
     inputDefinitions:
       parameters:
-        op2:
+        a:
           parameterType: NUMBER_INTEGER
-        op_1:
+        b:
           parameterType: NUMBER_INTEGER
     outputDefinitions:
       parameters:
-        sum:
+        Output:
           parameterType: NUMBER_INTEGER
-  comp-add-2:
-    executorLabel: exec-add-2
+  comp-add-numbers-2:
+    executorLabel: exec-add-numbers-2
     inputDefinitions:
       parameters:
-        op2:
+        a:
           parameterType: NUMBER_INTEGER
-        op_1:
+        b:
           parameterType: NUMBER_INTEGER
     outputDefinitions:
       parameters:
-        sum:
+        Output:
           parameterType: NUMBER_INTEGER
-  comp-add-3:
-    executorLabel: exec-add-3
+  comp-add-numbers-3:
+    executorLabel: exec-add-numbers-3
     inputDefinitions:
       parameters:
-        op2:
+        a:
           parameterType: NUMBER_INTEGER
-        op_1:
+        b:
           parameterType: NUMBER_INTEGER
     outputDefinitions:
       parameters:
-        sum:
+        Output:
           parameterType: NUMBER_INTEGER
 deploymentSpec:
   executors:
-    exec-add:
+    exec-add-numbers:
       container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - add_numbers
         command:
         - sh
         - -c
-        - 'set -e -x
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
-          echo "$(($0+$1))" | gsutil cp - "$2"
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-        - '{{$.inputs.parameters[''op_1'']}}'
-        - '{{$.inputs.parameters[''op2'']}}'
-        - '{{$.outputs.parameters[''sum''].output_file}}'
-        image: google/cloud-sdk:latest
-    exec-add-2:
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef add_numbers(a: int, b: int) -> int:\n    return a + b\n\n"
+        image: python:3.9
+    exec-add-numbers-2:
       container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - add_numbers
         command:
         - sh
         - -c
-        - 'set -e -x
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
-          echo "$(($0+$1))" | gsutil cp - "$2"
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-        - '{{$.inputs.parameters[''op_1'']}}'
-        - '{{$.inputs.parameters[''op2'']}}'
-        - '{{$.outputs.parameters[''sum''].output_file}}'
-        image: google/cloud-sdk:latest
-    exec-add-3:
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef add_numbers(a: int, b: int) -> int:\n    return a + b\n\n"
+        image: python:3.9
+    exec-add-numbers-3:
       container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - add_numbers
         command:
         - sh
         - -c
-        - 'set -e -x
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.3'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
-          echo "$(($0+$1))" | gsutil cp - "$2"
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-        - '{{$.inputs.parameters[''op_1'']}}'
-        - '{{$.inputs.parameters[''op2'']}}'
-        - '{{$.outputs.parameters[''sum''].output_file}}'
-        image: google/cloud-sdk:latest
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef add_numbers(a: int, b: int) -> int:\n    return a + b\n\n"
+        image: python:3.9
 pipelineInfo:
   name: add-pipeline
 root:
   dag:
     tasks:
-      add:
+      add-numbers:
         cachingOptions:
           enableCache: true
         componentRef:
-          name: comp-add
+          name: comp-add-numbers
         inputs:
           parameters:
-            op2:
+            a:
+              componentInputParameter: a
+            b:
               runtimeValue:
                 constant: 3.0
-            op_1:
-              componentInputParameter: a
         taskInfo:
-          name: add
-      add-2:
+          name: add-numbers
+      add-numbers-2:
         cachingOptions:
           enableCache: true
         componentRef:
-          name: comp-add-2
+          name: comp-add-numbers-2
         dependentTasks:
-        - add
+        - add-numbers
         inputs:
           parameters:
-            op2:
-              componentInputParameter: b
-            op_1:
+            a:
               taskOutputParameter:
-                outputParameterKey: sum
-                producerTask: add
+                outputParameterKey: Output
+                producerTask: add-numbers
+            b:
+              componentInputParameter: b
         taskInfo:
-          name: add-2
-      add-3:
+          name: add-numbers-2
+      add-numbers-3:
         cachingOptions:
           enableCache: true
         componentRef:
-          name: comp-add-3
+          name: comp-add-numbers-3
         dependentTasks:
-        - add-2
+        - add-numbers-2
         inputs:
           parameters:
-            op2:
+            a:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: add-numbers-2
+            b:
               runtimeValue:
                 constant: 7.0
-            op_1:
-              taskOutputParameter:
-                outputParameterKey: sum
-                producerTask: add-2
         taskInfo:
-          name: add-3
+          name: add-numbers-3
   inputDefinitions:
     parameters:
       a:
@@ -149,4 +191,4 @@ root:
         isOptional: true
         parameterType: NUMBER_INTEGER
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.13.0
+sdkVersion: kfp-2.14.3

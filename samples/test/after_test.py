@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import kfp
 from kfp.samples.test.utils import run_pipeline_func
 from kfp.samples.test.utils import TestCase
 
-from .after import my_pipeline
+from test_data.components.after import my_pipeline
 
 run_pipeline_func([
     TestCase(pipeline_func=my_pipeline),

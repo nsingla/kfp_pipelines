@@ -1271,6 +1271,7 @@ def modify_pipeline_spec_with_override(
     pipeline_spec: pipeline_spec_pb2.PipelineSpec,
     pipeline_name: Optional[str],
     pipeline_parameters: Optional[Mapping[str, Any]],
+    pipeline_display_name: Optional[str] = None,
 ) -> pipeline_spec_pb2.PipelineSpec:
     """Modifies the PipelineSpec using arguments passed to the Compiler.compile
     method.
@@ -1279,6 +1280,7 @@ def modify_pipeline_spec_with_override(
         pipeline_spec (pipeline_spec_pb2.PipelineSpec): PipelineSpec to modify.
         pipeline_name (Optional[str]): Name of the pipeline. Overrides component name.
         pipeline_parameters (Optional[Mapping[str, Any]]): Pipeline parameters. Overrides component input default values.
+        pipeline_display_name (Optional[str]): Display Name of the pipeline. Overrides default which is pipeline name
 
     Returns:
         The modified PipelineSpec copy.
@@ -1291,6 +1293,8 @@ def modify_pipeline_spec_with_override(
 
     if pipeline_name is not None:
         pipeline_spec.pipeline_info.name = pipeline_name
+    if pipeline_display_name is not None:
+        pipeline_spec.pipeline_info.display_name = pipeline_display_name
 
     # Verify that pipeline_parameters contains only input names
     # that match the pipeline inputs definition.

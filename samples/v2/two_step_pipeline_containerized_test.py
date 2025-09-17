@@ -23,7 +23,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .two_step_pipeline_containerized import two_step_pipeline_containerized
+from test_data.components.two_step_pipeline_containerized import two_step_pipeline_containerized
 
 
 def verify(t: unittest.TestCase, run: kfp_server_api.ApiRun,

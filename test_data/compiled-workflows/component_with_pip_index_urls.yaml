@@ -6,14 +6,14 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: components-cba1842276dceef37b890c3e685b29170ea7e795f54002a22dd1ec8e9ce2999c
+    - name: components-0905f4af9107d9f3fa5382f9ba0b8b7dbd90cd48da3061d65649d4d0ba24c70e
       value: '{"executorLabel":"exec-component-op"}'
-    - name: implementations-cba1842276dceef37b890c3e685b29170ea7e795f54002a22dd1ec8e9ce2999c
+    - name: implementations-0905f4af9107d9f3fa5382f9ba0b8b7dbd90cd48da3061d65649d4d0ba24c70e
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","component_op"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
         python3 -m pip install --quiet --no-warn-script-location --index-url https://pypi.org/simple
-        --trusted-host https://pypi.org/simple ''kfp==2.13.0'' ''--no-deps'' ''typing-extensions\u003e=3.7.4,\u003c5;
+        --trusted-host https://pypi.org/simple ''kfp==2.14.3'' ''--no-deps'' ''typing-extensions\u003e=3.7.4,\u003c5;
         python_version\u003c\"3.9\"''  \u0026\u0026  python3 -m pip install --quiet
         --no-warn-script-location --index-url https://pypi.org/simple --trusted-host
         https://pypi.org/simple ''yapf'' \u0026\u0026 \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp
@@ -203,11 +203,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-cba1842276dceef37b890c3e685b29170ea7e795f54002a22dd1ec8e9ce2999c}}'
+            value: '{{workflow.parameters.components-0905f4af9107d9f3fa5382f9ba0b8b7dbd90cd48da3061d65649d4d0ba24c70e}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-component-op"},"taskInfo":{"name":"component-op"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-cba1842276dceef37b890c3e685b29170ea7e795f54002a22dd1ec8e9ce2999c}}'
+            value: '{{workflow.parameters.implementations-0905f4af9107d9f3fa5382f9ba0b8b7dbd90cd48da3061d65649d4d0ba24c70e}}'
           - name: task-name
             value: component-op
           - name: parent-dag-id

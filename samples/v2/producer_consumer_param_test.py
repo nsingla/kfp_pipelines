@@ -26,7 +26,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .producer_consumer_param import producer_consumer_param_pipeline
+from test_data.components.producer_consumer_param import producer_consumer_param_pipeline
 
 
 def verify(t: unittest.TestCase, run: kfp_server_api.ApiRun,

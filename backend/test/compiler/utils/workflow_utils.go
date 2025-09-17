@@ -96,14 +96,14 @@ func ConfigureCacheSettings(workflow *v1alpha1.Workflow, remove bool) *v1alpha1.
 		if template.Container != nil {
 			if len(template.Container.Args) > 0 {
 				if remove && slices.Contains(template.Container.Args, cacheDisabledArg) {
-					containerArgs := make([]string, len(template.Container.Args)-1)
 					for index, arg := range template.Container.Args {
 						if arg == cacheDisabledArg {
+							containerArgs := make([]string, len(template.Container.Args)-1)
 							containerArgs = append(template.Container.Args[:index], template.Container.Args[index+1:]...)
+							template.Container.Args = containerArgs
 							break
 						}
 					}
-					template.Container.Args = containerArgs
 				} else {
 					if slices.Contains(template.Container.Args, "--run_id") {
 						template.Container.Args = append(template.Container.Args, cacheDisabledArg)
@@ -112,14 +112,14 @@ func ConfigureCacheSettings(workflow *v1alpha1.Workflow, remove bool) *v1alpha1.
 			}
 			for index, userContainer := range template.InitContainers {
 				if remove {
-					userArgs := make([]string, len(userContainer.Args)-1)
 					for userArgsIndex, arg := range userContainer.Args {
 						if arg == cacheDisabledArg {
+							userArgs := make([]string, len(userContainer.Args)-1)
 							userArgs = append(userContainer.Args[:userArgsIndex], userContainer.Args[userArgsIndex+1:]...)
+							userContainer.Args = userArgs
 							break
 						}
 					}
-					userContainer.Args = userArgs
 				} else {
 					if len(userContainer.Args) > 0 {
 						userContainer.Args = append(userContainer.Args, cacheDisabledArg)

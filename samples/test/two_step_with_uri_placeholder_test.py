@@ -13,11 +13,9 @@
 # limitations under the License.
 """Two step v2-compatible pipeline with URI placeholders."""
 
-from pprint import pprint
 from typing import Dict
 import unittest
 
-import kfp
 from kfp.samples.test.utils import KfpMlmdClient
 from kfp.samples.test.utils import KfpTask
 from kfp.samples.test.utils import run_pipeline_func
@@ -25,7 +23,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .two_step_with_uri_placeholder import two_step_with_uri_placeholder
+from test_data.components.two_step_with_uri_placeholder import two_step_with_uri_placeholder
 
 
 def verify_tasks(t: unittest.TestCase, tasks: Dict[str, KfpTask]):

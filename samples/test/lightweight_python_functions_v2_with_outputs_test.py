@@ -22,7 +22,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from minio import Minio
 
-from .lightweight_python_functions_v2_with_outputs import pipeline
+from test_data.components.lightweight_python_functions_v2_with_outputs import pipeline
 
 
 def verify(run: kfp_server_api.ApiRun, mlmd_connection_config, **kwargs):

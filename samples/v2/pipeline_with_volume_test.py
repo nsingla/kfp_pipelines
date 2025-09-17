@@ -20,7 +20,7 @@ from kfp.samples.test.utils import run_pipeline_func
 from kfp.samples.test.utils import TestCase
 import kfp_server_api
 
-from .pipeline_with_volume import pipeline_with_volume
+from test_data.components.pipeline_with_k8s_spec.pipeline_with_volume import pipeline_with_volume
 
 
 def verify(t: unittest.TestCase, run: kfp_server_api.ApiRun,

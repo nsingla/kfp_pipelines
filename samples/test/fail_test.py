@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import unittest
 
-import kfp
 from kfp.samples.test.utils import KfpTask
 from kfp.samples.test.utils import run_pipeline_func
 from kfp.samples.test.utils import TaskInputs
@@ -26,7 +25,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .fail_v2 import fail_pipeline as fail_v2_pipeline
+from test_data.components.fail_v2 import fail_pipeline as fail_v2_pipeline
 
 
 def verify(run, **kwargs):

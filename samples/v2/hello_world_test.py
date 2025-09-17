@@ -25,7 +25,7 @@ from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .hello_world import pipeline_hello_world
+from test_data.components.hello_world import pipeline_hello_world
 
 
 def verify(t: unittest.TestCase, run: kfp_server_api.ApiRun,

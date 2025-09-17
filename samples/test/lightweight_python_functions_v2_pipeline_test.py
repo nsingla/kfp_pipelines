@@ -15,14 +15,13 @@
 from pprint import pprint
 import unittest
 
-import kfp
 from kfp.samples.test.utils import KfpMlmdClient
 from kfp.samples.test.utils import run_pipeline_func
 from kfp.samples.test.utils import TestCase
 import kfp_server_api
 from ml_metadata.proto import Execution
 
-from .lightweight_python_functions_v2_pipeline import pipeline
+from test_data.components.lightweight_python_functions_v2_pipeline import pipeline
 
 
 def verify(run: kfp_server_api.ApiRun, mlmd_connection_config, **kwargs):
