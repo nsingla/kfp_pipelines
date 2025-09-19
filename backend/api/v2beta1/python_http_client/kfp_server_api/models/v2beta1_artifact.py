@@ -35,9 +35,11 @@ class V2beta1Artifact(object):
     openapi_types = {
         'artifact_id': 'str',
         'name': 'str',
+        'description': 'str',
         'type': 'ArtifactArtifactType',
         'uri': 'str',
         'metadata': 'dict(str, object)',
+        'number_value': 'float',
         'created_at': 'datetime',
         'namespace': 'str'
     }
@@ -45,14 +47,16 @@ class V2beta1Artifact(object):
     attribute_map = {
         'artifact_id': 'artifact_id',
         'name': 'name',
+        'description': 'description',
         'type': 'type',
         'uri': 'uri',
         'metadata': 'metadata',
+        'number_value': 'number_value',
         'created_at': 'created_at',
         'namespace': 'namespace'
     }
 
-    def __init__(self, artifact_id=None, name=None, type=None, uri=None, metadata=None, created_at=None, namespace=None, local_vars_configuration=None):  # noqa: E501
+    def __init__(self, artifact_id=None, name=None, description=None, type=None, uri=None, metadata=None, number_value=None, created_at=None, namespace=None, local_vars_configuration=None):  # noqa: E501
         """V2beta1Artifact - a model defined in OpenAPI"""  # noqa: E501
         if local_vars_configuration is None:
             local_vars_configuration = Configuration()
@@ -60,9 +64,11 @@ class V2beta1Artifact(object):
 
         self._artifact_id = None
         self._name = None
+        self._description = None
         self._type = None
         self._uri = None
         self._metadata = None
+        self._number_value = None
         self._created_at = None
         self._namespace = None
         self.discriminator = None
@@ -71,12 +77,16 @@ class V2beta1Artifact(object):
             self.artifact_id = artifact_id
         if name is not None:
             self.name = name
+        if description is not None:
+            self.description = description
         if type is not None:
             self.type = type
         if uri is not None:
             self.uri = uri
         if metadata is not None:
             self.metadata = metadata
+        if number_value is not None:
+            self.number_value = number_value
         if created_at is not None:
             self.created_at = created_at
         if namespace is not None:
@@ -107,6 +117,7 @@ class V2beta1Artifact(object):
     def name(self):
         """Gets the name of this V2beta1Artifact.  # noqa: E501
 
+        Required. The client provided name of the artifact. Note: it seems in MLMD when name was set, it had to be unique for that type_id this restriction is removed here If this is a \"Metric\" artifact, the name of the metric is treated as the Key in its K/V pair.  # noqa: E501
 
         :return: The name of this V2beta1Artifact.  # noqa: E501
         :rtype: str
@@ -117,12 +128,34 @@ class V2beta1Artifact(object):
     def name(self, name):
         """Sets the name of this V2beta1Artifact.
 
+        Required. The client provided name of the artifact. Note: it seems in MLMD when name was set, it had to be unique for that type_id this restriction is removed here If this is a \"Metric\" artifact, the name of the metric is treated as the Key in its K/V pair.  # noqa: E501
 
         :param name: The name of this V2beta1Artifact.  # noqa: E501
         :type name: str
         """
 
         self._name = name
+
+    @property
+    def description(self):
+        """Gets the description of this V2beta1Artifact.  # noqa: E501
+
+
+        :return: The description of this V2beta1Artifact.  # noqa: E501
+        :rtype: str
+        """
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        """Sets the description of this V2beta1Artifact.
+
+
+        :param description: The description of this V2beta1Artifact.  # noqa: E501
+        :type description: str
+        """
+
+        self._description = description
 
     @property
     def type(self):
@@ -172,7 +205,7 @@ class V2beta1Artifact(object):
     def metadata(self):
         """Gets the metadata of this V2beta1Artifact.  # noqa: E501
 
-        User provided custom properties which are not defined by its type.  # noqa: E501
+        Optional. User provided custom properties which are not defined by its type.  # noqa: E501
 
         :return: The metadata of this V2beta1Artifact.  # noqa: E501
         :rtype: dict(str, object)
@@ -183,13 +216,34 @@ class V2beta1Artifact(object):
     def metadata(self, metadata):
         """Sets the metadata of this V2beta1Artifact.
 
-        User provided custom properties which are not defined by its type.  # noqa: E501
+        Optional. User provided custom properties which are not defined by its type.  # noqa: E501
 
         :param metadata: The metadata of this V2beta1Artifact.  # noqa: E501
         :type metadata: dict(str, object)
         """
 
         self._metadata = metadata
+
+    @property
+    def number_value(self):
+        """Gets the number_value of this V2beta1Artifact.  # noqa: E501
+
+
+        :return: The number_value of this V2beta1Artifact.  # noqa: E501
+        :rtype: float
+        """
+        return self._number_value
+
+    @number_value.setter
+    def number_value(self, number_value):
+        """Sets the number_value of this V2beta1Artifact.
+
+
+        :param number_value: The number_value of this V2beta1Artifact.  # noqa: E501
+        :type number_value: float
+        """
+
+        self._number_value = number_value
 
     @property
     def created_at(self):

@@ -293,9 +293,9 @@ class RunServiceApi(object):
         >>> thread = api.list_tasks(async_req=True)
         >>> result = thread.get()
 
-        :param parent_id: Optional, List all tasks with this parent task.
+        :param parent_id: List all tasks with this parent task.
         :type parent_id: str
-        :param run_id: Optional. List all tasks for this run.
+        :param run_id: List all tasks for this run.
         :type run_id: str
         :param page_size:
         :type page_size: int
@@ -331,9 +331,9 @@ class RunServiceApi(object):
         >>> thread = api.list_tasks_with_http_info(async_req=True)
         >>> result = thread.get()
 
-        :param parent_id: Optional, List all tasks with this parent task.
+        :param parent_id: List all tasks with this parent task.
         :type parent_id: str
-        :param run_id: Optional. List all tasks for this run.
+        :param run_id: List all tasks for this run.
         :type run_id: str
         :param page_size:
         :type page_size: int

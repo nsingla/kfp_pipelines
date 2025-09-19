@@ -210,8 +210,8 @@ configuration = kfp_server_api.Configuration(
 with kfp_server_api.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = kfp_server_api.RunServiceApi(api_client)
-    parent_id = 'parent_id_example' # str | Optional, List all tasks with this parent task. (optional)
-run_id = 'run_id_example' # str | Optional. List all tasks for this run. (optional)
+    parent_id = 'parent_id_example' # str | List all tasks with this parent task. (optional)
+run_id = 'run_id_example' # str | List all tasks for this run. (optional)
 page_size = 56 # int |  (optional)
 page_token = 'page_token_example' # str |  (optional)
 filter = 'filter_example' # str |  (optional)
@@ -229,8 +229,8 @@ order_by = 'order_by_example' # str |  (optional)
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **parent_id** | **str**| Optional, List all tasks with this parent task. | [optional] 
- **run_id** | **str**| Optional. List all tasks for this run. | [optional] 
+ **parent_id** | **str**| List all tasks with this parent task. | [optional] 
+ **run_id** | **str**| List all tasks for this run. | [optional] 
  **page_size** | **int**|  | [optional] 
  **page_token** | **str**|  | [optional] 
  **filter** | **str**|  | [optional] 

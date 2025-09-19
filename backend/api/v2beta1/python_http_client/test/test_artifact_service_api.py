@@ -35,6 +35,13 @@ class TestArtifactServiceApi(unittest.TestCase):
         """
         pass
 
+    def test_create_artifact_task(self):
+        """Test case for create_artifact_task
+
+        Creates an artifact-task relationship.  # noqa: E501
+        """
+        pass
+
     def test_get_artifact(self):
         """Test case for get_artifact
 
@@ -74,13 +81,6 @@ class TestArtifactServiceApi(unittest.TestCase):
         """Test case for log_metric
 
         Logs a metric for a specific task.  # noqa: E501
-        """
-        pass
-
-    def test_update_artifact(self):
-        """Test case for update_artifact
-
-        Updates an existing artifact.  # noqa: E501
         """
         pass
 

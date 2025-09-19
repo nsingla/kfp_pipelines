@@ -40,9 +40,12 @@ class TestV2beta1ListArtifactTasksResponse(unittest.TestCase):
                     kfp_server_api.models.v2beta1_artifact_task.v2beta1ArtifactTask(
                         id = '0', 
                         artifact_id = '0', 
+                        run_id = '0', 
                         task_id = '0', 
                         type = 'INPUT', 
-                        created_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), )
+                        producer_task_name = '0', 
+                        producer_key = '0', 
+                        artifact_key = '0', )
                     ], 
                 total_size = 56, 
                 next_page_token = '0'

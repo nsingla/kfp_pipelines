@@ -38,9 +38,12 @@ class TestV2beta1ArtifactTask(unittest.TestCase):
             return V2beta1ArtifactTask(
                 id = '0', 
                 artifact_id = '0', 
+                run_id = '0', 
                 task_id = '0', 
                 type = 'INPUT', 
-                created_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f')
+                producer_task_name = '0', 
+                producer_key = '0', 
+                artifact_key = '0'
             )
         else :
             return V2beta1ArtifactTask(

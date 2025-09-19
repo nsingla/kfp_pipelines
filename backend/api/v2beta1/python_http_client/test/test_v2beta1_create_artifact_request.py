@@ -39,13 +39,20 @@ class TestV2beta1CreateArtifactRequest(unittest.TestCase):
                 artifact = kfp_server_api.models.note_to_be_confused_with_runtime_artifact_in_pipelinespec.Note to be confused with RuntimeArtifact in pipelinespec(
                     artifact_id = '0', 
                     name = '0', 
-                    type = 'Artifact', 
+                    description = '0', 
+                    type = 'TYPE_UNSPECIFIED', 
                     uri = '0', 
                     metadata = {
                         'key' : None
                         }, 
+                    number_value = 1.337, 
                     created_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
-                    namespace = '0', )
+                    namespace = '0', ), 
+                run_id = '0', 
+                task_id = '0', 
+                type = 'INPUT', 
+                producer_task_name = '0', 
+                producer_key = '0'
             )
         else :
             return V2beta1CreateArtifactRequest(

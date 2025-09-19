@@ -28,13 +28,17 @@ class ArtifactArtifactType(object):
     """
     allowed enum values
     """
+    TYPE_UNSPECIFIED = "TYPE_UNSPECIFIED"
     ARTIFACT = "Artifact"
     MODEL = "Model"
     DATASET = "Dataset"
     HTML = "HTML"
     MARKDOWN = "Markdown"
+    METRIC = "Metric"
+    CLASSIFICATIONMETRIC = "ClassificationMetric"
+    SLICEDCLASSIFICATIONMETRIC = "SlicedClassificationMetric"
 
-    allowable_values = [ARTIFACT, MODEL, DATASET, HTML, MARKDOWN]  # noqa: E501
+    allowable_values = [TYPE_UNSPECIFIED, ARTIFACT, MODEL, DATASET, HTML, MARKDOWN, METRIC, CLASSIFICATIONMETRIC, SLICEDCLASSIFICATIONMETRIC]  # noqa: E501
 
     """
     Attributes:

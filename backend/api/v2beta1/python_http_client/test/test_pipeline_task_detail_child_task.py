@@ -37,7 +37,13 @@ class TestPipelineTaskDetailChildTask(unittest.TestCase):
         if include_optional :
             return PipelineTaskDetailChildTask(
                 task_id = '0', 
-                pod_name = '0'
+                name = '0', 
+                pods = [
+                    kfp_server_api.models.pipeline_task_detail_task_pod.PipelineTaskDetailTaskPod(
+                        name = '0', 
+                        uid = '0', 
+                        type = '0', )
+                    ]
             )
         else :
             return PipelineTaskDetailChildTask(

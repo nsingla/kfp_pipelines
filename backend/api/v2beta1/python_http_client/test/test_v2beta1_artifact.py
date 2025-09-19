@@ -38,11 +38,13 @@ class TestV2beta1Artifact(unittest.TestCase):
             return V2beta1Artifact(
                 artifact_id = '0', 
                 name = '0', 
-                type = 'Artifact', 
+                description = '0', 
+                type = 'TYPE_UNSPECIFIED', 
                 uri = '0', 
                 metadata = {
                     'key' : None
                     }, 
+                number_value = 1.337, 
                 created_at = datetime.datetime.strptime('2013-10-20 19:20:30.00', '%Y-%m-%d %H:%M:%S.%f'), 
                 namespace = '0'
             )

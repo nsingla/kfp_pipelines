@@ -33,122 +33,158 @@ class V2beta1PipelineTaskDetail(object):
                             and the value is json key in definition.
     """
     openapi_types = {
-        'run_id': 'str',
-        'task_id': 'str',
+        'name': 'str',
         'display_name': 'str',
+        'task_id': 'str',
+        'run_id': 'str',
+        'pods': 'list[PipelineTaskDetailTaskPod]',
+        'cache_fingerprint': 'str',
         'create_time': 'datetime',
         'start_time': 'datetime',
         'end_time': 'datetime',
-        'executor_detail': 'V2beta1PipelineTaskExecutorDetail',
-        'state': 'V2beta1RuntimeState',
-        'execution_id': 'str',
-        'error': 'GooglerpcStatus',
-        'inputs': 'dict(str, V2beta1ArtifactList)',
-        'outputs': 'dict(str, V2beta1ArtifactList)',
-        'parent_task_id': 'str',
+        'status': 'V2beta1RuntimeState',
+        'status_metadata': 'dict(str, object)',
         'state_history': 'list[V2beta1RuntimeStatus]',
-        'pod_name': 'str',
-        'child_tasks': 'list[PipelineTaskDetailChildTask]'
+        'type': 'PipelineTaskDetailTaskType',
+        'type_attributes': 'PipelineTaskDetailTypeAttributes',
+        'error': 'GooglerpcStatus',
+        'parent_task_id': 'str',
+        'child_tasks': 'list[PipelineTaskDetailChildTask]',
+        'inputs': 'PipelineTaskDetailInputOutputs',
+        'outputs': 'PipelineTaskDetailInputOutputs'
     }
 
     attribute_map = {
-        'run_id': 'run_id',
-        'task_id': 'task_id',
+        'name': 'name',
         'display_name': 'display_name',
+        'task_id': 'task_id',
+        'run_id': 'run_id',
+        'pods': 'pods',
+        'cache_fingerprint': 'cache_fingerprint',
         'create_time': 'create_time',
         'start_time': 'start_time',
         'end_time': 'end_time',
-        'executor_detail': 'executor_detail',
-        'state': 'state',
-        'execution_id': 'execution_id',
-        'error': 'error',
-        'inputs': 'inputs',
-        'outputs': 'outputs',
-        'parent_task_id': 'parent_task_id',
+        'status': 'status',
+        'status_metadata': 'status_metadata',
         'state_history': 'state_history',
-        'pod_name': 'pod_name',
-        'child_tasks': 'child_tasks'
+        'type': 'type',
+        'type_attributes': 'type_attributes',
+        'error': 'error',
+        'parent_task_id': 'parent_task_id',
+        'child_tasks': 'child_tasks',
+        'inputs': 'inputs',
+        'outputs': 'outputs'
     }
 
-    def __init__(self, run_id=None, task_id=None, display_name=None, create_time=None, start_time=None, end_time=None, executor_detail=None, state=None, execution_id=None, error=None, inputs=None, outputs=None, parent_task_id=None, state_history=None, pod_name=None, child_tasks=None, local_vars_configuration=None):  # noqa: E501
+    def __init__(self, name=None, display_name=None, task_id=None, run_id=None, pods=None, cache_fingerprint=None, create_time=None, start_time=None, end_time=None, status=None, status_metadata=None, state_history=None, type=None, type_attributes=None, error=None, parent_task_id=None, child_tasks=None, inputs=None, outputs=None, local_vars_configuration=None):  # noqa: E501
         """V2beta1PipelineTaskDetail - a model defined in OpenAPI"""  # noqa: E501
         if local_vars_configuration is None:
             local_vars_configuration = Configuration()
         self.local_vars_configuration = local_vars_configuration
 
-        self._run_id = None
-        self._task_id = None
+        self._name = None
         self._display_name = None
+        self._task_id = None
+        self._run_id = None
+        self._pods = None
+        self._cache_fingerprint = None
         self._create_time = None
         self._start_time = None
         self._end_time = None
-        self._executor_detail = None
-        self._state = None
-        self._execution_id = None
+        self._status = None
+        self._status_metadata = None
+        self._state_history = None
+        self._type = None
+        self._type_attributes = None
         self._error = None
+        self._parent_task_id = None
+        self._child_tasks = None
         self._inputs = None
         self._outputs = None
-        self._parent_task_id = None
-        self._state_history = None
-        self._pod_name = None
-        self._child_tasks = None
         self.discriminator = None
 
-        if run_id is not None:
-            self.run_id = run_id
-        if task_id is not None:
-            self.task_id = task_id
+        if name is not None:
+            self.name = name
         if display_name is not None:
             self.display_name = display_name
+        if task_id is not None:
+            self.task_id = task_id
+        if run_id is not None:
+            self.run_id = run_id
+        if pods is not None:
+            self.pods = pods
+        if cache_fingerprint is not None:
+            self.cache_fingerprint = cache_fingerprint
         if create_time is not None:
             self.create_time = create_time
         if start_time is not None:
             self.start_time = start_time
         if end_time is not None:
             self.end_time = end_time
-        if executor_detail is not None:
-            self.executor_detail = executor_detail
-        if state is not None:
-            self.state = state
-        if execution_id is not None:
-            self.execution_id = execution_id
+        if status is not None:
+            self.status = status
+        if status_metadata is not None:
+            self.status_metadata = status_metadata
+        if state_history is not None:
+            self.state_history = state_history
+        if type is not None:
+            self.type = type
+        if type_attributes is not None:
+            self.type_attributes = type_attributes
         if error is not None:
             self.error = error
+        if parent_task_id is not None:
+            self.parent_task_id = parent_task_id
+        if child_tasks is not None:
+            self.child_tasks = child_tasks
         if inputs is not None:
             self.inputs = inputs
         if outputs is not None:
             self.outputs = outputs
-        if parent_task_id is not None:
-            self.parent_task_id = parent_task_id
-        if state_history is not None:
-            self.state_history = state_history
-        if pod_name is not None:
-            self.pod_name = pod_name
-        if child_tasks is not None:
-            self.child_tasks = child_tasks
 
     @property
-    def run_id(self):
-        """Gets the run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+    def name(self):
+        """Gets the name of this V2beta1PipelineTaskDetail.  # noqa: E501
 
-        ID of the parent run.  # noqa: E501
 
-        :return: The run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :return: The name of this V2beta1PipelineTaskDetail.  # noqa: E501
         :rtype: str
         """
-        return self._run_id
+        return self._name
 
-    @run_id.setter
-    def run_id(self, run_id):
-        """Sets the run_id of this V2beta1PipelineTaskDetail.
+    @name.setter
+    def name(self, name):
+        """Sets the name of this V2beta1PipelineTaskDetail.
 
-        ID of the parent run.  # noqa: E501
 
-        :param run_id: The run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type run_id: str
+        :param name: The name of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type name: str
         """
 
-        self._run_id = run_id
+        self._name = name
+
+    @property
+    def display_name(self):
+        """Gets the display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+        User specified name of a task that is defined in [Pipeline.spec][].  # noqa: E501
+
+        :return: The display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: str
+        """
+        return self._display_name
+
+    @display_name.setter
+    def display_name(self, display_name):
+        """Sets the display_name of this V2beta1PipelineTaskDetail.
+
+        User specified name of a task that is defined in [Pipeline.spec][].  # noqa: E501
+
+        :param display_name: The display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type display_name: str
+        """
+
+        self._display_name = display_name
 
     @property
     def task_id(self):
@@ -174,27 +210,69 @@ class V2beta1PipelineTaskDetail(object):
         self._task_id = task_id
 
     @property
-    def display_name(self):
-        """Gets the display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+    def run_id(self):
+        """Gets the run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
 
-        User specified name of a task that is defined in [Pipeline.spec][].  # noqa: E501
+        ID of the parent run.  # noqa: E501
 
-        :return: The display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :return: The run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
         :rtype: str
         """
-        return self._display_name
+        return self._run_id
 
-    @display_name.setter
-    def display_name(self, display_name):
-        """Sets the display_name of this V2beta1PipelineTaskDetail.
+    @run_id.setter
+    def run_id(self, run_id):
+        """Sets the run_id of this V2beta1PipelineTaskDetail.
 
-        User specified name of a task that is defined in [Pipeline.spec][].  # noqa: E501
+        ID of the parent run.  # noqa: E501
 
-        :param display_name: The display_name of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type display_name: str
+        :param run_id: The run_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type run_id: str
         """
 
-        self._display_name = display_name
+        self._run_id = run_id
+
+    @property
+    def pods(self):
+        """Gets the pods of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The pods of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: list[PipelineTaskDetailTaskPod]
+        """
+        return self._pods
+
+    @pods.setter
+    def pods(self, pods):
+        """Sets the pods of this V2beta1PipelineTaskDetail.
+
+
+        :param pods: The pods of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type pods: list[PipelineTaskDetailTaskPod]
+        """
+
+        self._pods = pods
+
+    @property
+    def cache_fingerprint(self):
+        """Gets the cache_fingerprint of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The cache_fingerprint of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: str
+        """
+        return self._cache_fingerprint
+
+    @cache_fingerprint.setter
+    def cache_fingerprint(self, cache_fingerprint):
+        """Sets the cache_fingerprint of this V2beta1PipelineTaskDetail.
+
+
+        :param cache_fingerprint: The cache_fingerprint of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type cache_fingerprint: str
+        """
+
+        self._cache_fingerprint = cache_fingerprint
 
     @property
     def create_time(self):
@@ -266,159 +344,46 @@ class V2beta1PipelineTaskDetail(object):
         self._end_time = end_time
 
     @property
-    def executor_detail(self):
-        """Gets the executor_detail of this V2beta1PipelineTaskDetail.  # noqa: E501
+    def status(self):
+        """Gets the status of this V2beta1PipelineTaskDetail.  # noqa: E501
 
 
-        :return: The executor_detail of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: V2beta1PipelineTaskExecutorDetail
-        """
-        return self._executor_detail
-
-    @executor_detail.setter
-    def executor_detail(self, executor_detail):
-        """Sets the executor_detail of this V2beta1PipelineTaskDetail.
-
-
-        :param executor_detail: The executor_detail of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type executor_detail: V2beta1PipelineTaskExecutorDetail
-        """
-
-        self._executor_detail = executor_detail
-
-    @property
-    def state(self):
-        """Gets the state of this V2beta1PipelineTaskDetail.  # noqa: E501
-
-
-        :return: The state of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :return: The status of this V2beta1PipelineTaskDetail.  # noqa: E501
         :rtype: V2beta1RuntimeState
         """
-        return self._state
+        return self._status
 
-    @state.setter
-    def state(self, state):
-        """Sets the state of this V2beta1PipelineTaskDetail.
+    @status.setter
+    def status(self, status):
+        """Sets the status of this V2beta1PipelineTaskDetail.
 
 
-        :param state: The state of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type state: V2beta1RuntimeState
+        :param status: The status of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type status: V2beta1RuntimeState
         """
 
-        self._state = state
+        self._status = status
 
     @property
-    def execution_id(self):
-        """Gets the execution_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+    def status_metadata(self):
+        """Gets the status_metadata of this V2beta1PipelineTaskDetail.  # noqa: E501
 
-        Execution id of the corresponding entry in ML metadata store.  # noqa: E501
 
-        :return: The execution_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: str
+        :return: The status_metadata of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: dict(str, object)
         """
-        return self._execution_id
+        return self._status_metadata
 
-    @execution_id.setter
-    def execution_id(self, execution_id):
-        """Sets the execution_id of this V2beta1PipelineTaskDetail.
+    @status_metadata.setter
+    def status_metadata(self, status_metadata):
+        """Sets the status_metadata of this V2beta1PipelineTaskDetail.
 
-        Execution id of the corresponding entry in ML metadata store.  # noqa: E501
 
-        :param execution_id: The execution_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type execution_id: str
+        :param status_metadata: The status_metadata of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type status_metadata: dict(str, object)
         """
 
-        self._execution_id = execution_id
-
-    @property
-    def error(self):
-        """Gets the error of this V2beta1PipelineTaskDetail.  # noqa: E501
-
-
-        :return: The error of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: GooglerpcStatus
-        """
-        return self._error
-
-    @error.setter
-    def error(self, error):
-        """Sets the error of this V2beta1PipelineTaskDetail.
-
-
-        :param error: The error of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type error: GooglerpcStatus
-        """
-
-        self._error = error
-
-    @property
-    def inputs(self):
-        """Gets the inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-
-        Input artifacts of the task.  # noqa: E501
-
-        :return: The inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: dict(str, V2beta1ArtifactList)
-        """
-        return self._inputs
-
-    @inputs.setter
-    def inputs(self, inputs):
-        """Sets the inputs of this V2beta1PipelineTaskDetail.
-
-        Input artifacts of the task.  # noqa: E501
-
-        :param inputs: The inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type inputs: dict(str, V2beta1ArtifactList)
-        """
-
-        self._inputs = inputs
-
-    @property
-    def outputs(self):
-        """Gets the outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-
-        Output artifacts of the task.  # noqa: E501
-
-        :return: The outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: dict(str, V2beta1ArtifactList)
-        """
-        return self._outputs
-
-    @outputs.setter
-    def outputs(self, outputs):
-        """Sets the outputs of this V2beta1PipelineTaskDetail.
-
-        Output artifacts of the task.  # noqa: E501
-
-        :param outputs: The outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type outputs: dict(str, V2beta1ArtifactList)
-        """
-
-        self._outputs = outputs
-
-    @property
-    def parent_task_id(self):
-        """Gets the parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-
-        ID of the parent task if the task is within a component scope. Empty if the task is at the root level.  # noqa: E501
-
-        :return: The parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :rtype: str
-        """
-        return self._parent_task_id
-
-    @parent_task_id.setter
-    def parent_task_id(self, parent_task_id):
-        """Sets the parent_task_id of this V2beta1PipelineTaskDetail.
-
-        ID of the parent task if the task is within a component scope. Empty if the task is at the root level.  # noqa: E501
-
-        :param parent_task_id: The parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type parent_task_id: str
-        """
-
-        self._parent_task_id = parent_task_id
+        self._status_metadata = status_metadata
 
     @property
     def state_history(self):
@@ -444,33 +409,96 @@ class V2beta1PipelineTaskDetail(object):
         self._state_history = state_history
 
     @property
-    def pod_name(self):
-        """Gets the pod_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+    def type(self):
+        """Gets the type of this V2beta1PipelineTaskDetail.  # noqa: E501
 
-        Name of the corresponding pod assigned by the orchestration engine. Also known as node_id.  # noqa: E501
 
-        :return: The pod_name of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :return: The type of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: PipelineTaskDetailTaskType
+        """
+        return self._type
+
+    @type.setter
+    def type(self, type):
+        """Sets the type of this V2beta1PipelineTaskDetail.
+
+
+        :param type: The type of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type type: PipelineTaskDetailTaskType
+        """
+
+        self._type = type
+
+    @property
+    def type_attributes(self):
+        """Gets the type_attributes of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The type_attributes of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: PipelineTaskDetailTypeAttributes
+        """
+        return self._type_attributes
+
+    @type_attributes.setter
+    def type_attributes(self, type_attributes):
+        """Sets the type_attributes of this V2beta1PipelineTaskDetail.
+
+
+        :param type_attributes: The type_attributes of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type type_attributes: PipelineTaskDetailTypeAttributes
+        """
+
+        self._type_attributes = type_attributes
+
+    @property
+    def error(self):
+        """Gets the error of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The error of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: GooglerpcStatus
+        """
+        return self._error
+
+    @error.setter
+    def error(self, error):
+        """Sets the error of this V2beta1PipelineTaskDetail.
+
+
+        :param error: The error of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type error: GooglerpcStatus
+        """
+
+        self._error = error
+
+    @property
+    def parent_task_id(self):
+        """Gets the parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+        ID of the parent task if the task is within a component scope. Empty if the task is at the root level.  # noqa: E501
+
+        :return: The parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
         :rtype: str
         """
-        return self._pod_name
+        return self._parent_task_id
 
-    @pod_name.setter
-    def pod_name(self, pod_name):
-        """Sets the pod_name of this V2beta1PipelineTaskDetail.
+    @parent_task_id.setter
+    def parent_task_id(self, parent_task_id):
+        """Sets the parent_task_id of this V2beta1PipelineTaskDetail.
 
-        Name of the corresponding pod assigned by the orchestration engine. Also known as node_id.  # noqa: E501
+        ID of the parent task if the task is within a component scope. Empty if the task is at the root level.  # noqa: E501
 
-        :param pod_name: The pod_name of this V2beta1PipelineTaskDetail.  # noqa: E501
-        :type pod_name: str
+        :param parent_task_id: The parent_task_id of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type parent_task_id: str
         """
 
-        self._pod_name = pod_name
+        self._parent_task_id = parent_task_id
 
     @property
     def child_tasks(self):
         """Gets the child_tasks of this V2beta1PipelineTaskDetail.  # noqa: E501
 
-        Sequence of dependen tasks.  # noqa: E501
+        Sequence of dependent tasks.  # noqa: E501
 
         :return: The child_tasks of this V2beta1PipelineTaskDetail.  # noqa: E501
         :rtype: list[PipelineTaskDetailChildTask]
@@ -481,13 +509,55 @@ class V2beta1PipelineTaskDetail(object):
     def child_tasks(self, child_tasks):
         """Sets the child_tasks of this V2beta1PipelineTaskDetail.
 
-        Sequence of dependen tasks.  # noqa: E501
+        Sequence of dependent tasks.  # noqa: E501
 
         :param child_tasks: The child_tasks of this V2beta1PipelineTaskDetail.  # noqa: E501
         :type child_tasks: list[PipelineTaskDetailChildTask]
         """
 
         self._child_tasks = child_tasks
+
+    @property
+    def inputs(self):
+        """Gets the inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: PipelineTaskDetailInputOutputs
+        """
+        return self._inputs
+
+    @inputs.setter
+    def inputs(self, inputs):
+        """Sets the inputs of this V2beta1PipelineTaskDetail.
+
+
+        :param inputs: The inputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type inputs: PipelineTaskDetailInputOutputs
+        """
+
+        self._inputs = inputs
+
+    @property
+    def outputs(self):
+        """Gets the outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+
+
+        :return: The outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :rtype: PipelineTaskDetailInputOutputs
+        """
+        return self._outputs
+
+    @outputs.setter
+    def outputs(self, outputs):
+        """Sets the outputs of this V2beta1PipelineTaskDetail.
+
+
+        :param outputs: The outputs of this V2beta1PipelineTaskDetail.  # noqa: E501
+        :type outputs: PipelineTaskDetailInputOutputs
+        """
+
+        self._outputs = outputs
 
     def to_dict(self):
         """Returns the model properties as a dict"""

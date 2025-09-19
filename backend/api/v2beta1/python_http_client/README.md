@@ -97,13 +97,13 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *ArtifactServiceApi* | [**create_artifact**](docs/ArtifactServiceApi.md#create_artifact) | **POST** /apis/v2beta1/artifacts | Creates a new artifact.
+*ArtifactServiceApi* | [**create_artifact_task**](docs/ArtifactServiceApi.md#create_artifact_task) | **POST** /apis/v2beta1/artifact_tasks | Creates an artifact-task relationship.
 *ArtifactServiceApi* | [**get_artifact**](docs/ArtifactServiceApi.md#get_artifact) | **GET** /apis/v2beta1/artifacts/{artifact_id} | Finds a specific Artifact by ID.
-*ArtifactServiceApi* | [**get_metric**](docs/ArtifactServiceApi.md#get_metric) | **GET** /apis/v2beta1/metrics/{task_id}/{name} | Gets a metric by task ID and name.
+*ArtifactServiceApi* | [**get_metric**](docs/ArtifactServiceApi.md#get_metric) | **GET** /apis/v2beta1/metrics/{artifact_id} | Gets a metric by task ID and name.
 *ArtifactServiceApi* | [**list_artifact_tasks**](docs/ArtifactServiceApi.md#list_artifact_tasks) | **GET** /apis/v2beta1/artifact_tasks | Lists artifact-task relationships.
 *ArtifactServiceApi* | [**list_artifacts**](docs/ArtifactServiceApi.md#list_artifacts) | **GET** /apis/v2beta1/artifacts | Finds all artifacts within the specified namespace.
 *ArtifactServiceApi* | [**list_metrics**](docs/ArtifactServiceApi.md#list_metrics) | **GET** /apis/v2beta1/metrics | Lists all metrics.
 *ArtifactServiceApi* | [**log_metric**](docs/ArtifactServiceApi.md#log_metric) | **POST** /apis/v2beta1/metrics | Logs a metric for a specific task.
-*ArtifactServiceApi* | [**update_artifact**](docs/ArtifactServiceApi.md#update_artifact) | **PUT** /apis/v2beta1/artifacts/{artifact.artifact_id} | Updates an existing artifact.
 *AuthServiceApi* | [**auth_service_authorize**](docs/AuthServiceApi.md#auth_service_authorize) | **GET** /apis/v2beta1/auth | 
 *ExperimentServiceApi* | [**experiment_service_archive_experiment**](docs/ExperimentServiceApi.md#experiment_service_archive_experiment) | **POST** /apis/v2beta1/experiments/{experiment_id}:archive | Archives an experiment and the experiment&#39;s runs and recurring runs.
 *ExperimentServiceApi* | [**experiment_service_create_experiment**](docs/ExperimentServiceApi.md#experiment_service_create_experiment) | **POST** /apis/v2beta1/experiments | Creates a new experiment.
@@ -154,19 +154,25 @@ Class | Method | HTTP request | Description
  - [AuthorizeRequestResources](docs/AuthorizeRequestResources.md)
  - [AuthorizeRequestVerb](docs/AuthorizeRequestVerb.md)
  - [GooglerpcStatus](docs/GooglerpcStatus.md)
+ - [InputOutputsIOArtifact](docs/InputOutputsIOArtifact.md)
+ - [InputOutputsIOProducer](docs/InputOutputsIOProducer.md)
+ - [InputOutputsParameter](docs/InputOutputsParameter.md)
  - [PipelineTaskDetailChildTask](docs/PipelineTaskDetailChildTask.md)
+ - [PipelineTaskDetailInputOutputs](docs/PipelineTaskDetailInputOutputs.md)
+ - [PipelineTaskDetailTaskPod](docs/PipelineTaskDetailTaskPod.md)
+ - [PipelineTaskDetailTaskType](docs/PipelineTaskDetailTaskType.md)
+ - [PipelineTaskDetailTypeAttributes](docs/PipelineTaskDetailTypeAttributes.md)
  - [PredicateIntValues](docs/PredicateIntValues.md)
  - [PredicateLongValues](docs/PredicateLongValues.md)
  - [PredicateStringValues](docs/PredicateStringValues.md)
  - [ProtobufAny](docs/ProtobufAny.md)
  - [ProtobufNullValue](docs/ProtobufNullValue.md)
  - [RecurringRunMode](docs/RecurringRunMode.md)
- - [RequiredTheArtifactToUpdateTheArtifactIdFieldIsRequired](docs/RequiredTheArtifactToUpdateTheArtifactIdFieldIsRequired.md)
  - [V2beta1Artifact](docs/V2beta1Artifact.md)
- - [V2beta1ArtifactList](docs/V2beta1ArtifactList.md)
  - [V2beta1ArtifactTask](docs/V2beta1ArtifactTask.md)
  - [V2beta1ArtifactTaskType](docs/V2beta1ArtifactTaskType.md)
  - [V2beta1CreateArtifactRequest](docs/V2beta1CreateArtifactRequest.md)
+ - [V2beta1CreateArtifactTaskRequest](docs/V2beta1CreateArtifactTaskRequest.md)
  - [V2beta1CreatePipelineAndVersionRequest](docs/V2beta1CreatePipelineAndVersionRequest.md)
  - [V2beta1CronSchedule](docs/V2beta1CronSchedule.md)
  - [V2beta1Experiment](docs/V2beta1Experiment.md)
@@ -176,20 +182,14 @@ Class | Method | HTTP request | Description
  - [V2beta1ListArtifactResponse](docs/V2beta1ListArtifactResponse.md)
  - [V2beta1ListArtifactTasksResponse](docs/V2beta1ListArtifactTasksResponse.md)
  - [V2beta1ListExperimentsResponse](docs/V2beta1ListExperimentsResponse.md)
- - [V2beta1ListMetricsResponse](docs/V2beta1ListMetricsResponse.md)
  - [V2beta1ListPipelineVersionsResponse](docs/V2beta1ListPipelineVersionsResponse.md)
  - [V2beta1ListPipelinesResponse](docs/V2beta1ListPipelinesResponse.md)
  - [V2beta1ListRecurringRunsResponse](docs/V2beta1ListRecurringRunsResponse.md)
  - [V2beta1ListRunsResponse](docs/V2beta1ListRunsResponse.md)
  - [V2beta1ListTasksResponse](docs/V2beta1ListTasksResponse.md)
- - [V2beta1LogMetricRequest](docs/V2beta1LogMetricRequest.md)
- - [V2beta1Metric](docs/V2beta1Metric.md)
- - [V2beta1MetricSchema](docs/V2beta1MetricSchema.md)
- - [V2beta1MetricType](docs/V2beta1MetricType.md)
  - [V2beta1PeriodicSchedule](docs/V2beta1PeriodicSchedule.md)
  - [V2beta1Pipeline](docs/V2beta1Pipeline.md)
  - [V2beta1PipelineTaskDetail](docs/V2beta1PipelineTaskDetail.md)
- - [V2beta1PipelineTaskExecutorDetail](docs/V2beta1PipelineTaskExecutorDetail.md)
  - [V2beta1PipelineVersion](docs/V2beta1PipelineVersion.md)
  - [V2beta1PipelineVersionReference](docs/V2beta1PipelineVersionReference.md)
  - [V2beta1Predicate](docs/V2beta1Predicate.md)

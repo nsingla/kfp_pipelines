@@ -1,5 +1,6 @@
 # ArtifactArtifactType
 
+ - TYPE_UNSPECIFIED: default; treated as \"not set\" reject if unset.
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

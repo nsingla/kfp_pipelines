@@ -33,24 +33,49 @@ class V2beta1CreateArtifactRequest(object):
                             and the value is json key in definition.
     """
     openapi_types = {
-        'artifact': 'V2beta1Artifact'
+        'artifact': 'V2beta1Artifact',
+        'run_id': 'str',
+        'task_id': 'str',
+        'type': 'V2beta1ArtifactTaskType',
+        'producer_task_name': 'str',
+        'producer_key': 'str'
     }
 
     attribute_map = {
-        'artifact': 'artifact'
+        'artifact': 'artifact',
+        'run_id': 'run_id',
+        'task_id': 'task_id',
+        'type': 'type',
+        'producer_task_name': 'producer_task_name',
+        'producer_key': 'producer_key'
     }
 
-    def __init__(self, artifact=None, local_vars_configuration=None):  # noqa: E501
+    def __init__(self, artifact=None, run_id=None, task_id=None, type=None, producer_task_name=None, producer_key=None, local_vars_configuration=None):  # noqa: E501
         """V2beta1CreateArtifactRequest - a model defined in OpenAPI"""  # noqa: E501
         if local_vars_configuration is None:
             local_vars_configuration = Configuration()
         self.local_vars_configuration = local_vars_configuration
 
         self._artifact = None
+        self._run_id = None
+        self._task_id = None
+        self._type = None
+        self._producer_task_name = None
+        self._producer_key = None
         self.discriminator = None
 
         if artifact is not None:
             self.artifact = artifact
+        if run_id is not None:
+            self.run_id = run_id
+        if task_id is not None:
+            self.task_id = task_id
+        if type is not None:
+            self.type = type
+        if producer_task_name is not None:
+            self.producer_task_name = producer_task_name
+        if producer_key is not None:
+            self.producer_key = producer_key
 
     @property
     def artifact(self):
@@ -72,6 +97,113 @@ class V2beta1CreateArtifactRequest(object):
         """
 
         self._artifact = artifact
+
+    @property
+    def run_id(self):
+        """Gets the run_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+
+        An artifact is always created in the context of a run.  # noqa: E501
+
+        :return: The run_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :rtype: str
+        """
+        return self._run_id
+
+    @run_id.setter
+    def run_id(self, run_id):
+        """Sets the run_id of this V2beta1CreateArtifactRequest.
+
+        An artifact is always created in the context of a run.  # noqa: E501
+
+        :param run_id: The run_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :type run_id: str
+        """
+
+        self._run_id = run_id
+
+    @property
+    def task_id(self):
+        """Gets the task_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+
+
+        :return: The task_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :rtype: str
+        """
+        return self._task_id
+
+    @task_id.setter
+    def task_id(self, task_id):
+        """Sets the task_id of this V2beta1CreateArtifactRequest.
+
+
+        :param task_id: The task_id of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :type task_id: str
+        """
+
+        self._task_id = task_id
+
+    @property
+    def type(self):
+        """Gets the type of this V2beta1CreateArtifactRequest.  # noqa: E501
+
+
+        :return: The type of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :rtype: V2beta1ArtifactTaskType
+        """
+        return self._type
+
+    @type.setter
+    def type(self, type):
+        """Sets the type of this V2beta1CreateArtifactRequest.
+
+
+        :param type: The type of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :type type: V2beta1ArtifactTaskType
+        """
+
+        self._type = type
+
+    @property
+    def producer_task_name(self):
+        """Gets the producer_task_name of this V2beta1CreateArtifactRequest.  # noqa: E501
+
+
+        :return: The producer_task_name of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :rtype: str
+        """
+        return self._producer_task_name
+
+    @producer_task_name.setter
+    def producer_task_name(self, producer_task_name):
+        """Sets the producer_task_name of this V2beta1CreateArtifactRequest.
+
+
+        :param producer_task_name: The producer_task_name of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :type producer_task_name: str
+        """
+
+        self._producer_task_name = producer_task_name
+
+    @property
+    def producer_key(self):
+        """Gets the producer_key of this V2beta1CreateArtifactRequest.  # noqa: E501
+
+
+        :return: The producer_key of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :rtype: str
+        """
+        return self._producer_key
+
+    @producer_key.setter
+    def producer_key(self, producer_key):
+        """Sets the producer_key of this V2beta1CreateArtifactRequest.
+
+
+        :param producer_key: The producer_key of this V2beta1CreateArtifactRequest.  # noqa: E501
+        :type producer_key: str
+        """
+
+        self._producer_key = producer_key
 
     def to_dict(self):
         """Returns the model properties as a dict"""
