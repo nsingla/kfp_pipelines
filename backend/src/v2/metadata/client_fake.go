@@ -30,6 +30,14 @@ import (
 type FakeClient struct {
 }
 
+func (c *FakeClient) UpdateExecutionCache(ctx context.Context, executionID int64, fingerprint string) error {
+	panic("")
+}
+
+func (c *FakeClient) GetExecutionFromFingerprint(ctx context.Context, fingerprint string, pipelineName string, namespace string) (*int64, error) {
+	panic("not implemented")
+}
+
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
