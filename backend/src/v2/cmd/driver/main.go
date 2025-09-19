@@ -31,10 +31,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
+	"github.com/kubeflow/pipelines/backend/src/v2/apiclient"
 	"github.com/kubeflow/pipelines/backend/src/v2/config"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver"
-	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 )
 
@@ -64,6 +63,7 @@ var (
 
 	// container inputs
 	dagExecutionID    = flag.Int64("dag_execution_id", 0, "DAG execution ID")
+	parentTaskID      = flag.String("parent_task_id", "", "Parent PipelineTaskDetail ID")
 	containerSpecJson = flag.String("container", "{}", "container spec")
 	k8sExecConfigJson = flag.String("kubernetes_config", "{}", "kubernetes executor config")
 
@@ -136,6 +136,18 @@ func drive() (err error) {
 		}
 	}()
 	ctx := context.Background()
+	// Initialize connection to new KFP v2beta1 API server (Tasks/Artifacts)
+	apiCfg := apiclient.FromEnv()
+	kfpAPIClient, apiErr := apiclient.New(apiCfg)
+	var driverAPI driver.DriverAPI
+	if apiErr != nil {
+		return fmt.Errorf("failed to init KFP API client: %w", apiErr)
+	}
+
+	defer kfpAPIClient.Close()
+	driverAPI = driver.NewDriverAPI(kfpAPIClient)
+	glog.Infof("Initialized KFP API client at %s", kfpAPIClient.Endpoint)
+
 	if err = validate(); err != nil {
 		return err
 	}
@@ -176,14 +188,6 @@ func drive() (err error) {
 	if err != nil {
 		return err
 	}
-	client, err := newMlmdClient()
-	if err != nil {
-		return err
-	}
-	cacheClient, err := cacheutils.NewClient(*cacheDisabledFlag)
-	if err != nil {
-		return err
-	}
 	devMode := os.Getenv("DEV_MODE")
 	if devMode == "" {
 		devMode = "false"
@@ -204,13 +208,13 @@ func drive() (err error) {
 		Namespace:        namespace,
 		Component:        componentSpec,
 		Task:             taskSpec,
-		DAGExecutionID:   *dagExecutionID,
 		IterationIndex:   *iterationIndex,
 		PipelineLogLevel: *logLevel,
 		PublishLogs:      *publishLogs,
 		CacheDisabled:    *cacheDisabledFlag,
 		DriverType:       *driverType,
 		TaskName:         *taskName,
+		ParentTaskID:     *parentTaskID,
 		DevMode:          devMode == "true",
 		DevExecutionId:   devExecutionId,
 	}
@@ -219,13 +223,13 @@ func drive() (err error) {
 	switch *driverType {
 	case ROOT_DAG:
 		options.RuntimeConfig = runtimeConfig
-		execution, driverErr = driver.RootDAG(ctx, options, client)
+		execution, driverErr = driver.RootDAGV2(ctx, options, driverAPI)
 	case DAG:
-		execution, driverErr = driver.DAG(ctx, options, client)
+		execution, driverErr = driver.DAGV2(ctx, options, driverAPI)
 	case CONTAINER:
 		options.Container = containerSpec
 		options.KubernetesExecutorConfig = k8sExecCfg
-		execution, driverErr = driver.Container(ctx, options, client, cacheClient)
+		execution, driverErr = driver.ContainerV2(ctx, options, driverAPI)
 	default:
 		err = fmt.Errorf("unknown driverType %s", *driverType)
 	}
@@ -343,13 +347,4 @@ func writeFile(path string, data []byte) (err error) {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)
-}
-
-func newMlmdClient() (*metadata.Client, error) {
-	mlmdConfig := metadata.DefaultConfig()
-	if *mlmdServerAddress != "" && *mlmdServerPort != "" {
-		mlmdConfig.Address = *mlmdServerAddress
-		mlmdConfig.Port = *mlmdServerPort
-	}
-	return metadata.NewClient(mlmdConfig.Address, mlmdConfig.Port)
 }

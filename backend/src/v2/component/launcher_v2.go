@@ -32,9 +32,10 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/apiclient"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/kubeflow/pipelines/backend/src/v2/objectstore"
-	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 	"gocloud.dev/blob"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -49,6 +50,8 @@ type LauncherV2Options struct {
 	MLMDServerPort,
 	PipelineName,
 	RunID string
+	// TaskID of the current PipelineTaskDetail for recording outputs via KFP API.
+	TaskID            string
 	PublishLogs       string
 	CacheDisabled     bool
 	CachedFingerprint string
@@ -163,54 +166,30 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 
 	defer stopWaitingArtifacts(l.executorInput.GetInputs().GetArtifacts())
 
-	// publish execution regardless the task succeeds or not
-	var execution *metadata.Execution
-	var executorOutput *pipelinespec.ExecutorOutput
-	var outputArtifacts []*metadata.OutputArtifact
-	status := pb.Execution_FAILED
-	defer func() {
-		if execution == nil {
-			glog.Errorf("Skipping publish since execution is nil. Original err is: %v", err)
-			return
-		}
-		if perr := l.publish(ctx, execution, executorOutput, outputArtifacts, status); perr != nil {
-			if err != nil {
-				err = fmt.Errorf("failed to publish execution with error %s after execution failed: %s", perr.Error(), err.Error())
-			} else {
-				err = perr
+	// Initialize connection to new KFP v2beta1 API server (Tasks/Artifacts)
+	apiCfg := apiclient.FromEnv()
+	kfpAPIClient, apiErr := apiclient.New(apiCfg)
+	if apiErr != nil {
+		glog.Warningf("Failed to init KFP API client at %s: %v", apiCfg.Endpoint, apiErr)
+	} else {
+		defer kfpAPIClient.Close()
+		glog.Infof("Initialized KFP API client at %s", kfpAPIClient.Endpoint)
+	}
+
+	// Prepare object store session based on pipeline root from placeholders in executor input
+	// For V2, we derive bucket config from any output artifact URI in executor input.
+	var bucketConfig *objectstore.Config
+	for _, al := range l.executorInput.GetOutputs().GetArtifacts() {
+		if len(al.Artifacts) > 0 {
+			cfg, cfgErr := objectstore.ParseBucketConfigForArtifactURI(al.Artifacts[0].GetUri())
+			if cfgErr == nil {
+				bucketConfig = cfg
+				break
 			}
 		}
-		glog.Infof("publish success.")
-		// At the end of the current task, we check the statuses of all tasks in
-		// the current DAG and update the DAG's status accordingly.
-		dag, err := l.clientManager.MetadataClient().GetDAG(ctx, execution.GetExecution().CustomProperties["parent_dag_id"].GetIntValue())
-		if err != nil {
-			glog.Errorf("DAG Status Update: failed to get DAG: %s", err.Error())
-		}
-		pipeline, _ := l.clientManager.MetadataClient().GetPipelineFromExecution(ctx, execution.GetID())
-		err = l.clientManager.MetadataClient().UpdateDAGExecutionsState(ctx, dag, pipeline)
-		if err != nil {
-			glog.Errorf("failed to update DAG state: %s", err.Error())
-		}
-		if status == pb.Execution_COMPLETE && l.options.CachedFingerprint != "" {
-			err := l.clientManager.MetadataClient().UpdateExecutionCache(ctx, execution.GetID(), l.options.CachedFingerprint)
-			if err != nil {
-				glog.Errorf("failed to update execution cache: %s", err.Error())
-			}
-		}
-	}()
-	execution, err = l.prePublish(ctx)
-	if err != nil {
-		return err
 	}
-	storeSessionInfo, err := objectstore.GetSessionInfoFromString(execution.GetPipeline().GetStoreSessionInfo())
-	if err != nil {
-		return err
-	}
-	pipelineRoot := execution.GetPipeline().GetPipelineRoot()
-	bucketConfig, err := objectstore.ParseBucketConfig(pipelineRoot, storeSessionInfo)
-	if err != nil {
-		return err
+	if bucketConfig == nil {
+		return fmt.Errorf("failed to derive bucket config from outputs; at least one output artifact with uri is required")
 	}
 	bucket, err := objectstore.OpenBucket(ctx, l.clientManager.K8sClient(), l.options.Namespace, bucketConfig)
 	if err != nil {
@@ -219,7 +198,8 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 	if err = prepareOutputFolders(l.executorInput); err != nil {
 		return err
 	}
-	executorOutput, outputArtifacts, err = executeV2(
+	var executorOutput *pipelinespec.ExecutorOutput
+	executorOutput, err = executeV2(
 		ctx,
 		l.executorInput,
 		l.component,
@@ -227,7 +207,6 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 		l.args,
 		bucket,
 		bucketConfig,
-		l.clientManager.MetadataClient(),
 		l.options.Namespace,
 		l.clientManager.K8sClient(),
 		l.options.PublishLogs,
@@ -235,7 +214,53 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	status = pb.Execution_COMPLETE
+	// After successful execution and uploads, record outputs in KFP API
+	// 1) Create artifacts for each output port
+	for portName, al := range l.executorInput.GetOutputs().GetArtifacts() {
+		for _, ra := range al.GetArtifacts() {
+			u := ra.GetUri()
+			m := map[string]*structpb.Value{}
+			if ra.GetMetadata() != nil {
+				m = ra.GetMetadata().GetFields()
+			}
+			art := &gc.Artifact{
+				Name:     ra.GetName(),
+				Uri:      &u,
+				Metadata: m,
+			}
+			_, cerr := kfpAPIClient.Artifact.CreateArtifact(ctx, &gc.CreateArtifactRequest{
+				Artifact:    art,
+				RunId:       l.options.RunID,
+				TaskId:      l.options.TaskID,
+				ProducerKey: portName,
+			})
+			if cerr != nil {
+				return fmt.Errorf("failed to create artifact for port %s: %w", portName, cerr)
+			}
+		}
+	}
+	// 2) Update task outputs for parameters
+	if executorOutput != nil && len(executorOutput.GetParameterValues()) > 0 {
+		params := make([]*gc.PipelineTaskDetail_InputOutputs_Parameter, 0, len(executorOutput.GetParameterValues()))
+		for name, val := range executorOutput.GetParameterValues() {
+			v := val.GetStringValue()
+			// Fallback: marshal non-string values
+			if v == "" && val != nil {
+				b, _ := protojson.Marshal(val)
+				v = string(b)
+			}
+			n := name
+			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{Name: &n, Value: v})
+		}
+		_, uerr := kfpAPIClient.Run.UpdateTask(ctx, &gc.UpdateTaskRequest{Task: &gc.PipelineTaskDetail{
+			TaskId:  l.options.TaskID,
+			RunId:   l.options.RunID,
+			Outputs: &gc.PipelineTaskDetail_InputOutputs{Parameters: params},
+		}})
+		if uerr != nil {
+			return fmt.Errorf("failed to update task outputs: %w", uerr)
+		}
+	}
 	return nil
 }
 
@@ -269,54 +294,9 @@ func (o *LauncherV2Options) validate() error {
 	if empty(o.MLMDServerPort) {
 		return err("MLMDServerPort")
 	}
-	return nil
-}
-
-// publish pod info to MLMD, before running user command
-func (l *LauncherV2) prePublish(ctx context.Context) (execution *metadata.Execution, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("failed to pre-publish Pod info to ML Metadata: %w", err)
-		}
-	}()
-	execution, err = l.clientManager.MetadataClient().GetExecution(ctx, l.executionID)
-	if err != nil {
-		return nil, err
+	if empty(o.TaskID) {
+		return err("TaskID")
 	}
-	ecfg := &metadata.ExecutionConfig{
-		PodName:   l.options.PodName,
-		PodUID:    l.options.PodUID,
-		Namespace: l.options.Namespace,
-	}
-	return l.clientManager.MetadataClient().PrePublishExecution(ctx, execution, ecfg)
-}
-
-// TODO(Bobgy): consider passing output artifacts info from executor output.
-func (l *LauncherV2) publish(
-	ctx context.Context,
-	execution *metadata.Execution,
-	executorOutput *pipelinespec.ExecutorOutput,
-	outputArtifacts []*metadata.OutputArtifact,
-	status pb.Execution_State,
-) (err error) {
-	if execution == nil {
-		return fmt.Errorf("failed to publish results to ML Metadata: execution is nil")
-	}
-
-	var outputParameters map[string]*structpb.Value
-	if executorOutput != nil {
-		outputParameters = executorOutput.GetParameterValues()
-	}
-
-	// TODO(Bobgy): upload output artifacts.
-	// TODO(Bobgy): when adding artifacts, we will need execution.pipeline to be non-nil, because we need
-	// to publish output artifacts to the context too.
-	// return l.metadataClient.PublishExecution(ctx, execution, outputParameters, outputArtifacts, pb.Execution_COMPLETE)
-	err = l.clientManager.MetadataClient().PublishExecution(ctx, execution, outputParameters, outputArtifacts, status)
-	if err != nil {
-		return fmt.Errorf("failed to publish results to ML Metadata: %w", err)
-	}
-
 	return nil
 }
 
@@ -330,24 +310,23 @@ func executeV2(
 	args []string,
 	bucket *blob.Bucket,
 	bucketConfig *objectstore.Config,
-	metadataClient metadata.ClientInterface,
 	namespace string,
 	k8sClient kubernetes.Interface,
 	publishLogs string,
-) (*pipelinespec.ExecutorOutput, []*metadata.OutputArtifact, error) {
+) (*pipelinespec.ExecutorOutput, error) {
 
 	// Add parameter default values to executorInput, if there is not already a user input.
 	// This process is done in the launcher because we let the component resolve default values internally.
 	// Variable executorInputWithDefault is a copy so we don't alter the original data.
 	executorInputWithDefault, err := addDefaultParams(executorInput, component)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Fill in placeholders with runtime values.
 	compiledCmd, compiledArgs, err := compileCmdAndArgs(executorInputWithDefault, cmd, args)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	executorOutput, err := execute(
@@ -362,27 +341,24 @@ func executeV2(
 		publishLogs,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// These are not added in execute(), because execute() is shared between v2 compatible and v2 engine launcher.
 	// In v2 compatible mode, we get output parameter info from runtimeInfo. In v2 engine, we get it from component spec.
 	// Because of the difference, we cannot put parameter collection logic in one method.
 	err = collectOutputParameters(executorInput, executorOutput, component)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	// TODO(Bobgy): should we log metadata per each artifact, or batched after uploading all artifacts.
-	outputArtifacts, err := uploadOutputArtifacts(ctx, executorInput, executorOutput, uploadOutputArtifactsOptions{
-		bucketConfig:   bucketConfig,
-		bucket:         bucket,
-		metadataClient: metadataClient,
+	// Upload artifacts from local disk to remote store.
+	err = uploadOutputArtifacts(ctx, executorInput, executorOutput, uploadOutputArtifactsOptions{
+		bucketConfig: bucketConfig,
+		bucket:       bucket,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	// TODO(Bobgy): only return executor output. Merge info in output artifacts
-	// to executor output.
-	return executorOutput, outputArtifacts, nil
+	return executorOutput, nil
 }
 
 // collectOutputParameters collect output parameters from local disk and add them
@@ -506,27 +482,21 @@ func execute(
 }
 
 type uploadOutputArtifactsOptions struct {
-	bucketConfig   *objectstore.Config
-	bucket         *blob.Bucket
-	metadataClient metadata.ClientInterface
+	bucketConfig *objectstore.Config
+	bucket       *blob.Bucket
 }
 
-func uploadOutputArtifacts(ctx context.Context, executorInput *pipelinespec.ExecutorInput, executorOutput *pipelinespec.ExecutorOutput, opts uploadOutputArtifactsOptions) ([]*metadata.OutputArtifact, error) {
-	// Register artifacts with MLMD.
-	outputArtifacts := make([]*metadata.OutputArtifact, 0, len(executorInput.GetOutputs().GetArtifacts()))
+func uploadOutputArtifacts(ctx context.Context, executorInput *pipelinespec.ExecutorInput, executorOutput *pipelinespec.ExecutorOutput, opts uploadOutputArtifactsOptions) error {
 	for name, artifactList := range executorInput.GetOutputs().GetArtifacts() {
 		if len(artifactList.Artifacts) == 0 {
 			continue
 		}
-
 		for _, outputArtifact := range artifactList.Artifacts {
-			glog.Infof("outputArtifact in uploadOutputArtifacts call: ", outputArtifact.Name)
-
+			glog.Infof("outputArtifact in uploadOutputArtifacts call: %s", outputArtifact.Name)
 			// Merge executor output artifact info with executor input
 			if list, ok := executorOutput.Artifacts[name]; ok && len(list.Artifacts) > 0 {
 				mergeRuntimeArtifacts(list.Artifacts[0], outputArtifact)
 			}
-
 			// Upload artifacts from local path to remote storages.
 			localDir, err := LocalPathForURI(outputArtifact.Uri)
 			if err != nil {
@@ -534,35 +504,20 @@ func uploadOutputArtifacts(ctx context.Context, executorInput *pipelinespec.Exec
 			} else if !strings.HasPrefix(outputArtifact.Uri, "oci://") {
 				blobKey, err := opts.bucketConfig.KeyFromURI(outputArtifact.Uri)
 				if err != nil {
-					return nil, fmt.Errorf("failed to upload output artifact %q: %w", name, err)
+					return fmt.Errorf("failed to upload output artifact %q: %w", name, err)
 				}
 				if err := objectstore.UploadBlob(ctx, opts.bucket, localDir, blobKey); err != nil {
-					//  We allow components to not produce output files
+					// We allow components to not produce output files
 					if errors.Is(err, os.ErrNotExist) {
 						glog.Warningf("Local filepath %q does not exist", localDir)
 					} else {
-						return nil, fmt.Errorf("failed to upload output artifact %q to remote storage URI %q: %w", name, outputArtifact.Uri, err)
+						return fmt.Errorf("failed to upload output artifact %q to remote storage URI %q: %w", name, outputArtifact.Uri, err)
 					}
 				}
 			}
-
-			// Write out the metadata.
-			metadataErr := func(err error) error {
-				return fmt.Errorf("unable to produce MLMD artifact for output %q: %w", name, err)
-			}
-			// TODO(neuromage): Consider batching these instead of recording one by one.
-			schema, err := getArtifactSchema(outputArtifact.GetType())
-			if err != nil {
-				return nil, fmt.Errorf("failed to determine schema for output %q: %w", name, err)
-			}
-			mlmdArtifact, err := opts.metadataClient.RecordArtifact(ctx, name, schema, outputArtifact, pb.Artifact_LIVE, opts.bucketConfig)
-			if err != nil {
-				return nil, metadataErr(err)
-			}
-			outputArtifacts = append(outputArtifacts, mlmdArtifact)
 		}
 	}
-	return outputArtifacts, nil
+	return nil
 }
 
 // waitForModelcar assumes the Modelcar has already been validated by the init container on the launcher

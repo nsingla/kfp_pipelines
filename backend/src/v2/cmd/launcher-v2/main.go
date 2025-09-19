@@ -31,6 +31,7 @@ var (
 	copy              = flag.String("copy", "", "copy this binary to specified destination path")
 	pipelineName      = flag.String("pipeline_name", "", "pipeline context name")
 	runID             = flag.String("run_id", "", "pipeline run uid")
+	taskID            = flag.String("task_id", "", "pipeline task id (PipelineTaskDetail.task_id)")
 	parentDagID       = flag.Int64("parent_dag_id", 0, "parent DAG execution ID")
 	executorType      = flag.String("executor_type", "container", "The type of the ExecutorSpec")
 	executionID       = flag.Int64("execution_id", 0, "Execution ID of this task.")
@@ -83,6 +84,7 @@ func run() error {
 		MLMDServerPort:    *mlmdServerPort,
 		PipelineName:      *pipelineName,
 		RunID:             *runID,
+		TaskID:            *taskID,
 		PublishLogs:       *publishLogs,
 		CacheDisabled:     *cacheDisabledFlag,
 		CachedFingerprint: *fingerPrint,

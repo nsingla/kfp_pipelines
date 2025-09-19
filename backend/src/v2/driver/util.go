@@ -106,3 +106,69 @@ func getItems(value *structpb.Value) (items []*structpb.Value, err error) {
 		return nil, fmt.Errorf("value of type %T cannot be iterated", v)
 	}
 }
+
+// validateRootDAG contains validation for root DAG driver options, without MLMD dependencies.
+func validateRootDAG(opts Options) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("invalid root DAG driver args: %w", err)
+		}
+	}()
+	if opts.PipelineName == "" {
+		return fmt.Errorf("pipeline name is required")
+	}
+	if opts.RunID == "" {
+		return fmt.Errorf("KFP run ID is required")
+	}
+	if opts.Component == nil {
+		return fmt.Errorf("component spec is required")
+	}
+	if opts.RuntimeConfig == nil {
+		return fmt.Errorf("runtime config is required")
+	}
+	if opts.Namespace == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	if opts.Task.GetTaskInfo().GetName() != "" {
+		return fmt.Errorf("task spec is unnecessary")
+	}
+	if opts.ParentTaskID != "" {
+		return fmt.Errorf("DAG execution ID is unnecessary")
+	}
+	if opts.Container != nil {
+		return fmt.Errorf("container spec is unnecessary")
+	}
+	if opts.IterationIndex >= 0 {
+		return fmt.Errorf("iteration index is unnecessary")
+	}
+	return nil
+}
+
+// validateDAG validates non-root DAG options without MLMD.
+func validateDAG(opts Options) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("invalid DAG driver args: %w", err)
+		}
+	}()
+	if opts.Container != nil {
+		return fmt.Errorf("container spec is unnecessary")
+	}
+	return validateNonRoot(opts)
+}
+
+// resolvePodSpecInputRuntimeParameter resolves runtime parameter placeholders used inside PodSpec strings.
+// It supports values like "{{$.inputs.parameters['param']}}" by looking them up in executorInput.
+func resolvePodSpecInputRuntimeParameter(parameterValue string, executorInput *pipelinespec.ExecutorInput) (string, error) {
+	if isInputParameterChannel(parameterValue) {
+		name, err := extractInputParameterFromChannel(parameterValue)
+		if err != nil {
+			return "", err
+		}
+		if val, ok := executorInput.GetInputs().GetParameterValues()[name]; ok {
+			return val.GetStringValue(), nil
+		}
+		return "", fmt.Errorf("executorInput did not contain parameter %q", name)
+	}
+	return parameterValue, nil
+}

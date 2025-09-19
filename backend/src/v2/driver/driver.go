@@ -48,8 +48,8 @@ type Options struct {
 	Namespace     string
 
 	// optional, required by non-root drivers
-	Task           *pipelinespec.PipelineTaskSpec
-	DAGExecutionID int64
+	Task         *pipelinespec.PipelineTaskSpec
+	ParentTaskID string
 
 	// optional, required only by container driver
 	Container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec
