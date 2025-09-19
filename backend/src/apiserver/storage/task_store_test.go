@@ -600,7 +600,7 @@ func TestHydrateArtifactsForTask_GetAndList(t *testing.T) {
 	_, err = ats1.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID:       artIn.UUID,
 		TaskID:           task.UUID,
-		Type:             apiv2beta1.ArtifactTaskType_INPUT,
+		Type:             model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 		RunUUID:          task.RunUUID,
 		ProducerTaskName: "",
 		ProducerKey:      "",
@@ -611,7 +611,7 @@ func TestHydrateArtifactsForTask_GetAndList(t *testing.T) {
 	_, err = ats2.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID:       artOut.UUID,
 		TaskID:           task.UUID,
-		Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+		Type:             model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_OUTPUT),
 		RunUUID:          task.RunUUID,
 		ProducerTaskName: "producer-task",
 		ProducerKey:      "output-key",

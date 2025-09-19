@@ -304,7 +304,7 @@ func seedArtifactTasks(t *testing.T) (*ArtifactServer, *resource.FakeClientManag
 	// Artifacts
 	art1, err := clientManager.ArtifactStore().CreateArtifact(&model.Artifact{
 		Namespace:   "ns1",
-		Type:        apiv2beta1.Artifact_Artifact,
+		Type:        model.ArtifactType(apiv2beta1.Artifact_Artifact),
 		Uri:         strPTR("u"),
 		Name:        "a1",
 		Description: "d1",
@@ -312,7 +312,7 @@ func seedArtifactTasks(t *testing.T) (*ArtifactServer, *resource.FakeClientManag
 	assert.NoError(t, err)
 	art2, err := clientManager.ArtifactStore().CreateArtifact(&model.Artifact{
 		Namespace:   "ns1",
-		Type:        apiv2beta1.Artifact_Artifact,
+		Type:        model.ArtifactType(apiv2beta1.Artifact_Artifact),
 		Uri:         strPTR("u2"),
 		Name:        "a2",
 		Description: "d2",

@@ -83,13 +83,13 @@ func TestCreateArtifactTask_Success(t *testing.T) {
 	link, err := linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art.UUID,
 		TaskID:     task.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, linkUUID1, link.UUID)
 	assert.Equal(t, art.UUID, link.ArtifactID)
 	assert.Equal(t, task.UUID, link.TaskID)
-	assert.Equal(t, apiv2beta1.ArtifactTaskType_INPUT, link.Type)
+	assert.Equal(t, model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT), link.Type)
 
 	// Fetch back
 	got, err := linkStore.GetArtifactTask(link.UUID)
@@ -164,7 +164,7 @@ func TestListArtifactTasks_Filters(t *testing.T) {
 		ArtifactID: art1.UUID,
 		TaskID:     t1.UUID,
 		RunUUID:    runId1,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 	assert.NoError(t, err)
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID2, nil)
@@ -172,7 +172,7 @@ func TestListArtifactTasks_Filters(t *testing.T) {
 		ArtifactID: art2.UUID,
 		TaskID:     t1.UUID,
 		RunUUID:    runId1,
-		Type:       apiv2beta1.ArtifactTaskType_OUTPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_OUTPUT),
 	})
 	assert.NoError(t, err)
 	// another link with a fresh random UUID
@@ -181,7 +181,7 @@ func TestListArtifactTasks_Filters(t *testing.T) {
 		ArtifactID: art2.UUID,
 		TaskID:     t2.UUID,
 		RunUUID:    runId2,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 	assert.NoError(t, err)
 
@@ -213,7 +213,7 @@ func TestListArtifactTasks_Filters(t *testing.T) {
 	assert.Equal(t, 1, totalRun)
 	assert.Equal(t, art2.UUID, byRun[0].ArtifactID)
 	assert.Equal(t, t2.UUID, byRun[0].TaskID)
-	assert.Equal(t, apiv2beta1.ArtifactTaskType_INPUT, byRun[0].Type)
+	assert.Equal(t, model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT), byRun[0].Type)
 }
 
 func TestListArtifactsForTask_UsingArtifactTasks(t *testing.T) {
@@ -262,14 +262,14 @@ func TestListArtifactsForTask_UsingArtifactTasks(t *testing.T) {
 	_, err = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art1.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 	assert.NoError(t, err)
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID2, nil)
 	_, err = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art2.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_OUTPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_OUTPUT),
 	})
 	assert.NoError(t, err)
 
@@ -333,21 +333,21 @@ func TestListArtifactTasks_Pagination_PageSizeAndNextPageToken(t *testing.T) {
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art1.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID2, nil)
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art1.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_OUTPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_OUTPUT),
 	})
 
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID3, nil)
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art2.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 
 	// Page 1: size 2
@@ -432,21 +432,21 @@ func TestListArtifactTasks_Pagination_WithFilter(t *testing.T) {
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art1.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID2, nil)
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art2.UUID,
 		TaskID:     t1.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_OUTPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_OUTPUT),
 	})
 
 	linkStore.uuid = util.NewFakeUUIDGeneratorOrFatal(linkUUID3, nil)
 	_, _ = linkStore.CreateArtifactTask(&model.ArtifactTask{
 		ArtifactID: art2.UUID,
 		TaskID:     t2.UUID,
-		Type:       apiv2beta1.ArtifactTaskType_INPUT,
+		Type:       model.ArtifactTaskType(apiv2beta1.ArtifactTaskType_INPUT),
 	})
 
 	filterByT1 := []*model.FilterContext{{ReferenceKey: &model.ReferenceKey{Type: model.TaskResourceType, ID: t1.UUID}}}

@@ -40,7 +40,7 @@ func TestCreateArtifact_Success(t *testing.T) {
 
 	art := &model.Artifact{
 		Namespace: "ns1",
-		Type:      apiv2beta1.Artifact_Artifact,
+		Type:      model.ArtifactType(apiv2beta1.Artifact_Artifact),
 		Uri:       strPTR("s3://bucket/path/file"),
 		Name:      "model.pt",
 		Metadata:  model.JSONData(map[string]interface{}{"k": "v"}),
@@ -52,7 +52,7 @@ func TestCreateArtifact_Success(t *testing.T) {
 	assert.Greater(t, created.CreatedAtInSec, int64(0))
 	assert.Equal(t, created.CreatedAtInSec, created.LastUpdateInSec)
 	assert.Equal(t, "ns1", created.Namespace)
-	assert.Equal(t, apiv2beta1.Artifact_Artifact, created.Type)
+	assert.Equal(t, model.ArtifactType(apiv2beta1.Artifact_Artifact), created.Type)
 	assert.Equal(t, "s3://bucket/path/file", *created.Uri)
 	assert.Equal(t, "model.pt", created.Name)
 	assert.Equal(t, "v", created.Metadata["k"])
