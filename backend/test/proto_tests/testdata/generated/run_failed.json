@@ -17,5 +17,7 @@
   },
   "run_details":  null,
   "recurring_run_id":  "",
-  "state_history":  []
+  "state_history":  [],
+  "pipeline_reference":  null,
+  "tasks":  []
 }
