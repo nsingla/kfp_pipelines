@@ -10,15 +10,15 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// RootDAGV2 mirrors RootDAG but uses the new KFP APIs (RunService/Tasks) instead of MLMD.
-func RootDAGV2(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+// RootDAG mirrors RootDAG but uses the new KFP APIs (RunService/Tasks) instead of MLMD.
+func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.RootDAGV2(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.RootDAG(%s) failed: %w", opts.info(), err)
 		}
 	}()
 	b, _ := json.Marshal(opts)
-	glog.V(4).Info("RootDAGV2 opts: ", string(b))
+	glog.V(4).Info("RootDAG opts: ", string(b))
 	if err = validateRootDAG(opts); err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func RootDAGV2(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		Inputs:         inputs,
 		TypeAttributes: &gc.PipelineTaskDetail_TypeAttributes{},
 	}
- _, err = api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	_, err = api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return nil, err
 	}

@@ -223,13 +223,13 @@ func drive() (err error) {
 	switch *driverType {
 	case ROOT_DAG:
 		options.RuntimeConfig = runtimeConfig
-		execution, driverErr = driver.RootDAGV2(ctx, options, driverAPI)
+		execution, driverErr = driver.RootDAG(ctx, options, driverAPI)
 	case DAG:
-		execution, driverErr = driver.DAGV2(ctx, options, driverAPI)
+		execution, driverErr = driver.DAG(ctx, options, driverAPI)
 	case CONTAINER:
 		options.Container = containerSpec
 		options.KubernetesExecutorConfig = k8sExecCfg
-		execution, driverErr = driver.ContainerV2(ctx, options, driverAPI)
+		execution, driverErr = driver.Container(ctx, options, driverAPI)
 	default:
 		err = fmt.Errorf("unknown driverType %s", *driverType)
 	}

@@ -11,22 +11,22 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 )
 
-// ContainerV2 mirrors Container but uses KFP RunService/ArtifactService instead of MLMD.
+// Container mirrors Container but uses KFP RunService/ArtifactService instead of MLMD.
 // Initial version wires inputs and creates a runtime task; output recording via
 // ArtifactService will be added in subsequent steps.
-func ContainerV2(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.ContainerV2(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.Container(%s) failed: %w", opts.info(), err)
 		}
 	}()
 	b, _ := json.Marshal(opts)
-	glog.V(4).Info("ContainerV2 opts: ", string(b))
+	glog.V(4).Info("Container opts: ", string(b))
 	if api == nil {
 		return nil, fmt.Errorf("api client is nil")
 	}
 	if opts.TaskName == "" {
-		return nil, fmt.Errorf("task name flag is required for ContainerV2")
+		return nil, fmt.Errorf("task name flag is required for Container")
 	}
 	var iterationIndex *int
 	if opts.IterationIndex >= 0 {

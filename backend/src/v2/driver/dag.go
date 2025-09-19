@@ -11,17 +11,17 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 )
 
-// DAGV2 mirrors DAG but uses KFP RunService/ArtifactService instead of MLMD.
+// DAG mirrors DAG but uses KFP RunService/ArtifactService instead of MLMD.
 // This initial version focuses on wiring and inputs; parent/iteration linkage
 // and full upstream resolution will be added incrementally.
-func DAGV2(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.DAGV2(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.DAG(%s) failed: %w", opts.info(), err)
 		}
 	}()
 	b, _ := json.Marshal(opts)
-	glog.V(4).Info("DAGV2 opts: ", string(b))
+	glog.V(4).Info("DAG opts: ", string(b))
 	if err = validateDAG(opts); err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func DAGV2(ctx context.Context, opts Options, api DriverAPI) (execution *Executi
 	}
 
 	if opts.TaskName == "" {
-		return execution, fmt.Errorf("task name flag is required for DAGV2")
+		return execution, fmt.Errorf("task name flag is required for DAG")
 	}
 
 	pd := &gc.PipelineTaskDetail{
