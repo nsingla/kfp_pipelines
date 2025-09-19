@@ -2210,11 +2210,11 @@ func toModelArtifact(a *apiv2beta1.Artifact) (*model.Artifact, error) {
 	}
 
 	modelArtifact := &model.Artifact{
-		UUID:      a.GetArtifactId(),
-		Namespace: a.GetNamespace(),
-		Type:      a.GetType(),
-		Uri:       a.Uri,
-		Name:      a.GetName(),
+		UUID:        a.GetArtifactId(),
+		Namespace:   a.GetNamespace(),
+		Type:        a.GetType(),
+		Uri:         a.Uri,
+		Name:        a.GetName(),
 		Description: a.GetDescription(),
 		// NumberValue can be nil & nullable, so directly apply it
 		// instead of using a.GetNumberValue() (which will return 0 if nil).
