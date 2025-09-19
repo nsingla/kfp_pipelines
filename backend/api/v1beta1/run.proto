@@ -258,6 +258,10 @@ message Run {
   // and the error message is returned. Client has the flexibility of choosing
   // how to handle error. This is especially useful during listing call.
   string error = 12;
+
+  // Output. The metrics of the run. The metrics are reported by ReportMetrics
+  // API.
+  repeated RunMetric metrics = 9;
 }
 // Next field number of Run will be 15
 
