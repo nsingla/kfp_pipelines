@@ -60,15 +60,9 @@ type ClientService interface {
 
 	GetArtifact(params *GetArtifactParams, opts ...ClientOption) (*GetArtifactOK, error)
 
-	GetMetric(params *GetMetricParams, opts ...ClientOption) (*GetMetricOK, error)
-
 	ListArtifactTasks(params *ListArtifactTasksParams, opts ...ClientOption) (*ListArtifactTasksOK, error)
 
 	ListArtifacts(params *ListArtifactsParams, opts ...ClientOption) (*ListArtifactsOK, error)
-
-	ListMetrics(params *ListMetricsParams, opts ...ClientOption) (*ListMetricsOK, error)
-
-	LogMetric(params *LogMetricParams, opts ...ClientOption) (*LogMetricOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -185,43 +179,6 @@ func (a *Client) GetArtifact(params *GetArtifactParams, opts ...ClientOption) (*
 }
 
 /*
-GetMetric gets a metric by task ID and name
-*/
-func (a *Client) GetMetric(params *GetMetricParams, opts ...ClientOption) (*GetMetricOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetMetricParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "get_metric",
-		Method:             "GET",
-		PathPattern:        "/apis/v2beta1/metrics/{artifact_id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &GetMetricReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetMetricOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	unexpectedSuccess := result.(*GetMetricDefault)
-	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
-}
-
-/*
 ListArtifactTasks lists artifact task relationships
 */
 func (a *Client) ListArtifactTasks(params *ListArtifactTasksParams, opts ...ClientOption) (*ListArtifactTasksOK, error) {
@@ -292,80 +249,6 @@ func (a *Client) ListArtifacts(params *ListArtifactsParams, opts ...ClientOption
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*ListArtifactsDefault)
-	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
-}
-
-/*
-ListMetrics lists all metrics
-*/
-func (a *Client) ListMetrics(params *ListMetricsParams, opts ...ClientOption) (*ListMetricsOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewListMetricsParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "list_metrics",
-		Method:             "GET",
-		PathPattern:        "/apis/v2beta1/metrics",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &ListMetricsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*ListMetricsOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	unexpectedSuccess := result.(*ListMetricsDefault)
-	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
-}
-
-/*
-LogMetric logs a metric for a specific task
-*/
-func (a *Client) LogMetric(params *LogMetricParams, opts ...ClientOption) (*LogMetricOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewLogMetricParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "log_metric",
-		Method:             "POST",
-		PathPattern:        "/apis/v2beta1/metrics",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &LogMetricReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*LogMetricOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	unexpectedSuccess := result.(*LogMetricDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

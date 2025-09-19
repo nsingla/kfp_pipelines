@@ -71,11 +71,9 @@ func TestArtifactServer_CreateArtifact_MultiUserCreateAndGet_Succeeds(t *testing
 	assert.NoError(t, err)
 
 	req := &apiv2beta1.CreateArtifactRequest{
-		RunId:            runid1,
-		TaskId:           task.UUID,
-		ProducerTaskName: "producer-task",
-		ProducerKey:      "producer-key",
-		Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+		RunId:       runid1,
+		TaskId:      task.UUID,
+		ProducerKey: "producer-key",
 		Artifact: &apiv2beta1.Artifact{
 			Namespace:   "ns1",
 			Type:        apiv2beta1.Artifact_Model,
@@ -106,7 +104,7 @@ func TestArtifactServer_CreateArtifact_MultiUserCreateAndGet_Succeeds(t *testing
 	assert.Equal(t, created.GetArtifactId(), at.GetArtifactId())
 	assert.Equal(t, task.UUID, at.GetTaskId())
 	assert.Equal(t, apiv2beta1.ArtifactTaskType_OUTPUT, at.GetType())
-	assert.Equal(t, "producer-task", at.GetProducerTaskName())
+	assert.Equal(t, task.Name, at.GetProducerTaskName())
 	assert.Equal(t, "producer-key", at.GetProducerKey())
 	// ArtifactKey may be empty for CreateArtifact path; ensure it defaults to empty string
 	assert.Equal(t, "", at.GetArtifactKey())
@@ -138,7 +136,7 @@ func TestArtifactServer_ListArtifacts_HappyPath(t *testing.T) {
 		Status:       1,
 	})
 	assert.NoError(t, err)
-	_, err = s.CreateArtifact(ctxWithUser(), &apiv2beta1.CreateArtifactRequest{RunId: runid1, TaskId: listTask.UUID, Type: apiv2beta1.ArtifactTaskType_OUTPUT, ProducerTaskName: "producer-task", ProducerKey: "producer-key", Artifact: &apiv2beta1.Artifact{
+	_, err = s.CreateArtifact(ctxWithUser(), &apiv2beta1.CreateArtifactRequest{RunId: runid1, TaskId: listTask.UUID, ProducerKey: "producer-key", Artifact: &apiv2beta1.Artifact{
 		Namespace:   "ns1",
 		Type:        apiv2beta1.Artifact_Model,
 		Uri:         strPTR("gs://b/f"),
@@ -212,11 +210,9 @@ func TestArtifactServer_SingleUserNamespaceEmpty(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	created, err := s.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{
-		RunId:            "single-run",
-		TaskId:           singleTask.UUID,
-		Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
-		ProducerTaskName: "producer-task",
-		ProducerKey:      "producer-key",
+		RunId:       "single-run",
+		TaskId:      singleTask.UUID,
+		ProducerKey: "producer-key",
 		Artifact: &apiv2beta1.Artifact{
 			Namespace:   "ns1",
 			Type:        apiv2beta1.Artifact_Artifact,

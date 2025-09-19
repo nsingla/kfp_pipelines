@@ -76,11 +76,13 @@ func (s *ArtifactServer) CreateArtifact(ctx context.Context, request *apiv2beta1
 	}
 
 	artifactTask := &apiv2beta1.ArtifactTask{
-		ArtifactId:       artifact.UUID,
-		TaskId:           task.UUID,
-		RunId:            request.GetRunId(),
-		Type:             request.GetType(),
-		ProducerTaskName: request.GetProducerTaskName(),
+		ArtifactId: artifact.UUID,
+		TaskId:     task.UUID,
+		RunId:      request.GetRunId(),
+		// An artifact at creation is an output of the associated task.
+		Type: apiv2beta1.ArtifactTaskType_OUTPUT,
+		// The producer task is implicitly the creator task of this artifact.
+		ProducerTaskName: task.Name,
 		ProducerKey:      request.GetProducerKey(),
 	}
 
@@ -244,25 +246,6 @@ func (s *ArtifactServer) ListArtifactTasks(ctx context.Context, request *apiv2be
 	}, nil
 }
 
-// LogMetric logs a metric for a specific task.
-func (s *ArtifactServer) LogMetric(ctx context.Context, request *apiv2beta1.CreateArtifactRequest) (*apiv2beta1.Artifact, error) {
-	err := s.validateLogMetricRequest(request)
-	if err != nil {
-		return nil, util.Wrap(err, "Failed to log metric due to validation error")
-	}
-	return s.CreateArtifact(ctx, request)
-}
-
-// GetMetric gets a metric by task ID and name.
-func (s *ArtifactServer) GetMetric(ctx context.Context, request *apiv2beta1.GetArtifactRequest) (*apiv2beta1.Artifact, error) {
-	return s.GetArtifact(ctx, request)
-}
-
-// ListMetrics lists all metrics.
-func (s *ArtifactServer) ListMetrics(ctx context.Context, request *apiv2beta1.ListArtifactRequest) (*apiv2beta1.ListArtifactResponse, error) {
-	return s.ListArtifacts(ctx, request)
-}
-
 // Authorization helper functions
 
 // canAccessRun checks if the user can access runs in the given namespace
@@ -379,9 +362,6 @@ func (s *ArtifactServer) validateCreateArtifactRequest(request *apiv2beta1.Creat
 	}
 	if request.GetTaskId() == "" {
 		return util.NewInvalidInputError("Task ID is required")
-	}
-	if request.GetProducerTaskName() == "" {
-		return util.NewInvalidInputError("Producer task name is required")
 	}
 	if request.GetProducerKey() == "" {
 		return util.NewInvalidInputError("Producer key is required")

@@ -21,21 +21,20 @@ type V2beta1CreateArtifactRequest struct {
 	// Required. The artifact to create.
 	Artifact *V2beta1Artifact `json:"artifact,omitempty"`
 
-	// producer key
+	// The outgoing parameter name of this Artifact within this task's component spec.
+	// For example:
+	// def preprocess(my_output: dsl.Outputs[dsl.Artifact]):
+	//   ...
+	// here the producer_key == "my_output"
+	// Note that producer_task_name == task_name
 	ProducerKey string `json:"producer_key,omitempty"`
-
-	// producer task name
-	ProducerTaskName string `json:"producer_task_name,omitempty"`
 
 	// An artifact is always created in the context of a
 	// run.
 	RunID string `json:"run_id,omitempty"`
 
-	// task id
+	// The Task that is associated with the creation of this artifact.
 	TaskID string `json:"task_id,omitempty"`
-
-	// type
-	Type *V2beta1ArtifactTaskType `json:"type,omitempty"`
 }
 
 // Validate validates this v2beta1 create artifact request
@@ -43,10 +42,6 @@ func (m *V2beta1CreateArtifactRequest) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateArtifact(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -75,34 +70,11 @@ func (m *V2beta1CreateArtifactRequest) validateArtifact(formats strfmt.Registry)
 	return nil
 }
 
-func (m *V2beta1CreateArtifactRequest) validateType(formats strfmt.Registry) error {
-	if swag.IsZero(m.Type) { // not required
-		return nil
-	}
-
-	if m.Type != nil {
-		if err := m.Type.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
 // ContextValidate validate this v2beta1 create artifact request based on the context it is used
 func (m *V2beta1CreateArtifactRequest) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateArtifact(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.contextValidateType(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -125,27 +97,6 @@ func (m *V2beta1CreateArtifactRequest) contextValidateArtifact(ctx context.Conte
 				return ve.ValidateName("artifact")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("artifact")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *V2beta1CreateArtifactRequest) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
-
-	if m.Type != nil {
-
-		if swag.IsZero(m.Type) { // not required
-			return nil
-		}
-
-		if err := m.Type.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
 			}
 			return err
 		}

@@ -76,6 +76,20 @@ service ArtifactService {
     };
   }
 
+  // Creates a new artifact.
+  rpc CreateArtifact(CreateArtifactRequest) returns (Artifact) {
+    option (google.api.http) = {
+      post: "/apis/v2beta1/artifacts"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "create_artifact"
+      summary: "Creates a new artifact."
+      tags: "ArtifactService"
+    };
+  }
+
+  // List ArtifactTasks.
   rpc ListArtifactTasks(ListArtifactTasksRequest) returns (ListArtifactTasksResponse) {
     option (google.api.http) = {
       get: "/apis/v2beta1/artifact_tasks"
@@ -90,7 +104,7 @@ service ArtifactService {
   // Creates an artifact-task relationship.
   // While we always create an artifact-task link when an artifact is created,
   // In the case of Importer, we only create a link (and not an artifact)
-  // if Reimport = true.
+  // if Reimport = false.
   rpc CreateArtifactTask(CreateArtifactTaskRequest) returns (ArtifactTask) {
     option (google.api.http) = {
       post: "/apis/v2beta1/artifact_tasks"
@@ -99,56 +113,6 @@ service ArtifactService {
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       operation_id: "create_artifact_task"
       summary: "Creates an artifact-task relationship."
-      tags: "ArtifactService"
-    };
-  }
-
-  // Creates a new artifact.
-  rpc CreateArtifact(CreateArtifactRequest) returns (Artifact) {
-    option (google.api.http) = {
-      post: "/apis/v2beta1/artifacts"
-      body: "*"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "create_artifact"
-      summary: "Creates a new artifact."
-      tags: "ArtifactService"
-    };
-  }
-
-  // Logs a metric for a specific task.
-  rpc LogMetric(CreateArtifactRequest) returns (Artifact) {
-    option (google.api.http) = {
-      post: "/apis/v2beta1/metrics"
-      body: "*"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "log_metric"
-      summary: "Logs a metric for a specific task."
-      tags: "ArtifactService"
-    };
-  }
-
-  // Gets a metric by task ID and name.
-  rpc GetMetric(GetArtifactRequest) returns (Artifact) {
-    option (google.api.http) = {
-      get: "/apis/v2beta1/metrics/{artifact_id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "get_metric"
-      summary: "Gets a metric by task ID and name."
-      tags: "ArtifactService"
-    };
-  }
-
-  // Lists all metrics.
-  rpc ListMetrics(ListArtifactRequest) returns (ListArtifactResponse) {
-    option (google.api.http) = {
-      get: "/apis/v2beta1/metrics"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      operation_id: "list_metrics"
-      summary: "Lists all metrics."
       tags: "ArtifactService"
     };
   }
@@ -161,10 +125,16 @@ message CreateArtifactRequest {
   // An artifact is always created in the context of a
   // run.
   string run_id = 2;
+  // The Task that is associated with the creation of this artifact.
   string task_id = 3;
-  ArtifactTaskType type = 4;
-  string producer_task_name = 5;
-  string producer_key = 6;
+
+  // The outgoing parameter name of this Artifact within this task's component spec.
+  // For example:
+  // def preprocess(my_output: dsl.Outputs[dsl.Artifact]):
+  //   ...
+  // here the producer_key == "my_output"
+  // Note that producer_task_name == task_name
+  string producer_key = 5;
 }
 
 message GetArtifactRequest {

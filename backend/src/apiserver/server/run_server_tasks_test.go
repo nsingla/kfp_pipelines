@@ -115,11 +115,9 @@ func TestTask_RunHydration_WithInputsOutputs_ArtifactsAndMetrics(t *testing.T) {
 	// Create an artifact and link it as output of the task
 	_, err = artSrv.CreateArtifact(ctxWithUser(),
 		&apiv2beta1.CreateArtifactRequest{
-			RunId:            run.UUID,
-			TaskId:           created.GetTaskId(),
-			ProducerTaskName: "some-parent-task",
-			ProducerKey:      "some-parent-task-output",
-			Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+			RunId:       run.UUID,
+			TaskId:      created.GetTaskId(),
+			ProducerKey: "some-parent-task-output",
 			Artifact: &apiv2beta1.Artifact{
 				Namespace: run.Namespace,
 				Type:      apiv2beta1.Artifact_Model,
@@ -172,7 +170,7 @@ func TestTask_RunHydration_WithInputsOutputs_ArtifactsAndMetrics(t *testing.T) {
 		}
 		assert.Equal(t, 1, len(taskFound.GetOutputs().GetArtifacts()))
 		if assert.NotNil(t, taskFound.GetOutputs().GetArtifacts(), "artifacts not present in hydrated task") {
-			assert.Equal(t, "some-parent-task", taskFound.GetOutputs().GetArtifacts()[0].GetProducer().GetTaskName())
+			assert.Equal(t, taskFound.Name, taskFound.GetOutputs().GetArtifacts()[0].GetProducer().GetTaskName())
 			assert.Equal(t, "some-parent-task-output", taskFound.GetOutputs().GetArtifacts()[0].GetProducer().Key)
 			assert.Equal(t, "gs://bucket/model", *taskFound.GetOutputs().GetArtifacts()[0].GetValue().Uri)
 			assert.Equal(t, "m1", taskFound.GetOutputs().GetArtifacts()[0].GetValue().Name)

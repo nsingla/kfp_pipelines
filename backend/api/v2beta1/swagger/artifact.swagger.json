@@ -269,130 +269,6 @@
           "ArtifactService"
         ]
       }
-    },
-    "/apis/v2beta1/metrics": {
-      "get": {
-        "summary": "Lists all metrics.",
-        "operationId": "list_metrics",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v2beta1ListArtifactResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "namespace",
-            "description": "Optional input. Namespace for the artifacts.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "page_token",
-            "description": "A page token to request the results page.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "page_size",
-            "description": "The number of artifacts to be listed per page. If there are more artifacts\nthan this number, the response message will contain a valid value in the\nnextPageToken field.",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "sort_by",
-            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "filter",
-            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/artifacts/blob/master/backend/api/filter.proto)).",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ArtifactService"
-        ]
-      },
-      "post": {
-        "summary": "Logs a metric for a specific task.",
-        "operationId": "log_metric",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v2beta1Artifact"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v2beta1CreateArtifactRequest"
-            }
-          }
-        ],
-        "tags": [
-          "ArtifactService"
-        ]
-      }
-    },
-    "/apis/v2beta1/metrics/{artifact_id}": {
-      "get": {
-        "summary": "Gets a metric by task ID and name.",
-        "operationId": "get_metric",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v2beta1Artifact"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "artifact_id",
-            "description": "Required. The ID of the artifact to be retrieved.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ArtifactService"
-        ]
-      }
     }
   },
   "definitions": {
@@ -555,16 +431,12 @@
           "description": "An artifact is always created in the context of a\nrun."
         },
         "task_id": {
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/v2beta1ArtifactTaskType"
-        },
-        "producer_task_name": {
-          "type": "string"
+          "type": "string",
+          "description": "The Task that is associated with the creation of this artifact."
         },
         "producer_key": {
-          "type": "string"
+          "type": "string",
+          "title": "The outgoing parameter name of this Artifact within this task's component spec.\nFor example:\ndef preprocess(my_output: dsl.Outputs[dsl.Artifact]):\n  ...\nhere the producer_key == \"my_output\"\nNote that producer_task_name == task_name"
         }
       }
     },
