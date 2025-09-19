@@ -406,7 +406,7 @@ message PipelineTaskDetail {
 
   // ID of the parent task if the task is within a component scope.
   // Empty if the task is at the root level.
-  string parent_task_id = 16;
+  optional string parent_task_id = 16;
 
   // A dependent task that requires this one to succeed.
   // Represented by either task_id or pod_name.

@@ -1475,7 +1475,6 @@ func toApiRun(r *model.Run) *apiv2beta1.Run {
 	apiRd := &apiv2beta1.RunDetails{
 		PipelineContextId:    r.RunDetails.PipelineContextId,
 		PipelineRunContextId: r.RunDetails.PipelineRunContextId,
-		TaskDetails:          apiTasks,
 	}
 	if apiRd.PipelineContextId == 0 && apiRd.PipelineRunContextId == 0 && apiRd.TaskDetails == nil {
 		apiRd = nil
@@ -1541,8 +1540,8 @@ func generateAPITasks(tasks []*model.Task) ([]*apiv2beta1.PipelineTaskDetail, er
 	// Build maps of tasks and parent->children relationships
 	for _, task := range tasks {
 		taskMap[task.UUID] = task
-		if task.ParentTaskUUID != "" {
-			childrenMap[task.ParentTaskUUID] = append(childrenMap[task.ParentTaskUUID], task)
+		if task.ParentTaskUUID != nil {
+			childrenMap[*task.ParentTaskUUID] = append(childrenMap[*task.ParentTaskUUID], task)
 		}
 	}
 
@@ -2345,7 +2344,7 @@ func toModelTask(apiTask *apiv2beta1.PipelineTaskDetail) (*model.Task, error) {
 	task := &model.Task{
 		UUID:           apiTask.GetTaskId(),
 		RunUUID:        apiTask.GetRunId(),
-		ParentTaskUUID: apiTask.GetParentTaskId(),
+		ParentTaskUUID: apiTask.ParentTaskId,
 		Name:           apiTask.GetName(),
 		DisplayName:    apiTask.GetDisplayName(),
 		Fingerprint:    apiTask.GetCacheFingerprint(),

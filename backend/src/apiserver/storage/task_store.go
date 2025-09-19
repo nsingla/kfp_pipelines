@@ -153,6 +153,10 @@ func scanTaskRow(rowscanner interface{ Scan(dest ...any) error }) (*model.Task, 
 			return nil, err
 		}
 	}
+	var parentTaskIDNew *string
+	if parentTaskId.Valid {
+		parentTaskIDNew = &parentTaskId.String
+	}
 	return &model.Task{
 		UUID:             uuid,
 		Namespace:        namespace,
@@ -165,7 +169,7 @@ func scanTaskRow(rowscanner interface{ Scan(dest ...any) error }) (*model.Task, 
 		Fingerprint:      fingerprint,
 		Name:             name.String,
 		DisplayName:      displayName.String,
-		ParentTaskUUID:   parentTaskId.String,
+		ParentTaskUUID:   parentTaskIDNew,
 		Status:           model.TaskStatus(taskStatus),
 		StatusMetadata:   statusMetadataNew,
 		StateHistory:     stateHistoryNew,
@@ -550,10 +554,14 @@ func (s *TaskStore) UpdateTask(task *model.Task) (*model.Task, error) {
 	if task.DisplayName != "" {
 		setMap["DisplayName"] = task.DisplayName
 	}
-	// ParentTaskUUID can be empty intentionally to clear parent; only update if non-empty to avoid unintentional clear.
-	if task.ParentTaskUUID != "" {
-		setMap["ParentTaskUUID"] = task.ParentTaskUUID
+	if task.ParentTaskUUID != nil {
+		if *task.ParentTaskUUID == "" {
+			setMap["ParentTaskUUID"] = nil
+		} else {
+			setMap["ParentTaskUUID"] = *task.ParentTaskUUID
+		}
 	}
+
 	// Status and Type default to 0 which are valid enums; update only when non-zero to avoid accidental resets.
 	if task.Status != 0 {
 		setMap["Status"] = task.Status

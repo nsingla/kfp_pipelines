@@ -201,7 +201,7 @@ func TestListTasks_ByParent(t *testing.T) {
 			Task: &apiv2beta1.PipelineTaskDetail{
 				RunId:        runID,
 				Name:         "child",
-				ParentTaskId: parent.GetTaskId(),
+				ParentTaskId: strPTR(parent.GetTaskId()),
 			},
 		},
 	)

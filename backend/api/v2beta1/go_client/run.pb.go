@@ -779,7 +779,7 @@ type PipelineTaskDetail struct {
 	Error *status.Status `protobuf:"bytes,15,opt,name=error,proto3" json:"error,omitempty"`
 	// ID of the parent task if the task is within a component scope.
 	// Empty if the task is at the root level.
-	ParentTaskId string `protobuf:"bytes,16,opt,name=parent_task_id,json=parentTaskId,proto3" json:"parent_task_id,omitempty"`
+	ParentTaskId *string `protobuf:"bytes,16,opt,name=parent_task_id,json=parentTaskId,proto3,oneof" json:"parent_task_id,omitempty"`
 	// Sequence of dependent tasks.
 	ChildTasks    []*PipelineTaskDetail_ChildTask  `protobuf:"bytes,17,rep,name=child_tasks,json=childTasks,proto3" json:"child_tasks,omitempty"`
 	Inputs        *PipelineTaskDetail_InputOutputs `protobuf:"bytes,18,opt,name=inputs,proto3" json:"inputs,omitempty"`
@@ -924,8 +924,8 @@ func (x *PipelineTaskDetail) GetError() *status.Status {
 }
 
 func (x *PipelineTaskDetail) GetParentTaskId() string {
-	if x != nil {
-		return x.ParentTaskId
+	if x != nil && x.ParentTaskId != nil {
+		return *x.ParentTaskId
 	}
 	return ""
 }
@@ -2539,7 +2539,7 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"RunDetails\x12.\n" +
 	"\x13pipeline_context_id\x18\x01 \x01(\x03R\x11pipelineContextId\x125\n" +
 	"\x17pipeline_run_context_id\x18\x02 \x01(\x03R\x14pipelineRunContextId\x12]\n" +
-	"\ftask_details\x18\x03 \x03(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\vtaskDetails\"\xc4\x14\n" +
+	"\ftask_details\x18\x03 \x03(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\vtaskDetails\"\xdc\x14\n" +
 	"\x12PipelineTaskDetail\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x17\n" +
@@ -2558,8 +2558,8 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\rstate_history\x18\f \x03(\v25.kubeflow.pipelines.backend.api.v2beta1.RuntimeStatusR\fstateHistory\x12W\n" +
 	"\x04type\x18\r \x01(\x0e2C.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.TaskTypeR\x04type\x12r\n" +
 	"\x0ftype_attributes\x18\x0e \x01(\v2I.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.TypeAttributesR\x0etypeAttributes\x12(\n" +
-	"\x05error\x18\x0f \x01(\v2\x12.google.rpc.StatusR\x05error\x12$\n" +
-	"\x0eparent_task_id\x18\x10 \x01(\tR\fparentTaskId\x12e\n" +
+	"\x05error\x18\x0f \x01(\v2\x12.google.rpc.StatusR\x05error\x12)\n" +
+	"\x0eparent_task_id\x18\x10 \x01(\tH\x00R\fparentTaskId\x88\x01\x01\x12e\n" +
 	"\vchild_tasks\x18\x11 \x03(\v2D.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.ChildTaskR\n" +
 	"childTasks\x12_\n" +
 	"\x06inputs\x18\x12 \x01(\v2G.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputOutputsR\x06inputs\x12a\n" +
@@ -2610,7 +2610,8 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\x04LOOP\x10\x04\x12\x12\n" +
 	"\x0eLOOP_ITERATION\x10\x05\x12\x10\n" +
 	"\fEXIT_HANDLER\x10\x06\x12\a\n" +
-	"\x03DAG\x10\a\"\xd6\x01\n" +
+	"\x03DAG\x10\aB\x11\n" +
+	"\x0f_parent_task_id\"\xd6\x01\n" +
 	"\x1aPipelineTaskExecutorDetail\x12\x19\n" +
 	"\bmain_job\x18\x01 \x01(\tR\amainJob\x121\n" +
 	"\x15pre_caching_check_job\x18\x02 \x01(\tR\x12preCachingCheckJob\x12(\n" +
@@ -2873,6 +2874,7 @@ func file_backend_api_v2beta1_run_proto_init() {
 		(*Run_PipelineSpec)(nil),
 		(*Run_PipelineVersionReference)(nil),
 	}
+	file_backend_api_v2beta1_run_proto_msgTypes[4].OneofWrappers = []any{}
 	file_backend_api_v2beta1_run_proto_msgTypes[21].OneofWrappers = []any{
 		(*ListTasksRequest_ParentId)(nil),
 		(*ListTasksRequest_RunId)(nil),

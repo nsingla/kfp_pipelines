@@ -108,7 +108,7 @@ type Task struct {
 	Fingerprint      string     `gorm:"column:Fingerprint; not null; type:varchar(255);"`
 	Name             string     `gorm:"column:Name; type:varchar(128); default:null;"`
 	DisplayName      string     `gorm:"column:DisplayName; type:varchar(128); default:null;"`
-	ParentTaskUUID   string     `gorm:"column:ParentTaskUUID; type:varchar(191); default:null; index:idx_parent_task_uuid; index:idx_parent_run,priority:2;"`
+	ParentTaskUUID   *string    `gorm:"column:ParentTaskUUID; type:varchar(191); default:null; index:idx_parent_task_uuid; index:idx_parent_run,priority:2;"`
 	ParentTask       *Task      `gorm:"foreignKey:ParentTaskUUID;references:UUID;constraint:fk_tasks_parent_task,OnDelete:CASCADE,OnUpdate:CASCADE;"`
 	Status           TaskStatus `gorm:"column:Status; not null;"`
 	StatusMetadata   JSONData   `gorm:"column:StatusMetadata; type:json; default:null;"`
