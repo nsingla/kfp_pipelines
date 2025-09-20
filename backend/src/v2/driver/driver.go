@@ -66,9 +66,7 @@ type Options struct {
 
 	PublishLogs string
 
-	CacheDisabled  bool
-	DevMode        bool
-	DevExecutionId int64
+	CacheDisabled bool
 
 	DriverType string
 
@@ -98,8 +96,8 @@ func (o Options) info() string {
 	if o.Task.GetComponentRef().GetName() != "" {
 		msg = msg + fmt.Sprintf(", component=%q", o.Task.GetComponentRef().GetName())
 	}
-	if o.DAGExecutionID != 0 {
-		msg = msg + fmt.Sprintf(", dagExecutionID=%v", o.DAGExecutionID)
+	if o.ParentTaskID != "" {
+		msg = msg + fmt.Sprintf(", dagExecutionID=%v", o.ParentTaskID)
 	}
 	if o.IterationIndex >= 0 {
 		msg = msg + fmt.Sprintf(", iterationIndex=%v", o.IterationIndex)
@@ -615,8 +613,8 @@ func validateNonRoot(opts Options) error {
 	if opts.RuntimeConfig != nil {
 		return fmt.Errorf("runtime config is unnecessary")
 	}
-	if opts.DAGExecutionID == 0 {
-		return fmt.Errorf("DAG execution ID is required")
+	if opts.ParentTaskID != "" {
+		return fmt.Errorf("Parent task ID is required")
 	}
 	return nil
 }
