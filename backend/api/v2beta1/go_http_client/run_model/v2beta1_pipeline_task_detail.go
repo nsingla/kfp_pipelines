@@ -69,12 +69,11 @@ type V2beta1PipelineTaskDetail struct {
 	// of state transitions.
 	StateHistory []*V2beta1RuntimeStatus `json:"state_history"`
 
-	// Runtime state of a Task
-	Status *V2beta1RuntimeState `json:"status,omitempty"`
+	// status
+	Status *PipelineTaskDetailTaskState `json:"status,omitempty"`
 
-	// Custom status metadata, this can be used to provide
-	// additional status info for a given task during runtime
-	StatusMetadata map[string]interface{} `json:"status_metadata,omitempty"`
+	// status metadata
+	StatusMetadata *PipelineTaskDetailStatusMetadata `json:"status_metadata,omitempty"`
 
 	// System-generated ID of a task.
 	TaskID string `json:"task_id,omitempty"`
@@ -127,6 +126,10 @@ func (m *V2beta1PipelineTaskDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateStatus(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateStatusMetadata(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -334,6 +337,25 @@ func (m *V2beta1PipelineTaskDetail) validateStatus(formats strfmt.Registry) erro
 	return nil
 }
 
+func (m *V2beta1PipelineTaskDetail) validateStatusMetadata(formats strfmt.Registry) error {
+	if swag.IsZero(m.StatusMetadata) { // not required
+		return nil
+	}
+
+	if m.StatusMetadata != nil {
+		if err := m.StatusMetadata.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status_metadata")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("status_metadata")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (m *V2beta1PipelineTaskDetail) validateType(formats strfmt.Registry) error {
 	if swag.IsZero(m.Type) { // not required
 		return nil
@@ -401,6 +423,10 @@ func (m *V2beta1PipelineTaskDetail) ContextValidate(ctx context.Context, formats
 	}
 
 	if err := m.contextValidateStatus(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateStatusMetadata(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -569,6 +595,27 @@ func (m *V2beta1PipelineTaskDetail) contextValidateStatus(ctx context.Context, f
 				return ve.ValidateName("status")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("status")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *V2beta1PipelineTaskDetail) contextValidateStatusMetadata(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.StatusMetadata != nil {
+
+		if swag.IsZero(m.StatusMetadata) { // not required
+			return nil
+		}
+
+		if err := m.StatusMetadata.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status_metadata")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("status_metadata")
 			}
 			return err
 		}

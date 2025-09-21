@@ -9,7 +9,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	apiClient "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/config"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -35,7 +36,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		return nil, fmt.Errorf("api client is nil")
 	}
 
-	run, err := api.GetRun(ctx, &gc.GetRunRequest{RunId: opts.RunID})
+	run, err := api.GetRun(ctx, &apiClient.GetRunRequest{RunId: opts.RunID})
 	if err != nil {
 		return nil, err
 	}
@@ -108,19 +109,31 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ######################################
 	// ### TASK REQUEST ### G2G
 	// ######################################
+	podName, err := config.InPodName()
+	if err != nil {
+		return nil, err
+	}
 
-	pd := &gc.PipelineTaskDetail{
+	glog.Infof("Creating task %s in pod %s", opts.TaskName, podName)
+	pd := &apiClient.PipelineTaskDetail{
 		Name:        opts.TaskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
 		RunId:       opts.RunID,
-		Type:        gc.PipelineTaskDetail_RUNTIME,
+		Type:        apiClient.PipelineTaskDetail_RUNTIME,
+		Pods: []*apiClient.PipelineTaskDetail_TaskPod{
+			{
+				Name: podName,
+				Type: apiClient.PipelineTaskDetail_EXECUTOR,
+				// TODO(HumairAK): Add pod UID via downward api
+			},
+		},
 	}
 	if opts.ParentTaskID != "" {
 		pid := opts.ParentTaskID
 		pd.ParentTaskId = &pid
 	}
 	if iterationIndex != nil {
-		pd.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		pd.TypeAttributes = &apiClient.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
 	}
 
 	// ######################################
@@ -128,7 +141,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ######################################
 
 	if isKubernetesPlatformOp {
-		return execution, kubernetesPlatformOps(ctx, mlmd, cacheClient, execution, ecfg, &opts)
+		return execution, kubernetesPlatformOps(ctx, api, execution, pd, &opts)
 	}
 
 	var inputParams map[string]*structpb.Value
@@ -184,7 +197,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ### CREATE TASK ###
 	// ######################################
 
-	task, err := api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	task, err := api.CreateTask(ctx, &apiClient.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return execution, err
 	}

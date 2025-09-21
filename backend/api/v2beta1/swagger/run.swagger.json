@@ -683,6 +683,19 @@
         }
       }
     },
+    "PipelineTaskDetailStatusMetadata": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "custom_properties": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "title": "Custom status metadata, this can be used to provide\nadditional status info for a given task during runtime"
+    },
     "PipelineTaskDetailTaskPod": {
       "type": "object",
       "properties": {
@@ -693,9 +706,32 @@
           "type": "string"
         },
         "type": {
-          "type": "string"
+          "$ref": "#/definitions/PipelineTaskDetailTaskPodType"
         }
       }
+    },
+    "PipelineTaskDetailTaskPodType": {
+      "type": "string",
+      "enum": [
+        "DRIVER",
+        "EXECUTOR"
+      ],
+      "default": "DRIVER",
+      "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
+    },
+    "PipelineTaskDetailTaskState": {
+      "type": "string",
+      "enum": [
+        "RUNTIME_STATE_UNSPECIFIED",
+        "RUNNING",
+        "SUCCEEDED",
+        "SKIPPED",
+        "FAILED",
+        "CACHED"
+      ],
+      "default": "RUNTIME_STATE_UNSPECIFIED",
+      "description": "- RUNTIME_STATE_UNSPECIFIED: Default value. This value is not used.\n - RUNNING: Entity execution is in progress.\n - SUCCEEDED: Entity completed successfully.\n - SKIPPED: Entity has been skipped. For example, due to caching.\n - FAILED: Entity execution has failed.",
+      "title": "Runtime state of a Task"
     },
     "PipelineTaskDetailTaskType": {
       "type": "string",
@@ -710,7 +746,7 @@
         "DAG"
       ],
       "default": "ROOT",
-      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
+      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - CONDITION: Task Group for Condition Branches\n - LOOP: Task Group for Loop Iterations\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
     },
     "PipelineTaskDetailTypeAttributes": {
       "type": "object",
@@ -899,13 +935,10 @@
           "description": "Completion time of a task."
         },
         "status": {
-          "$ref": "#/definitions/v2beta1RuntimeState",
-          "title": "Runtime state of a Task"
+          "$ref": "#/definitions/PipelineTaskDetailTaskState"
         },
         "status_metadata": {
-          "type": "object",
-          "additionalProperties": {},
-          "title": "Custom status metadata, this can be used to provide\nadditional status info for a given task during runtime"
+          "$ref": "#/definitions/PipelineTaskDetailStatusMetadata"
         },
         "state_history": {
           "type": "array",
