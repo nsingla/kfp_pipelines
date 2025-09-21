@@ -7,18 +7,15 @@ import (
 
 	"github.com/golang/glog"
 	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // RootDAG handles initial root dag task creation
 // and runtime parameter resolution.
-func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("driver.RootDAG(%s) failed: %w", opts.info(), err)
-		}
-	}()
-	b, _ := json.Marshal(opts)
+func RootDAG(ctx context.Context, opts Options, api DriverAPI) (*Execution, error) {
+	b, err := json.Marshal(opts)
+	if err != nil {
+		return nil, err
+	}
 	glog.V(4).Info("RootDAG opts: ", string(b))
 	if err = validateRootDAG(opts); err != nil {
 		return nil, err
@@ -26,6 +23,7 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 	if api == nil {
 		return nil, fmt.Errorf("api client is nil")
 	}
+
 	// Build minimal PipelineTaskDetail for root DAG task under the run.
 	// Inputs: pass runtime parameters into task inputs for record.
 	var inputs *gc.PipelineTaskDetail_InputOutputs
@@ -48,12 +46,12 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 		Inputs:         inputs,
 		TypeAttributes: &gc.PipelineTaskDetail_TypeAttributes{},
 	}
-	_, err = api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	task, err := api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return nil, err
 	}
-	// Prepare minimal ExecutorInput carrying runtime parameters for downstream resolution.
-	executorInput := &structpb.Struct{}
-	_ = executorInput // presently unused, kept for parity with old flow
-	return &Execution{ID: 0 /* unknown numeric ID in new API world */, ExecutorInput: nil}, nil
+	execution := &Execution{
+		TaskID: task.TaskId,
+	}
+	return execution, nil
 }

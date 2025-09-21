@@ -115,7 +115,7 @@ func (o Options) info() string {
 }
 
 type Execution struct {
-	ID             int64
+	TaskID         string
 	ExecutorInput  *pipelinespec.ExecutorInput
 	IterationCount *int  // number of iterations, -1 means not an iterator
 	Condition      *bool // true -> trigger the task, false -> not trigger the task, nil -> the task is unconditional

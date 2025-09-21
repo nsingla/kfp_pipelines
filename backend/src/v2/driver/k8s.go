@@ -767,7 +767,7 @@ func createPVC(
 		return "", createdExecution, pb.Execution_FAILED, fmt.Errorf("error creating MLMD execution for createpvc: %w", err)
 	}
 	glog.Infof("Created execution: %s", createdExecution)
-	execution.ID = createdExecution.GetID()
+	execution.TaskID = createdExecution.GetID()
 	if !execution.WillTrigger() {
 		return "", createdExecution, pb.Execution_COMPLETE, nil
 	}
@@ -873,7 +873,7 @@ func deletePVC(
 		return createdExecution, pb.Execution_FAILED, fmt.Errorf("error creating MLMD execution for createpvc: %w", err)
 	}
 	glog.Infof("Created execution: %s", createdExecution)
-	execution.ID = createdExecution.GetID()
+	execution.TaskID = createdExecution.GetID()
 	if !execution.WillTrigger() {
 		return createdExecution, pb.Execution_COMPLETE, nil
 	}

@@ -94,7 +94,7 @@ func main() {
 
 	err = drive()
 	if err != nil {
-		glog.Exitf("%v", err)
+		glog.Exitf("Failed to execute driver: %v", err)
 	}
 }
 
@@ -123,22 +123,18 @@ func validate() error {
 }
 
 func drive() (err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("KFP driver: %w", err)
-		}
-	}()
 	ctx := context.Background()
+
 	// Initialize connection to new KFP v2beta1 API server (Tasks/Artifacts)
 	apiCfg := apiclient.FromEnv()
 	kfpAPIClient, apiErr := apiclient.New(apiCfg)
-	var driverAPI driver.DriverAPI
 	if apiErr != nil {
 		return fmt.Errorf("failed to init KFP API client: %w", apiErr)
 	}
-
 	defer kfpAPIClient.Close()
+	var driverAPI driver.DriverAPI
 	driverAPI = driver.NewDriverAPI(kfpAPIClient)
+
 	glog.Infof("Initialized KFP API client at %s", kfpAPIClient.Endpoint)
 
 	if err = validate(); err != nil {
@@ -181,9 +177,6 @@ func drive() (err error) {
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 	options := driver.Options{
 		PipelineName:     *pipelineName,
 		RunID:            *runID,
@@ -201,30 +194,24 @@ func drive() (err error) {
 		ParentTaskID:     *parentTaskID,
 	}
 	var execution *driver.Execution
-	var driverErr error
 	switch *driverType {
 	case ROOT_DAG:
 		options.RuntimeConfig = runtimeConfig
-		execution, driverErr = driver.RootDAG(ctx, options, driverAPI)
+		execution, err = driver.RootDAG(ctx, options, driverAPI)
 	case DAG:
-		execution, driverErr = driver.DAG(ctx, options, driverAPI)
+		execution, err = driver.DAG(ctx, options, driverAPI)
 	case CONTAINER:
 		options.Container = containerSpec
 		options.KubernetesExecutorConfig = k8sExecCfg
-		execution, driverErr = driver.Container(ctx, options, driverAPI)
+		execution, err = driver.Container(ctx, options, driverAPI)
 	default:
 		err = fmt.Errorf("unknown driverType %s", *driverType)
 	}
-	if driverErr != nil {
-		if execution == nil {
-			return driverErr
-		}
-		defer func() {
-			// Override error with driver error, because driver error is more important.
-			// However, we continue running, because the following code prints debug info that
-			// may be helpful for figuring out why this failed.
-			err = driverErr
-		}()
+	if err != nil {
+		return fmt.Errorf("failed to execute driver: %w", err)
+	}
+	if execution == nil {
+		return fmt.Errorf("driver execution is nil")
 	}
 
 	executionPaths := &TaskPaths{
@@ -251,14 +238,16 @@ func parseExecConfigJson(k8sExecConfigJson *string) (*kubernetesplatform.Kuberne
 }
 
 func handleExecution(execution *driver.Execution, driverType string, executionPaths *TaskPaths) error {
-	if execution.ID != 0 {
-		glog.Infof("output execution.ID=%v", execution.ID)
-		if executionPaths.TaskID != "" {
-			if err := writeFile(executionPaths.TaskID, []byte(fmt.Sprint(execution.ID))); err != nil {
-				return fmt.Errorf("failed to write execution ID to file: %w", err)
-			}
+	if execution.TaskID == "" {
+		return fmt.Errorf("execution.TaskID is empty")
+	}
+	glog.Infof("output execution.ID=%v", execution.TaskID)
+	if executionPaths.TaskID != "" {
+		if err := writeFile(executionPaths.TaskID, []byte(fmt.Sprint(execution.TaskID))); err != nil {
+			return fmt.Errorf("failed to write execution ID to file: %w", err)
 		}
 	}
+
 	if execution.IterationCount != nil {
 		if err := writeFile(executionPaths.IterationCount, []byte(fmt.Sprintf("%v", *execution.IterationCount))); err != nil {
 			return fmt.Errorf("failed to write iteration count to file: %w", err)
