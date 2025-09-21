@@ -11,7 +11,13 @@ import (
 
 // RootDAG handles initial root dag task creation
 // and runtime parameter resolution.
-func RootDAG(ctx context.Context, opts Options, api DriverAPI) (*Execution, error) {
+func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("driver.RootDAG(%s) failed: %w", opts.info(), err)
+		}
+	}()
+
 	b, err := json.Marshal(opts)
 	if err != nil {
 		return nil, err
@@ -50,7 +56,7 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (*Execution, erro
 	if err != nil {
 		return nil, err
 	}
-	execution := &Execution{
+	execution = &Execution{
 		TaskID: task.TaskId,
 	}
 	return execution, nil

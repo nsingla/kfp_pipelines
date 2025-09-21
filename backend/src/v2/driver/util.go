@@ -157,6 +157,28 @@ func validateDAG(opts Options) (err error) {
 	return validateNonRoot(opts)
 }
 
+func validateNonRoot(opts Options) error {
+	if opts.PipelineName == "" {
+		return fmt.Errorf("pipeline name is required")
+	}
+	if opts.RunID == "" {
+		return fmt.Errorf("KFP run ID is required")
+	}
+	if opts.Component == nil {
+		return fmt.Errorf("component spec is required")
+	}
+	if opts.Task.GetTaskInfo().GetName() == "" {
+		return fmt.Errorf("task spec is required")
+	}
+	if opts.RuntimeConfig != nil {
+		return fmt.Errorf("runtime config is unnecessary")
+	}
+	if opts.ParentTaskID != "" {
+		return fmt.Errorf("Parent task ID is required")
+	}
+	return nil
+}
+
 // resolvePodSpecInputRuntimeParameter resolves runtime parameter placeholders used inside PodSpec strings.
 // It supports values like "{{$.inputs.parameters['param']}}" by looking them up in executorInput.
 func resolvePodSpecInputRuntimeParameter(parameterValue string, executorInput *pipelinespec.ExecutorInput) (string, error) {

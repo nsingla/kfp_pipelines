@@ -32,7 +32,7 @@ import (
 	k8sres "k8s.io/apimachinery/pkg/api/resource"
 )
 
-// Driver options
+// Options contain driver options
 type Options struct {
 	// required, pipeline context name
 	PipelineName string
@@ -595,28 +595,6 @@ func addModelcarsToPodSpec(
 			},
 		)
 	}
-}
-
-func validateNonRoot(opts Options) error {
-	if opts.PipelineName == "" {
-		return fmt.Errorf("pipeline name is required")
-	}
-	if opts.RunID == "" {
-		return fmt.Errorf("KFP run ID is required")
-	}
-	if opts.Component == nil {
-		return fmt.Errorf("component spec is required")
-	}
-	if opts.Task.GetTaskInfo().GetName() == "" {
-		return fmt.Errorf("task spec is required")
-	}
-	if opts.RuntimeConfig != nil {
-		return fmt.Errorf("runtime config is unnecessary")
-	}
-	if opts.ParentTaskID != "" {
-		return fmt.Errorf("Parent task ID is required")
-	}
-	return nil
 }
 
 // provisionOutputs prepares output references that will get saved to MLMD.

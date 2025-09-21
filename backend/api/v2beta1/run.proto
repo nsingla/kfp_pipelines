@@ -380,7 +380,9 @@ message PipelineTaskDetail {
     ROOT = 0;
     RUNTIME = 1;
     CONDITION_BRANCH = 2;
+    // Task Group for Condition Branches
     CONDITION = 3;
+    // Task Group for Loop Iterations
     LOOP = 4;
     LOOP_ITERATION = 5;
     EXIT_HANDLER = 6;

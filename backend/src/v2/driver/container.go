@@ -37,7 +37,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	if err != nil {
 		return nil, err
 	}
-	inputs, err := resolveInputsV2(ctx, nil, iterationIndex, opts, api, expr)
+	inputs, err := resolveInputs(ctx, nil, iterationIndex, opts, api, expr)
 	if err != nil {
 		return nil, err
 	}
