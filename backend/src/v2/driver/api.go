@@ -17,6 +17,9 @@ import (
 // Only the small surface area needed by drivers is included.
 
 type DriverAPI interface {
+	// Run operations
+	GetRun(ctx context.Context, req *gc.GetRunRequest) (*gc.Run, error)
+
 	// Task operations
 	CreateTask(ctx context.Context, req *gc.CreateTaskRequest) (*gc.PipelineTaskDetail, error)
 	UpdateTask(ctx context.Context, req *gc.UpdateTaskRequest) (*gc.PipelineTaskDetail, error)
@@ -42,6 +45,10 @@ func NewDriverAPI(c *apiclient.Client) DriverAPI {
 }
 
 // Implement DriverAPI by forwarding calls to typed clients.
+
+func (k *kfpAPI) GetRun(ctx context.Context, req *gc.GetRunRequest) (*gc.Run, error) {
+	return k.c.Run.GetRun(ctx, req)
+}
 
 func (k *kfpAPI) CreateTask(ctx context.Context, req *gc.CreateTaskRequest) (*gc.PipelineTaskDetail, error) {
 	return k.c.Run.CreateTask(ctx, req)
