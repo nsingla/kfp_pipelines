@@ -56,7 +56,7 @@ func addExitTask(task *wfapi.DAGTask, exitTemplate string, parentDagID string) {
 		wfapi.ExitLifecycleEvent: wfapi.LifecycleHook{
 			Template: exitTemplate,
 			Arguments: wfapi.Arguments{Parameters: []wfapi.Parameter{
-				{Name: paramParentDagID, Value: wfapi.AnyStringPtr(parentDagID)},
+				{Name: paramParentDagTaskID, Value: wfapi.AnyStringPtr(parentDagID)},
 			}},
 		},
 	}

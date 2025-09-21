@@ -10,7 +10,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// RootDAG mirrors RootDAG but uses the new KFP APIs (RunService/Tasks) instead of MLMD.
+// RootDAG handles initial root dag task creation
+// and runtime parameter resolution.
 func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {

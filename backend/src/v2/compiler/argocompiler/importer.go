@@ -54,7 +54,7 @@ func (c *workflowCompiler) importerTask(name string, task *pipelinespec.Pipeline
 			Name:  paramImporter,
 			Value: wfapi.AnyStringPtr(importerPlaceholder),
 		}, {
-			Name:  paramParentDagID,
+			Name:  paramParentDagTaskID,
 			Value: wfapi.AnyStringPtr(parentDagID),
 		}}},
 	}, nil
@@ -72,7 +72,7 @@ func (c *workflowCompiler) addImporterTemplate() string {
 		"--importer_spec", inputValue(paramImporter),
 		"--pipeline_name", c.spec.PipelineInfo.GetName(),
 		"--run_id", runID(),
-		"--parent_dag_id", inputValue(paramParentDagID),
+		"--parent_dag_id", inputValue(paramParentDagTaskID),
 		"--pod_name",
 		fmt.Sprintf("$(%s)", component.EnvPodName),
 		"--pod_uid",
@@ -98,7 +98,7 @@ func (c *workflowCompiler) addImporterTemplate() string {
 				{Name: paramTask},
 				{Name: paramComponent},
 				{Name: paramImporter},
-				{Name: paramParentDagID},
+				{Name: paramParentDagTaskID},
 			},
 		},
 		Container: &k8score.Container{

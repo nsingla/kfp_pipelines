@@ -62,17 +62,12 @@ var (
 	taskName          = flag.String("task_name", "", "original task name, used for proper input resolution in the container/dag driver")
 
 	// container inputs
-	dagExecutionID    = flag.Int64("dag_execution_id", 0, "DAG execution ID")
-	parentTaskID      = flag.String("parent_task_id", "", "Parent PipelineTaskDetail ID")
+	parentTaskID      = flag.String("parent_task_id", "", "Parent PipelineTask ID")
 	containerSpecJson = flag.String("container", "{}", "container spec")
 	k8sExecConfigJson = flag.String("kubernetes_config", "{}", "kubernetes executor config")
 
-	// config
-	mlmdServerAddress = flag.String("mlmd_server_address", "", "MLMD server address")
-	mlmdServerPort    = flag.String("mlmd_server_port", "", "MLMD server port")
-
 	// output paths
-	executionIDPath    = flag.String("execution_id_path", "", "Exeucution ID output path")
+	parentTaskIDPath   = flag.String("parent_task_id_path", "", "Parent Task ID output path")
 	iterationCountPath = flag.String("iteration_count_path", "", "Iteration Count output path")
 	podSpecPatchPath   = flag.String("pod_spec_patch_path", "", "Pod Spec Patch output path")
 	// the value stored in the paths will be either 'true' or 'false'
@@ -87,8 +82,6 @@ var (
 	publishLogs       = flag.String("publish_logs", "true", "Whether to publish component logs to the object store")
 	cacheDisabledFlag = flag.Bool("cache_disabled", false, "Disable cache globally.")
 )
-
-// func RootDAG(pipelineName string, runID string, component *pipelinespec.ComponentSpec, task *pipelinespec.PipelineTaskSpec, mlmd *metadata.Client) (*Execution, error) {
 
 func main() {
 	flag.Parse()
@@ -234,8 +227,8 @@ func drive() (err error) {
 		}()
 	}
 
-	executionPaths := &ExecutionPaths{
-		ExecutionID:    *executionIDPath,
+	executionPaths := &TaskPaths{
+		TaskID:         *parentTaskIDPath,
 		IterationCount: *iterationCountPath,
 		CachedDecision: *cachedDecisionPath,
 		Condition:      *conditionPath,
@@ -257,11 +250,11 @@ func parseExecConfigJson(k8sExecConfigJson *string) (*kubernetesplatform.Kuberne
 	return k8sExecCfg, nil
 }
 
-func handleExecution(execution *driver.Execution, driverType string, executionPaths *ExecutionPaths) error {
+func handleExecution(execution *driver.Execution, driverType string, executionPaths *TaskPaths) error {
 	if execution.ID != 0 {
 		glog.Infof("output execution.ID=%v", execution.ID)
-		if executionPaths.ExecutionID != "" {
-			if err := writeFile(executionPaths.ExecutionID, []byte(fmt.Sprint(execution.ID))); err != nil {
+		if executionPaths.TaskID != "" {
+			if err := writeFile(executionPaths.TaskID, []byte(fmt.Sprint(execution.ID))); err != nil {
 				return fmt.Errorf("failed to write execution ID to file: %w", err)
 			}
 		}
