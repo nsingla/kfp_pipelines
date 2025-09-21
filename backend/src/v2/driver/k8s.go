@@ -25,12 +25,9 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
-	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
-	"github.com/kubeflow/pipelines/backend/src/v2/config"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
-	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 	k8score "k8s.io/api/core/v1"
 	k8sres "k8s.io/apimachinery/pkg/api/resource"
@@ -647,9 +644,6 @@ func createPVCTask(
 	driverAPI DriverAPI,
 	taskToCreate *apiV2beta1.PipelineTaskDetail,
 ) (err error) {
-	inputs := execution.ExecutorInput.Inputs
-	glog.Infof("Input parameter values: %+v", inputs.ParameterValues)
-
 	// Ensure that we update the final task state after creation, or if we fail the procedure
 	defer func() {
 		if err != nil {
@@ -664,6 +658,9 @@ func createPVCTask(
 			err = errors.Join(err, fmt.Errorf("failed to update task: %w", createErr))
 		}
 	}()
+
+	inputs := execution.ExecutorInput.Inputs
+	glog.Infof("Input parameter values: %+v", inputs.ParameterValues)
 
 	// Required input: access_modes
 	accessModeInput, ok := inputs.ParameterValues["access_modes"]
@@ -730,9 +727,6 @@ func createPVCTask(
 	// Create Initial Task. We will update the status later if
 	// anything fails, or the task successfully completes.
 	taskToCreate.Status = apiV2beta1.PipelineTaskDetail_RUNNING
-	if !execution.WillTrigger() {
-		taskToCreate.Status = apiV2beta1.PipelineTaskDetail_SKIPPED
-	}
 	task, err := driverAPI.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{
 		Task: taskToCreate,
 	})
@@ -743,6 +737,7 @@ func createPVCTask(
 	glog.Infof("Created Task: %s", task.TaskId)
 	execution.TaskID = task.TaskId
 	if !execution.WillTrigger() {
+		taskToCreate.Status = apiV2beta1.PipelineTaskDetail_SKIPPED
 		glog.Infof("Condition not met, skipping task %s", task.TaskId)
 		return nil
 	}
@@ -800,15 +795,19 @@ func deletePVCTask(
 	opts *Options,
 	driverAPI DriverAPI,
 	taskToCreate *apiV2beta1.PipelineTaskDetail,
-) error {
-	// Create execution regardless the operation succeeds or not
+) (err error) {
+	// Ensure that we update the final task state after creation, or if we fail the procedure
 	defer func() {
-		if createdExecution == nil {
-			pipeline, err := mlmd.GetPipeline(ctx, opts.PipelineName, opts.RunID, "", "", "", "")
-			if err != nil {
-				return
+		if err != nil {
+			taskToCreate.Status = apiV2beta1.PipelineTaskDetail_FAILED
+			taskToCreate.StatusMetadata = &apiV2beta1.PipelineTaskDetail_StatusMetadata{
+				Message: err.Error(),
 			}
-			createdExecution, err = mlmd.CreateExecution(ctx, pipeline, ecfg)
+		}
+		if _, createErr := driverAPI.UpdateTask(ctx, &apiV2beta1.UpdateTaskRequest{
+			Task: taskToCreate,
+		}); createErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to update task: %w", createErr))
 		}
 	}()
 
@@ -818,68 +817,61 @@ func deletePVCTask(
 	// Required input: pvc_name
 	pvcNameInput, ok := inputs.ParameterValues["pvc_name"]
 	if !ok || pvcNameInput == nil {
-		return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to delete pvc: required parameter pvc_name not provided")
+		err = fmt.Errorf("failed to delete pvc: required parameter pvc_name not provided")
+		return err
 	}
 	pvcName := pvcNameInput.GetStringValue()
 
-	// Get execution fingerprint and MLMD ID for caching
-	// If pvcName includes a randomly generated UUID, it is added in the execution input as a key-value pair for this purpose only
-	// The original execution is not changed.
-	fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(&execution, opts, cacheClient, mlmd, nil)
+	// Create Initial Task. We will update the status later if
+	// anything fails, or the task successfully completes.
+	taskToCreate.Status = apiV2beta1.PipelineTaskDetail_RUNNING
+	task, err := driverAPI.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{
+		Task: taskToCreate,
+	})
 	if err != nil {
-		return createdExecution, pb.Execution_FAILED, err
+		err = fmt.Errorf("failed to create task: %w", err)
+		return err
 	}
-
-	pipeline, err := mlmd.GetPipeline(ctx, opts.PipelineName, opts.RunID, "", "", "", "")
-	if err != nil {
-		return createdExecution, pb.Execution_FAILED, fmt.Errorf("error getting pipeline from MLMD: %w", err)
-	}
-
-	// Create execution in MLMD
-	// TODO(Bobgy): change execution state to pending, because this is driver, execution hasn't started.
-	createdExecution, err = mlmd.CreateExecution(ctx, pipeline, ecfg)
-	if err != nil {
-		return createdExecution, pb.Execution_FAILED, fmt.Errorf("error creating MLMD execution for createpvc: %w", err)
-	}
-	glog.Infof("Created execution: %s", createdExecution)
-	execution.TaskID = createdExecution.GetID()
+	glog.Infof("Created Task: %s", task.TaskId)
+	execution.TaskID = task.TaskId
 	if !execution.WillTrigger() {
-		return createdExecution, pb.Execution_COMPLETE, nil
+		taskToCreate.Status = apiV2beta1.PipelineTaskDetail_SKIPPED
+		glog.Infof("Condition not met, skipping task %s", task.TaskId)
+		return nil
 	}
 
-	// Use cache and skip createpvc if all conditions met:
+	// Use cache and skip pvc creation if all conditions met:
 	// (1) Cache is enabled globally
 	// (2) Cache is enabled for the task
-	// (3) CachedMLMDExecutionID is non-empty, which means a cache entry exists
-	cached := false
-	execution.Cached = &cached
-	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && cachedMLMDExecutionID != "" {
-		ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
-		ecfg.FingerPrint = fingerPrint
-		executorOutput, outputArtifacts, err := reuseCachedOutputs(ctx, execution.ExecutorInput, mlmd, ecfg.CachedMLMDExecutionID)
-		if err != nil {
-			return createdExecution, pb.Execution_FAILED, err
-		}
-		if err := mlmd.PublishExecution(ctx, createdExecution, executorOutput.GetParameterValues(), outputArtifacts, pb.Execution_CACHED); err != nil {
-			return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to publish cached execution: %w", err)
-		}
+	// (3) We had a cache hit for this Task
+	fingerPrint, cachedTask, err := getFingerPrintsAndID(ctx, &execution, driverAPI, opts, nil)
+	if err != nil {
+		return err
+	}
+	taskToCreate.CacheFingerprint = fingerPrint
+	execution.Cached = util.BoolPointer(false)
+	if !opts.CacheDisabled && opts.Task.GetCachingOptions().GetEnableCache() && cachedTask != nil {
+		taskToCreate.Status = apiV2beta1.PipelineTaskDetail_CACHED
+		taskToCreate.Outputs = cachedTask.Outputs
 		*execution.Cached = true
-		return createdExecution, pb.Execution_CACHED, nil
+		return nil
 	}
 
 	// Get the PVC you want to delete, verify that it exists.
 	_, err = k8sClient.CoreV1().PersistentVolumeClaims(opts.Namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
 	if err != nil {
-		return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to delete pvc %s: cannot find pvc: %v", pvcName, err)
+		err = fmt.Errorf("failed to delete pvc %s: cannot find pvc: %v", pvcName, err)
+		return err
 	}
 
 	// Delete the PVC.
 	err = k8sClient.CoreV1().PersistentVolumeClaims(opts.Namespace).Delete(context.TODO(), pvcName, metav1.DeleteOptions{})
 	if err != nil {
-		return createdExecution, pb.Execution_FAILED, fmt.Errorf("failed to delete pvc %s: %v", pvcName, err)
+		err = fmt.Errorf("failed to delete pvc %s: %v", pvcName, err)
+		return err
 	}
 
-	return createdExecution, pb.Execution_COMPLETE, nil
+	return nil
 }
 
 func makeVolumeMountPatch(

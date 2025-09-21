@@ -110,7 +110,13 @@ func getFingerPrintsAndID(
 			{
 				Operation: apiv2beta1.Predicate_EQUALS,
 				Key:       "fingerPrint",
-				Value:     &apiv2beta1.Predicate_StringValue{StringValue: fingerPrint}},
+				Value:     &apiv2beta1.Predicate_StringValue{StringValue: fingerPrint},
+			},
+			{
+				Operation: apiv2beta1.Predicate_EQUALS,
+				Key:       "status",
+				Value:     &apiv2beta1.Predicate_IntValue{IntValue: int32(apiv2beta1.PipelineTaskDetail_SUCCEEDED)},
+			},
 		},
 	}
 	tasks, err := driverAPI.ListTasks(ctx, &apiv2beta1.ListTasksRequest{

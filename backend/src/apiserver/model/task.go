@@ -93,7 +93,7 @@ type IOProducer struct {
 }
 
 type TaskType apiv2beta1.PipelineTaskDetail_TaskType
-type TaskStatus apiv2beta1.RuntimeState
+type TaskStatus apiv2beta1.PipelineTaskDetail_TaskState
 
 type Task struct {
 	UUID             string     `gorm:"column:UUID; not null; primaryKey; type:varchar(191);"`
