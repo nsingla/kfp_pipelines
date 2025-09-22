@@ -16,7 +16,7 @@ import (
 // DAG mirrors DAG but uses KFP RunService/ArtifactService instead of MLMD.
 // This initial version focuses on wiring and inputs; parent/iteration linkage
 // and full upstream resolution will be added incrementally.
-func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("driver.DAG(%s) failed: %w", opts.info(), err)
@@ -33,8 +33,8 @@ func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution
 		return nil, err
 	}
 
-	if api == nil {
-		return nil, fmt.Errorf("api client is nil")
+	if driverAPI == nil {
+		return nil, fmt.Errorf("driverAPI client is nil")
 	}
 
 	var iterationIndex *int
@@ -55,13 +55,13 @@ func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution
 		getTaskRequest := &gc.GetTaskRequest{
 			TaskId: opts.ParentTaskID,
 		}
-		parentTask, err = api.GetTask(ctx, getTaskRequest)
+		parentTask, err = driverAPI.GetTask(ctx, getTaskRequest)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	inputs, err := resolveInputs(ctx, parentTask, iterationIndex, opts, api, expr)
+	inputs, err := resolveInputs(ctx, parentTask, iterationIndex, opts, driverAPI, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution
 		pd.ParentTaskId = &opts.ParentTaskID
 	}
 	glog.Infof("Creating task: %+v", pd)
-	task, err := api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	task, err := driverAPI.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return execution, err
 	}

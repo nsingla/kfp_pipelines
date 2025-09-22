@@ -207,10 +207,10 @@ func getTaskConfigOptions(
 	return passthroughEnabled, setOnPod
 }
 
-// initPodSpecPatch generates a strategic merge patch for pod spec, it is merged
-// to container base template generated in compiler/container.go. Therefore, only
+// initPodSpecPatch generates a strategic merge patch for pod spec; it is merged
+// to the container base template generated in compiler/container.go. Therefore, only
 // dynamic values are patched here. The volume mounts / configmap mounts are
-// defined in compiler, because they are static.
+// defined in the compiler because they are static.
 func initPodSpecPatch(
 	container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec,
 	componentSpec *pipelinespec.ComponentSpec,
@@ -280,7 +280,7 @@ func initPodSpecPatch(
 	if publishLogs == "true" {
 		launcherCmd = append(launcherCmd, "--publish_logs", publishLogs)
 	}
-	launcherCmd = append(launcherCmd, "--") // separater before user command and args
+	launcherCmd = append(launcherCmd, "--") // separate before user command and args
 	res := k8score.ResourceRequirements{
 		Limits:   map[k8score.ResourceName]k8sres.Quantity{},
 		Requests: map[k8score.ResourceName]k8sres.Quantity{},
