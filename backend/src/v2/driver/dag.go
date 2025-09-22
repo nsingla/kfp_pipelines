@@ -140,6 +140,13 @@ func DAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution
 		RunId:       opts.RunID,
 		// Default to DAG
 		Type: gc.PipelineTaskDetail_DAG,
+		Pods: []*gc.PipelineTaskDetail_TaskPod{
+			{
+				Name: opts.PodName,
+				Uid:  opts.PodUID,
+				Type: gc.PipelineTaskDetail_DRIVER,
+			},
+		},
 	}
 	// TODO(HumairAK): Add conversion from executor input to dag task inputs
 

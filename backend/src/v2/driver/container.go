@@ -9,10 +9,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-	apiClient "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/config"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
-	pb "github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -34,11 +34,6 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 
 	if api == nil {
 		return nil, fmt.Errorf("api client is nil")
-	}
-
-	run, err := api.GetRun(ctx, &apiClient.GetRunRequest{RunId: opts.RunID})
-	if err != nil {
-		return nil, err
 	}
 
 	if opts.TaskName == "" {
@@ -96,6 +91,10 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		opts.PublishLogs = "false"
 	}
 
+	run, err := api.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.RunID})
+	if err != nil {
+		return nil, err
+	}
 	if execution.WillTrigger() {
 		executorInput.Outputs = provisionOutputs(
 			run.RuntimeConfig.PipelineRoot,
@@ -115,25 +114,26 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	}
 
 	glog.Infof("Creating task %s in pod %s", opts.TaskName, podName)
-	pd := &apiClient.PipelineTaskDetail{
+	pd := &apiV2beta1.PipelineTaskDetail{
 		Name:        opts.TaskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
 		RunId:       opts.RunID,
-		Type:        apiClient.PipelineTaskDetail_RUNTIME,
-		Pods: []*apiClient.PipelineTaskDetail_TaskPod{
+		Type:        apiV2beta1.PipelineTaskDetail_RUNTIME,
+		Pods: []*apiV2beta1.PipelineTaskDetail_TaskPod{
 			{
-				Name: podName,
-				Type: apiClient.PipelineTaskDetail_EXECUTOR,
-				// TODO(HumairAK): Add pod UID via downward api
+				Name: opts.PodName,
+				Uid:  opts.PodUID,
+				Type: apiV2beta1.PipelineTaskDetail_DRIVER,
 			},
 		},
 	}
+
 	if opts.ParentTaskID != "" {
 		pid := opts.ParentTaskID
 		pd.ParentTaskId = &pid
 	}
 	if iterationIndex != nil {
-		pd.TypeAttributes = &apiClient.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		pd.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
 	}
 
 	// ######################################
@@ -144,25 +144,30 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		return execution, kubernetesPlatformOps(ctx, api, execution, pd, &opts)
 	}
 
-	var inputParams map[string]*structpb.Value
-
+	var inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter
+	parentTask, err := api.GetTask(ctx, &apiV2beta1.GetTaskRequest{TaskId: opts.ParentTaskID})
+	if err != nil {
+		return nil, err
+	}
 	if opts.KubernetesExecutorConfig != nil {
-		inputParams, _, err = dag.Execution.GetParameters()
+		inputParams = parentTask.GetInputs().GetParameters()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch input parameters from execution: %w", err)
+			return nil, fmt.Errorf("failed to fetch input parameters from task: %w", err)
 		}
 	}
 
 	// ######################################
 	// ### CACHE 1 ###
 	// ######################################
-
+	var fingerPrint string
+	var cachedTask *apiV2beta1.PipelineTaskDetail
 	if !opts.CacheDisabled {
 		// Generate fingerprint and MLMD ID for cache
 		// Start by getting the names of the PVCs that need to be mounted.
-		pvcNames := []string{}
+		var pvcNames []string
 		if opts.KubernetesExecutorConfig != nil && opts.KubernetesExecutorConfig.GetPvcMount() != nil {
-			_, volumes, err := makeVolumeMountPatch(ctx, opts, opts.KubernetesExecutorConfig.GetPvcMount(),
+			_, volumes, err := makeVolumeMountPatch(
+				ctx, opts, opts.KubernetesExecutorConfig.GetPvcMount(),
 				dag, pipeline, mlmd, inputParams)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract volume mount info while generating fingerprint: %w", err)
@@ -181,12 +186,11 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 			pvcNames = append(pvcNames, GetWorkspacePVCName(opts.RunName))
 		}
 
-		fingerPrint, cachedMLMDExecutionID, err := getFingerPrintsAndID(execution, &opts, cacheClient, pvcNames)
+		fingerPrint, cachedTask, err = getFingerPrintsAndID(ctx, execution, api, &opts, pvcNames)
 		if err != nil {
 			return execution, err
 		}
-		ecfg.CachedMLMDExecutionID = cachedMLMDExecutionID
-		ecfg.FingerPrint = fingerPrint
+		pd.CacheFingerprint = fingerPrint
 	}
 
 	// ######################################
@@ -197,7 +201,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ### CREATE TASK ###
 	// ######################################
 
-	task, err := api.CreateTask(ctx, &apiClient.CreateTaskRequest{Task: pd})
+	task, err := api.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return execution, err
 	}
@@ -207,26 +211,22 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ### CACHE 2 ###
 	// ######################################
 
-	// Use cache and skip launcher if all contions met:
+	// Use cache and skip pvc creation if all conditions met:
 	// (1) Cache is enabled globally
 	// (2) Cache is enabled for the task
-	// (3) CachedMLMDExecutionID is non-empty, which means a cache entry exists
-	cached := false
-	execution.Cached = &cached
+	// (3) We had a cache hit for this Task
+	execution.Cached = util.BoolPointer(false)
 	if !opts.CacheDisabled {
-		if opts.Task.GetCachingOptions().GetEnableCache() && ecfg.CachedMLMDExecutionID != "" {
-			executorOutput, outputArtifacts, err := reuseCachedOutputs(ctx, execution.ExecutorInput, mlmd, ecfg.CachedMLMDExecutionID)
-			if err != nil {
-				return execution, err
-			}
-			// TODO(Bobgy): upload output artifacts.
-			// TODO(Bobgy): when adding artifacts, we will need execution.pipeline to be non-nil, because we need
-			// to publish output artifacts to the context too.
-			if err := mlmd.PublishExecution(ctx, createdExecution, executorOutput.GetParameterValues(), outputArtifacts, pb.Execution_CACHED); err != nil {
-				return execution, fmt.Errorf("failed to publish cached execution: %w", err)
-			}
-			glog.Infof("Use cache for task %s", opts.Task.GetTaskInfo().GetName())
+		if opts.Task.GetCachingOptions().GetEnableCache() && cachedTask != nil {
+			pd.Status = apiV2beta1.PipelineTaskDetail_CACHED
+			pd.Outputs = cachedTask.Outputs
 			*execution.Cached = true
+			_, createErr := api.UpdateTask(ctx, &apiV2beta1.UpdateTaskRequest{
+				Task: pd,
+			})
+			if createErr != nil {
+				return execution, fmt.Errorf("failed to update task: %w", createErr)
+			}
 			return execution, nil
 		}
 	} else {
@@ -247,6 +247,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		opts.PublishLogs,
 		strconv.FormatBool(opts.CacheDisabled),
 		taskConfig,
+		fingerPrint,
 	)
 	if err != nil {
 		return execution, err
@@ -286,29 +287,23 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 			}
 		}
 
-		ecfg.InputParameters = executorInput.Inputs.ParameterValues
-
 		// Overwrite the --executor_input argument in the podSpec container command with the updated executorInput
 		executorInputJSON, err := protojson.Marshal(executorInput)
 		if err != nil {
 			return execution, fmt.Errorf("JSON marshaling executor input: %w", err)
 		}
-
 		for index, container := range podSpec.Containers {
 			if container.Name == "main" {
 				cmd := container.Command
 				for i := 0; i < len(cmd)-1; i++ {
 					if cmd[i] == "--executor_input" {
 						podSpec.Containers[index].Command[i+1] = string(executorInputJSON)
-
 						break
 					}
 				}
-
 				break
 			}
 		}
-
 		execution.ExecutorInput = executorInput
 	}
 

@@ -51,6 +51,13 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 		Type:           gc.PipelineTaskDetail_ROOT,
 		Inputs:         inputs,
 		TypeAttributes: &gc.PipelineTaskDetail_TypeAttributes{},
+		Pods: []*gc.PipelineTaskDetail_TaskPod{
+			{
+				Name: opts.PodName,
+				Uid:  opts.PodUID,
+				Type: gc.PipelineTaskDetail_DRIVER,
+			},
+		},
 	}
 	task, err := api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
 	if err != nil {

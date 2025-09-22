@@ -71,6 +71,9 @@ type Options struct {
 	DriverType string
 
 	TaskName string // the original name of the task, used for input resolution
+
+	PodName string
+	PodUID  string
 }
 
 // TaskConfig needs to stay aligned with the TaskConfig in the SDK.
@@ -209,7 +212,19 @@ func getTaskConfigOptions(
 // dynamic values are patched here. The volume mounts / configmap mounts are
 // defined in compiler, because they are static.
 func initPodSpecPatch(
-	container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec, componentSpec *pipelinespec.ComponentSpec, executorInput *pipelinespec.ExecutorInput, executionID int64, pipelineName string, runID string, runName string, pipelineLogLevel string, publishLogs string, cacheDisabled string, taskConfig *TaskConfig, fingerPrint string) (*k8score.PodSpec, error) {
+	container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec,
+	componentSpec *pipelinespec.ComponentSpec,
+	executorInput *pipelinespec.ExecutorInput,
+	taskID string,
+	pipelineName string,
+	runID string,
+	runName string,
+	pipelineLogLevel string,
+	publishLogs string,
+	cacheDisabled string,
+	taskConfig *TaskConfig,
+	fingerPrint string,
+) (*k8score.PodSpec, error) {
 	executorInputJSON, err := protojson.Marshal(executorInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init podSpecPatch: %w", err)
@@ -241,7 +256,7 @@ func initPodSpecPatch(
 		component.KFPLauncherPath,
 		"--pipeline_name", pipelineName,
 		"--run_id", runID,
-		"--execution_id", fmt.Sprintf("%v", executionID),
+		"--execution_id", fmt.Sprintf("%v", taskID),
 		"--executor_input", string(executorInputJSON),
 		"--component_spec", string(componentJSON),
 		"--pod_name",

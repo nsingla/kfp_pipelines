@@ -21,9 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"google.golang.org/protobuf/encoding/protojson"
-
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
+	"google.golang.org/protobuf/encoding/protojson"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	wfapi "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
@@ -241,7 +240,7 @@ func (c *workflowCompiler) addContainerDriverTemplate() string {
 			Command:   c.driverCommand,
 			Args:      args,
 			Resources: driverResources,
-			Env:       proxy.GetConfig().GetEnvVars(),
+			Env:       append(proxy.GetConfig().GetEnvVars(), commonEnvs...),
 		},
 	}
 	c.templates[name] = t

@@ -177,6 +177,13 @@ func drive() (err error) {
 	if err != nil {
 		return err
 	}
+
+	podName := os.Getenv("KFP_POD_UID")
+	podUID := os.Getenv("KFP_POD_NAME")
+	if podUID == "" || podName == "" {
+		return fmt.Errorf("KFP_POD_UID and KFP_POD_NAME environment variables must be set")
+	}
+
 	options := driver.Options{
 		PipelineName:     *pipelineName,
 		RunID:            *runID,
@@ -192,6 +199,8 @@ func drive() (err error) {
 		DriverType:       *driverType,
 		TaskName:         *taskName,
 		ParentTaskID:     *parentTaskID,
+		PodName:          podName,
+		PodUID:           podUID,
 	}
 	var execution *driver.Execution
 	switch *driverType {
