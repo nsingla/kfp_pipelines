@@ -20,7 +20,7 @@ import (
 // Container mirrors Container but uses KFP RunService/ArtifactService instead of MLMD.
 // Initial version wires inputs and creates a runtime task; output recording via
 // ArtifactService will be added in subsequent steps.
-func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("driver.Container(%s) failed: %w", opts.info(), err)
@@ -32,8 +32,8 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	}
 	glog.V(4).Info("Container opts: ", string(b))
 
-	if api == nil {
-		return nil, fmt.Errorf("api client is nil")
+	if driverAPI == nil {
+		return nil, fmt.Errorf("driverAPI client is nil")
 	}
 
 	if opts.TaskName == "" {
@@ -51,11 +51,16 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		return nil, err
 	}
 
+	parentTask, err := driverAPI.GetTask(ctx, &apiV2beta1.GetTaskRequest{TaskId: opts.ParentTaskID})
+	if err != nil {
+		return nil, err
+	}
+	opts.ParentTask = parentTask
+
 	// ######################################
 	// ### RESOLVE INPUTS ###
 	// ######################################
-
-	inputs, err := resolveInputs(ctx, nil, iterationIndex, opts, api, expr)
+	inputs, err := resolveInputs(ctx, iterationIndex, opts, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +96,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 		opts.PublishLogs = "false"
 	}
 
-	run, err := api.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.RunID})
+	run, err := driverAPI.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.RunID})
 	if err != nil {
 		return nil, err
 	}
@@ -141,14 +146,10 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ######################################
 
 	if isKubernetesPlatformOp {
-		return execution, kubernetesPlatformOps(ctx, api, execution, pd, &opts)
+		return execution, kubernetesPlatformOps(ctx, driverAPI, execution, pd, &opts)
 	}
 
 	var inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter
-	parentTask, err := api.GetTask(ctx, &apiV2beta1.GetTaskRequest{TaskId: opts.ParentTaskID})
-	if err != nil {
-		return nil, err
-	}
 	if opts.KubernetesExecutorConfig != nil {
 		inputParams = parentTask.GetInputs().GetParameters()
 		if err != nil {
@@ -186,7 +187,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 			pvcNames = append(pvcNames, GetWorkspacePVCName(opts.RunName))
 		}
 
-		fingerPrint, cachedTask, err = getFingerPrintsAndID(ctx, execution, api, &opts, pvcNames)
+		fingerPrint, cachedTask, err = getFingerPrintsAndID(ctx, execution, driverAPI, &opts, pvcNames)
 		if err != nil {
 			return execution, err
 		}
@@ -201,7 +202,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 	// ### CREATE TASK ###
 	// ######################################
 
-	task, err := api.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: pd})
+	task, err := driverAPI.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return execution, err
 	}
@@ -221,7 +222,7 @@ func Container(ctx context.Context, opts Options, api DriverAPI) (execution *Exe
 			pd.Status = apiV2beta1.PipelineTaskDetail_CACHED
 			pd.Outputs = cachedTask.Outputs
 			*execution.Cached = true
-			_, createErr := api.UpdateTask(ctx, &apiV2beta1.UpdateTaskRequest{
+			_, createErr := driverAPI.UpdateTask(ctx, &apiV2beta1.UpdateTaskRequest{
 				Task: pd,
 			})
 			if createErr != nil {

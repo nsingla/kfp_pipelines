@@ -458,26 +458,25 @@ message PipelineTaskDetail {
     }
 
     message Parameter {
-      string value = 1;
-      // Optional, this is only included on Runtime Tasks when the parameter name is known.
-      optional string name = 2;
-      // Not all Parameters have task producers,
-      // For example they can also be Runtime Constants.
-      // Whereas in the case of a PipelineChannel, they
-      // do have a producer.
-      optional IOProducer producer = 3;
+      // Required
+      google.protobuf.Value value = 1;
+
+      oneof source {
+        // Optional, this is only included on Runtime Tasks when the parameter name is known.
+        string parameter_name = 2;
+        // Handle Pipeline Channel case.
+        IOProducer producer = 3;
+      }
     }
     message IOArtifact {
-      // Optional, this is only included on Runtime Tasks when the parameter name is known.
-      string parameter_name = 1;
+      Artifact value = 1;
+      oneof source {
+        // This is included on Runtime Tasks when the parameter name is known.
+        string parameter_name = 2;
+        // Handle Pipeline Channel case.
+        IOProducer producer = 3;
+      }
 
-      Artifact value = 2;
-
-      // All IO artifacts have a producer, so the following
-      // fields are required. In the case of importer
-      // where the artifact is set to reimport = true
-      // the name & key are importer-[0-9]+ and "artifact"
-      IOProducer producer = 3;
     }
     repeated Parameter parameters = 1;
     // Output Only. To create Artifacts for a task are created

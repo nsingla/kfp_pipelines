@@ -201,6 +201,7 @@ func drive() (err error) {
 		ParentTaskID:     *parentTaskID,
 		PodName:          podName,
 		PodUID:           podUID,
+		DriverAPI:        driverAPI,
 	}
 	var execution *driver.Execution
 	switch *driverType {

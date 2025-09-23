@@ -39,7 +39,7 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 			n := name
 			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{
 				Name:  &n,
-				Value: val.GetStringValue(),
+				Value: val,
 			})
 		}
 		inputs = &gc.PipelineTaskDetail_InputOutputs{Parameters: params}

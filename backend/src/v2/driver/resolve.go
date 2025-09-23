@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
@@ -40,18 +41,14 @@ type resolveUpstreamOutputsConfig struct {
 	ctx          context.Context
 	paramSpec    *pipelinespec.TaskInputsSpec_InputParameterSpec
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec
-	dag          *metadata.DAG
-	pipeline     *metadata.Pipeline
-	mlmd         *metadata.Client
+	opts         Options
 	err          func(error) error
 }
 
 // getDAGTasks is a recursive function that returns a map of all tasks across all DAGs in the context of nested DAGs.
 func getDAGTasks(
 	ctx context.Context,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
-	mlmd *metadata.Client,
+	opts Options,
 	flattenedTasks map[string]*metadata.Execution,
 ) (map[string]*metadata.Execution, error) {
 	if flattenedTasks == nil {
@@ -77,7 +74,7 @@ func getDAGTasks(
 			}
 			// Pass the subDAG into a recursive call to getDAGTasks and update
 			// tasks to include the subDAG's tasks.
-			flattenedTasks, err = getDAGTasks(ctx, subDAG, pipeline, mlmd, flattenedTasks)
+			flattenedTasks, err = getDAGTasks(ctx, opts, flattenedTasks)
 			if err != nil {
 				return nil, err
 			}
@@ -87,13 +84,78 @@ func getDAGTasks(
 	return flattenedTasks, nil
 }
 
+func parseIONameOrPipelineChannel(name string, producer *apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer) (string, error) {
+	var result string
+	if producer != nil {
+		if producer.GetTaskName() == "" || producer.Key == "" {
+			return nil, fmt.Errorf("producer task name or key is empty")
+		}
+		result = fmt.Sprintf("pipelinechannel--%s-%s", producer.GetTaskName(), producer.Key)
+	} else if name != "" {
+		result = name
+	} else {
+		return "", fmt.Errorf("producer task name or key is empty")
+	}
+	return result, nil
+}
+
+func convertTaskInputParamsToExecutorInputParams(
+	params []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
+) (map[string]*structpb.Value, error) {
+	convertedParams := make(map[string]*structpb.Value)
+	for _, p := range params {
+		if p.GetParameterName() != "" && p.GetProducer() != nil {
+			return nil, fmt.Errorf("cannot have both parameter name and producer")
+		}
+		name, err := parseIONameOrPipelineChannel(p.GetParameterName(), p.GetProducer())
+		if err != nil {
+			return nil, err
+		}
+		convertedParams[name] = p.GetValue()
+	}
+	return convertedParams, nil
+}
+
+func convertTaskInputArtifactsToExecutorInputArtifacts(
+	artifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
+) (map[string]*pipelinespec.ArtifactList, error) {
+	var convertedArtifactsMap = make(map[string]*pipelinespec.ArtifactList)
+	for _, artifactIO := range artifacts {
+		var convertedRuntimeArtifacts []*pipelinespec.RuntimeArtifact
+		artifact := artifactIO.Value
+		if artifact.GetName() == "" && artifact.GetUri() == "" {
+			return nil, fmt.Errorf("artifact name or uri cannot be empty")
+		}
+		runtimeArtifact := &pipelinespec.RuntimeArtifact{
+			Name: artifact.GetName(),
+			Type: &pipelinespec.ArtifactTypeSchema{
+				Kind: &pipelinespec.ArtifactTypeSchema_SchemaTitle{SchemaTitle: artifact.Type.String()},
+			},
+		}
+		if artifact.GetUri() != "" {
+			runtimeArtifact.Uri = artifact.GetUri()
+		}
+		if artifact.GetMetadata() != nil {
+			runtimeArtifact.Metadata = &structpb.Struct{
+				Fields: artifact.GetMetadata(),
+			}
+		}
+		convertedRuntimeArtifacts = append(convertedRuntimeArtifacts, runtimeArtifact)
+		name, err := parseIONameOrPipelineChannel(artifactIO.GetParameterName(), artifactIO.GetProducer())
+		if err != nil {
+			return nil, err
+		}
+		convertedArtifactsMap[name] = &pipelinespec.ArtifactList{
+			Artifacts: convertedRuntimeArtifacts,
+		}
+	}
+	return convertedArtifactsMap, nil
+}
+
 func resolveInputs(
 	ctx context.Context,
-	dag *metadata.DAG,
 	iterationIndex *int,
-	pipeline *metadata.Pipeline,
 	opts Options,
-	mlmd *metadata.Client,
 	expr *expression.Expr,
 ) (inputs *pipelinespec.ExecutorInput_Inputs, err error) {
 	defer func() {
@@ -105,17 +167,18 @@ func resolveInputs(
 	task := opts.Task
 	inputsSpec := opts.Component.GetInputDefinitions()
 
-	glog.V(4).Infof("dag: %v", dag)
 	glog.V(4).Infof("task: %v", task)
-	inputParams, _, err := dag.Execution.GetParameters()
+	glog.Infof("parent DAG input parameters: %+v, artifacts: %+v",
+		opts.ParentTask.Inputs.GetParameters(), opts.ParentTask.Inputs.GetArtifacts())
+
+	inputParams, err := convertTaskInputParamsToExecutorInputParams(opts.ParentTask.Inputs.GetParameters())
 	if err != nil {
 		return nil, err
 	}
-	inputArtifacts, err := mlmd.GetInputArtifactsByExecutionID(ctx, dag.Execution.GetID())
+	inputArtifacts, err := convertTaskInputArtifactsToExecutorInputArtifacts(opts.ParentTask.Inputs.GetArtifacts())
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("parent DAG input parameters: %+v, artifacts: %+v", inputParams, inputArtifacts)
 	inputs = &pipelinespec.ExecutorInput_Inputs{
 		ParameterValues: make(map[string]*structpb.Value),
 		Artifacts:       make(map[string]*pipelinespec.ArtifactList),
@@ -234,8 +297,6 @@ func resolveInputs(
 		}
 		return nil
 	}
-	// this function has many branches, so it's hard to add more postprocess steps
-	// TODO(Bobgy): consider splitting this function into several sub functions
 	defer func() {
 		if err == nil {
 			err = handleParameterExpressionSelector()
@@ -244,15 +305,12 @@ func resolveInputs(
 			err = handleParamTypeValidationAndConversion()
 		}
 	}()
+
 	// resolve input parameters
 	if isIterationDriver {
 		// resolve inputs for iteration driver is very different
-		artifacts, err := mlmd.GetInputArtifactsByExecutionID(ctx, dag.Execution.GetID())
-		if err != nil {
-			return nil, err
-		}
 		inputs.ParameterValues = inputParams
-		inputs.Artifacts = artifacts
+		inputs.Artifacts = inputArtifacts
 		switch {
 		case task.GetArtifactIterator() != nil:
 			return nil, fmt.Errorf("artifact iterator not implemented yet")
@@ -267,13 +325,20 @@ func resolveInputs(
 			} else {
 				return nil, fmt.Errorf("cannot retrieve parameter iterator")
 			}
+			// Inside an iteration (ParallelFor) driver, the task should receive only
+			// the single element for the current iteration, not the entire collection
+			// it’s iterating over. We first retrieve all the elements from the collection.
 			items, err := getItems(inputs.ParameterValues[itemsInput])
 			if err != nil {
 				return nil, err
 			}
+			if iterationIndex == nil {
+				return nil, fmt.Errorf("iteration_index is nil for iterator")
+			}
 			if *iterationIndex >= len(items) {
 				return nil, fmt.Errorf("bug: %v items found, but getting index %v", len(items), *iterationIndex)
 			}
+			// Then we replace the list input parameter with the single element for the current iteration.
 			delete(inputs.ParameterValues, itemsInput)
 			inputs.ParameterValues[task.GetParameterIterator().GetItemInput()] = items[*iterationIndex]
 		default:
@@ -281,6 +346,7 @@ func resolveInputs(
 		}
 		return inputs, nil
 	}
+
 	// A DAG driver (not Root DAG driver) indicates this is likely the start of a nested pipeline.
 	// Handle omitted optional pipeline input parameters similar to how they are handled on the root pipeline.
 	isDagDriver := opts.DriverType == "DAG"
@@ -309,8 +375,7 @@ func resolveInputs(
 				continue
 			}
 		}
-
-		v, err := resolveInputParameter(ctx, dag, pipeline, opts, mlmd, paramSpec, inputParams)
+		v, err := resolveInputParameter(ctx, opts, paramSpec, inputParams)
 		if err != nil {
 			if !errors.Is(err, ErrResolvedParameterNull) {
 				return nil, err
@@ -331,13 +396,13 @@ func resolveInputs(
 
 	// Handle artifacts.
 	for name, artifactSpec := range task.GetInputs().GetArtifacts() {
-		v, err := resolveInputArtifact(ctx, dag, pipeline, mlmd, name, artifactSpec, inputArtifacts, task)
+		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec, inputArtifacts, task)
 		if err != nil {
 			return nil, err
 		}
 		inputs.Artifacts[name] = v
 	}
-	// TODO(Bobgy): validate executor inputs match component inputs definition
+
 	return inputs, nil
 }
 
@@ -347,10 +412,7 @@ func resolveInputs(
 // default). The caller can decide if this is allowed in that context.
 func resolveInputParameter(
 	ctx context.Context,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
 	opts Options,
-	mlmd *metadata.Client,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams map[string]*structpb.Value,
 ) (*structpb.Value, error) {
@@ -382,10 +444,8 @@ func resolveInputParameter(
 		cfg := resolveUpstreamOutputsConfig{
 			ctx:       ctx,
 			paramSpec: paramSpec,
-			dag:       dag,
-			pipeline:  pipeline,
-			mlmd:      mlmd,
 			err:       paramError,
+			opts:      opts,
 		}
 		v, err := resolveUpstreamParameters(cfg)
 		if err != nil {
@@ -414,18 +474,18 @@ func resolveInputParameter(
 				v = structpb.NewStringValue(opts.RunID)
 			case "{{$.pipeline_task_name}}":
 				v = structpb.NewStringValue(opts.TaskName)
+			// TODO(HumairAK): Shouldn't this be the name of the Runtime Task UUID ?
 			case "{{$.pipeline_task_uuid}}":
-				v = structpb.NewStringValue(fmt.Sprintf("%d", opts.DAGExecutionID))
+				v = structpb.NewStringValue(fmt.Sprintf("%s", opts.ParentTaskID))
 			default:
 				v = val
 			}
-
 			return v, nil
 		default:
 			return nil, paramError(fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_:
-		tasks, err := getDAGTasks(ctx, dag, pipeline, mlmd, nil)
+		tasks, err := getDAGTasks(ctx, opts, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -469,14 +529,11 @@ func resolveInputParameter(
 // string.
 func resolveInputParameterStr(
 	ctx context.Context,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
 	opts Options,
-	mlmd *metadata.Client,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams map[string]*structpb.Value,
 ) (*structpb.Value, error) {
-	val, err := resolveInputParameter(ctx, dag, pipeline, opts, mlmd, paramSpec, inputParams)
+	val, err := resolveInputParameter(ctx, opts, paramSpec, inputParams)
 	if err != nil {
 		return nil, err
 	}
@@ -496,9 +553,7 @@ func resolveInputParameterStr(
 // using a given input context via inputArtifacts.
 func resolveInputArtifact(
 	ctx context.Context,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
-	mlmd *metadata.Client,
+	opts Options,
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 	inputArtifacts map[string]*pipelinespec.ArtifactList,
@@ -524,9 +579,7 @@ func resolveInputArtifact(
 		cfg := resolveUpstreamOutputsConfig{
 			ctx:          ctx,
 			artifactSpec: artifactSpec,
-			dag:          dag,
-			pipeline:     pipeline,
-			mlmd:         mlmd,
+			opts:         opts,
 			err:          artifactError,
 		}
 		artifacts, err := resolveUpstreamArtifacts(cfg)
@@ -569,7 +622,7 @@ func resolveUpstreamParameters(cfg resolveUpstreamOutputsConfig) (*structpb.Valu
 	// results in a bunch of unhandled edge cases and test failures.
 	glog.V(4).Infof("producerTaskName: %v", producerTaskName)
 	glog.V(4).Infof("outputParameterKey: %v", outputParameterKey)
-	tasks, err := getDAGTasks(cfg.ctx, cfg.dag, cfg.pipeline, cfg.mlmd, nil)
+	tasks, err := getDAGTasks(cfg.ctx, cfg.opts, nil)
 	if err != nil {
 		return nil, cfg.err(err)
 	}
@@ -690,7 +743,7 @@ func resolveUpstreamArtifacts(cfg resolveUpstreamOutputsConfig) (*pipelinespec.A
 	// "iteration_index", the producerTaskName will be updated appropriately
 	producerTaskName = InferIndexedTaskName(producerTaskName, cfg.dag.Execution)
 	glog.V(4).Infof("producerTaskName: %v", producerTaskName)
-	tasks, err := getDAGTasks(cfg.ctx, cfg.dag, cfg.pipeline, cfg.mlmd, nil)
+	tasks, err := getDAGTasks(cfg.ctx, cfg.opts, nil)
 	if err != nil {
 		return nil, cfg.err(err)
 	}
@@ -807,15 +860,11 @@ func resolvePodSpecInputRuntimeParameter(parameterValue string, executorInput *p
 func resolveK8sJsonParameter[k8sResource any](
 	ctx context.Context,
 	opts Options,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
-	mlmd *metadata.Client,
 	pipelineInputParamSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams map[string]*structpb.Value,
 	res *k8sResource,
 ) error {
-	resolvedParam, err := resolveInputParameter(ctx, dag, pipeline, opts, mlmd,
-		pipelineInputParamSpec, inputParams)
+	resolvedParam, err := resolveInputParameter(ctx, opts, pipelineInputParamSpec, inputParams)
 	if err != nil {
 		return fmt.Errorf("failed to resolve k8s parameter: %w", err)
 	}

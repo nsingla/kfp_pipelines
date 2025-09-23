@@ -178,19 +178,3 @@ func validateNonRoot(opts Options) error {
 	}
 	return nil
 }
-
-// resolvePodSpecInputRuntimeParameter resolves runtime parameter placeholders used inside PodSpec strings.
-// It supports values like "{{$.inputs.parameters['param']}}" by looking them up in executorInput.
-func resolvePodSpecInputRuntimeParameter(parameterValue string, executorInput *pipelinespec.ExecutorInput) (string, error) {
-	if isInputParameterChannel(parameterValue) {
-		name, err := extractInputParameterFromChannel(parameterValue)
-		if err != nil {
-			return "", err
-		}
-		if val, ok := executorInput.GetInputs().GetParameterValues()[name]; ok {
-			return val.GetStringValue(), nil
-		}
-		return "", fmt.Errorf("executorInput did not contain parameter %q", name)
-	}
-	return parameterValue, nil
-}

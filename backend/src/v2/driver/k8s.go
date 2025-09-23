@@ -85,9 +85,8 @@ func extendPodSpecPatch(
 	ctx context.Context,
 	podSpec *k8score.PodSpec,
 	opts Options,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
-	mlmd *metadata.Client,
+	parentTask *apiV2beta1.PipelineTaskDetail,
+	apiDriver DriverAPI,
 	inputParams map[string]*structpb.Value,
 	taskConfig *TaskConfig,
 ) error {
@@ -878,9 +877,6 @@ func makeVolumeMountPatch(
 	ctx context.Context,
 	opts Options,
 	pvcMounts []*kubernetesplatform.PvcMount,
-	dag *metadata.DAG,
-	pipeline *metadata.Pipeline,
-	mlmd *metadata.Client,
 	inputParams map[string]*structpb.Value,
 ) ([]k8score.VolumeMount, []k8score.Volume, error) {
 	if pvcMounts == nil {

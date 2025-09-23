@@ -601,16 +601,16 @@
     "InputOutputsIOArtifact": {
       "type": "object",
       "properties": {
-        "parameter_name": {
-          "type": "string",
-          "description": "Optional, this is only included on Runtime Tasks when the parameter name is known."
-        },
         "value": {
           "$ref": "#/definitions/v2beta1Artifact"
         },
+        "parameter_name": {
+          "type": "string",
+          "description": "This is included on Runtime Tasks when the parameter name is known."
+        },
         "producer": {
           "$ref": "#/definitions/InputOutputsIOProducer",
-          "title": "All IO artifacts have a producer, so the following\nfields are required. In the case of importer\nwhere the artifact is set to reimport = true\nthe name \u0026 key are importer-[0-9]+ and \"artifact\""
+          "description": "Handle Pipeline Channel case."
         }
       }
     },
@@ -630,15 +630,15 @@
       "type": "object",
       "properties": {
         "value": {
-          "type": "string"
+          "title": "Required"
         },
-        "name": {
+        "parameter_name": {
           "type": "string",
           "description": "Optional, this is only included on Runtime Tasks when the parameter name is known."
         },
         "producer": {
           "$ref": "#/definitions/InputOutputsIOProducer",
-          "description": "Not all Parameters have task producers,\nFor example they can also be Runtime Constants.\nWhereas in the case of a PipelineChannel, they\ndo have a producer."
+          "description": "Handle Pipeline Channel case."
         }
       }
     },

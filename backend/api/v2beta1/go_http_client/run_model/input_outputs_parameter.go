@@ -19,16 +19,13 @@ import (
 type InputOutputsParameter struct {
 
 	// Optional, this is only included on Runtime Tasks when the parameter name is known.
-	Name string `json:"name,omitempty"`
+	ParameterName string `json:"parameter_name,omitempty"`
 
-	// Not all Parameters have task producers,
-	// For example they can also be Runtime Constants.
-	// Whereas in the case of a PipelineChannel, they
-	// do have a producer.
+	// Handle Pipeline Channel case.
 	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
 
-	// value
-	Value string `json:"value,omitempty"`
+	// Required
+	Value interface{} `json:"value,omitempty"`
 }
 
 // Validate validates this input outputs parameter

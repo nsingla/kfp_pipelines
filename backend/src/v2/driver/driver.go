@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
@@ -40,6 +41,11 @@ type Options struct {
 	RunID string
 	// required, Component spec
 	Component *pipelinespec.ComponentSpec
+	// required
+	ParentTask   *apiv2beta1.PipelineTaskDetail
+	ParentTaskID string
+	DriverAPI    DriverAPI
+
 	// optional, iteration index. -1 means not an iteration.
 	IterationIndex int
 
@@ -48,8 +54,7 @@ type Options struct {
 	Namespace     string
 
 	// optional, required by non-root drivers
-	Task         *pipelinespec.PipelineTaskSpec
-	ParentTaskID string
+	Task *pipelinespec.PipelineTaskSpec
 
 	// optional, required only by container driver
 	Container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec

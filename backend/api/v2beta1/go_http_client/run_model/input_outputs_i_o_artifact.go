@@ -18,13 +18,10 @@ import (
 // swagger:model InputOutputsIOArtifact
 type InputOutputsIOArtifact struct {
 
-	// Optional, this is only included on Runtime Tasks when the parameter name is known.
+	// This is included on Runtime Tasks when the parameter name is known.
 	ParameterName string `json:"parameter_name,omitempty"`
 
-	// All IO artifacts have a producer, so the following
-	// fields are required. In the case of importer
-	// where the artifact is set to reimport = true
-	// the name & key are importer-[0-9]+ and "artifact"
+	// Handle Pipeline Channel case.
 	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
 
 	// value
