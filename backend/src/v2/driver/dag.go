@@ -134,7 +134,7 @@ func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Exe
 		execution.IterationCount = &count
 	}
 
-	pd := &gc.PipelineTaskDetail{
+	taskToCreate := &gc.PipelineTaskDetail{
 		Name:        taskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
 		RunId:       opts.RunID,
@@ -150,31 +150,33 @@ func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Exe
 	}
 	// TODO(HumairAK): Add conversion from executor input to dag task inputs
 
+	// TODO(HumairAK): Create artifact_tasks for resolved artifacts
+
 	// Determine type of DAG task.
 	// In the future the KFP Sdk should add a Task Type enum to the task Info proto
 	// to assist with inferring type. For now we infer the type based on attribute
 	// heuristics.
 	if iterationCount != nil {
-		pd.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: int64(*iterationCount)}
-		pd.Type = gc.PipelineTaskDetail_LOOP
-		pd.DisplayName = "Loop"
+		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: int64(*iterationCount)}
+		taskToCreate.Type = gc.PipelineTaskDetail_LOOP
+		taskToCreate.DisplayName = "Loop"
 	} else if iterationIndex != nil {
-		pd.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
-		pd.Type = gc.PipelineTaskDetail_LOOP_ITERATION
-		pd.DisplayName = fmt.Sprintf("Loop Iteration %d", *iterationIndex)
+		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		taskToCreate.Type = gc.PipelineTaskDetail_LOOP_ITERATION
+		taskToCreate.DisplayName = fmt.Sprintf("Loop Iteration %d", *iterationIndex)
 	} else if condition != "" {
-		pd.Type = gc.PipelineTaskDetail_CONDITION_BRANCH
-		pd.DisplayName = "Condition Branch"
+		taskToCreate.Type = gc.PipelineTaskDetail_CONDITION_BRANCH
+		taskToCreate.DisplayName = "Condition Branch"
 	} else if strings.HasPrefix(taskName, "condition") && !strings.HasPrefix(taskName, "condition-branch") {
-		pd.Type = gc.PipelineTaskDetail_CONDITION
-		pd.DisplayName = "Condition"
+		taskToCreate.Type = gc.PipelineTaskDetail_CONDITION
+		taskToCreate.DisplayName = "Condition"
 	}
 
 	if opts.ParentTaskID != "" {
-		pd.ParentTaskId = &opts.ParentTaskID
+		taskToCreate.ParentTaskId = &opts.ParentTaskID
 	}
-	glog.Infof("Creating task: %+v", pd)
-	task, err := driverAPI.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	glog.Infof("Creating task: %+v", taskToCreate)
+	task, err := driverAPI.CreateTask(ctx, &gc.CreateTaskRequest{Task: taskToCreate})
 	if err != nil {
 		return execution, err
 	}
