@@ -26,7 +26,7 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
-	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
+	removethis "github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -82,21 +82,6 @@ func getDAGTasks(
 	}
 
 	return flattenedTasks, nil
-}
-
-func parseIONameOrPipelineChannel(name string, producer *apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer) (string, error) {
-	var result string
-	if producer != nil {
-		if producer.GetTaskName() == "" || producer.Key == "" {
-			return "", fmt.Errorf("producer task name or key is empty")
-		}
-		result = fmt.Sprintf("pipelinechannel--%s-%s", producer.GetTaskName(), producer.Key)
-	} else if name != "" {
-		result = name
-	} else {
-		return "", fmt.Errorf("producer task name or key is empty")
-	}
-	return result, nil
 }
 
 func convertTaskInputParamsToExecutorInputParams(
@@ -407,6 +392,21 @@ func resolveInputs(
 	return inputs, nil
 }
 
+func fetchInputParam(
+	paramName string,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter) (*structpb.Value, error) {
+	for _, param := range inputParams {
+		generateName, err := parseIONameOrPipelineChannel(param.GetParameterName(), param.GetProducer()
+		if err != nil {
+			return nil, err
+		}
+		if paramName == generateName {
+			return param.GetValue(), nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
 // resolveInputParameter resolves an InputParameterSpec
 // using a given input context via InputParams. ErrResolvedParameterNull is returned if paramSpec
 // is a component input parameter and parameter resolves to a null value (i.e. an optional pipeline input with no
@@ -427,9 +427,9 @@ func resolveInputParameter(
 		if componentInput == "" {
 			return nil, paramError(fmt.Errorf("empty component input"))
 		}
-		v, ok := inputParams[componentInput]
-		if !ok {
-			return nil, paramError(fmt.Errorf("parent DAG does not have input parameter %s", componentInput))
+		v, err := fetchInputParam(componentInput, inputParams)
+		if err != nil {
+			return nil, paramError(fmt.Errorf("parent Task does not have input parameter %s", componentInput))
 		}
 
 		if _, isNullValue := v.GetKind().(*structpb.Value_NullValue); isNullValue {

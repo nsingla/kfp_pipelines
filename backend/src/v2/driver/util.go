@@ -274,3 +274,18 @@ func handleTaskArtifactsCreation(
 	}
 	return nil
 }
+
+func parseIONameOrPipelineChannel(name string, producer *apiV2beta1.PipelineTaskDetail_InputOutputs_IOProducer) (string, error) {
+	var result string
+	if producer != nil {
+		if producer.GetTaskName() == "" || producer.Key == "" {
+			return "", fmt.Errorf("producer task name or key is empty")
+		}
+		result = fmt.Sprintf("pipelinechannel--%s-%s", producer.GetTaskName(), producer.Key)
+	} else if name != "" {
+		result = name
+	} else {
+		return "", fmt.Errorf("producer task name or key is empty")
+	}
+	return result, nil
+}
