@@ -30,6 +30,7 @@ type DriverAPI interface {
 	CreateArtifact(ctx context.Context, req *gc.CreateArtifactRequest) (*gc.Artifact, error)
 	ListArtifactTasks(ctx context.Context, req *gc.ListArtifactTasksRequest) (*gc.ListArtifactTasksResponse, error)
 	CreateArtifactTask(ctx context.Context, req *gc.CreateArtifactTaskRequest) (*gc.ArtifactTask, error)
+	CreateArtifactTasks(ctx context.Context, req *gc.CreateArtifactTasksBulkRequest) (*gc.CreateArtifactTasksBulkResponse, error)
 }
 
 // kfpAPI adapts apiclient.Client to DriverAPI.
@@ -76,4 +77,8 @@ func (k *kfpAPI) ListArtifactTasks(ctx context.Context, req *gc.ListArtifactTask
 
 func (k *kfpAPI) CreateArtifactTask(ctx context.Context, req *gc.CreateArtifactTaskRequest) (*gc.ArtifactTask, error) {
 	return k.c.Artifact.CreateArtifactTask(ctx, req)
+}
+
+func (k *kfpAPI) CreateArtifactTasks(ctx context.Context, req *gc.CreateArtifactTasksBulkRequest) (*gc.CreateArtifactTasksBulkResponse, error) {
+	return k.c.Artifact.CreateArtifactTasksBulk(ctx, req)
 }

@@ -88,7 +88,7 @@ func parseIONameOrPipelineChannel(name string, producer *apiv2beta1.PipelineTask
 	var result string
 	if producer != nil {
 		if producer.GetTaskName() == "" || producer.Key == "" {
-			return nil, fmt.Errorf("producer task name or key is empty")
+			return "", fmt.Errorf("producer task name or key is empty")
 		}
 		result = fmt.Sprintf("pipelinechannel--%s-%s", producer.GetTaskName(), producer.Key)
 	} else if name != "" {

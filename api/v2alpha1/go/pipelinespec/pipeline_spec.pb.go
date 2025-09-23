@@ -2065,7 +2065,9 @@ type RuntimeArtifact struct {
 	// Deprecated: Marked as deprecated in pipeline_spec.proto.
 	CustomProperties map[string]*Value `protobuf:"bytes,5,rep,name=custom_properties,json=customProperties,proto3" json:"custom_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Properties of the Artifact.
-	Metadata      *structpb.Struct `protobuf:"bytes,6,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Metadata *structpb.Struct `protobuf:"bytes,6,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	// The unique server generated id of the artifact.
+	ArtifactId    string `protobuf:"bytes,7,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2142,6 +2144,13 @@ func (x *RuntimeArtifact) GetMetadata() *structpb.Struct {
 		return x.Metadata
 	}
 	return nil
+}
+
+func (x *RuntimeArtifact) GetArtifactId() string {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return ""
 }
 
 // Message that represents a list of artifacts.
@@ -5988,7 +5997,7 @@ const file_pipeline_spec_proto_rawDesc = "" +
 	"\tint_value\x18\x01 \x01(\x03H\x00R\bintValue\x12#\n" +
 	"\fdouble_value\x18\x02 \x01(\x01H\x00R\vdoubleValue\x12#\n" +
 	"\fstring_value\x18\x03 \x01(\tH\x00R\vstringValueB\a\n" +
-	"\x05value\"\x89\x04\n" +
+	"\x05value\"\xaa\x04\n" +
 	"\x0fRuntimeArtifact\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x124\n" +
 	"\x04type\x18\x02 \x01(\v2 .ml_pipelines.ArtifactTypeSchemaR\x04type\x12\x10\n" +
@@ -5997,7 +6006,9 @@ const file_pipeline_spec_proto_rawDesc = "" +
 	"properties\x18\x04 \x03(\v2-.ml_pipelines.RuntimeArtifact.PropertiesEntryB\x02\x18\x01R\n" +
 	"properties\x12d\n" +
 	"\x11custom_properties\x18\x05 \x03(\v23.ml_pipelines.RuntimeArtifact.CustomPropertiesEntryB\x02\x18\x01R\x10customProperties\x123\n" +
-	"\bmetadata\x18\x06 \x01(\v2\x17.google.protobuf.StructR\bmetadata\x1aR\n" +
+	"\bmetadata\x18\x06 \x01(\v2\x17.google.protobuf.StructR\bmetadata\x12\x1f\n" +
+	"\vartifact_id\x18\a \x01(\tR\n" +
+	"artifactId\x1aR\n" +
 	"\x0fPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12)\n" +
 	"\x05value\x18\x02 \x01(\v2\x13.ml_pipelines.ValueR\x05value:\x028\x01\x1aX\n" +

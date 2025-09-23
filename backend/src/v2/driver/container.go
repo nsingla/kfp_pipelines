@@ -111,7 +111,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	}
 
 	// ######################################
-	// ### TASK REQUEST ### G2G
+	// ### TASK REQUEST ###
 	// ######################################
 	podName, err := config.InPodName()
 	if err != nil {
@@ -119,7 +119,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	}
 
 	glog.Infof("Creating task %s in pod %s", opts.TaskName, podName)
-	pd := &apiV2beta1.PipelineTaskDetail{
+	taskToCreate := &apiV2beta1.PipelineTaskDetail{
 		Name:        opts.TaskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
 		RunId:       opts.RunID,
@@ -135,10 +135,10 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 
 	if opts.ParentTaskID != "" {
 		pid := opts.ParentTaskID
-		pd.ParentTaskId = &pid
+		taskToCreate.ParentTaskId = &pid
 	}
 	if iterationIndex != nil {
-		pd.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		taskToCreate.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
 	}
 
 	// ######################################
@@ -146,7 +146,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	// ######################################
 
 	if isKubernetesPlatformOp {
-		return execution, kubernetesPlatformOps(ctx, driverAPI, execution, pd, &opts)
+		return execution, kubernetesPlatformOps(ctx, driverAPI, execution, taskToCreate, &opts)
 	}
 
 	var inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter
@@ -191,7 +191,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		if err != nil {
 			return execution, err
 		}
-		pd.CacheFingerprint = fingerPrint
+		taskToCreate.CacheFingerprint = fingerPrint
 	}
 
 	// ######################################
@@ -202,11 +202,20 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	// ### CREATE TASK ###
 	// ######################################
 
-	task, err := driverAPI.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: pd})
+	taskToCreate, err = handleTaskParametersCreation(executorInput, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
-	execution.TaskID = task.TaskId
+	createdTask, err := driverAPI.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: taskToCreate})
+	if err != nil {
+		return execution, err
+	}
+	execution.TaskID = createdTask.TaskId
+
+	err = handleTaskArtifactsCreation(ctx, executorInput, opts, createdTask, driverAPI)
+	if err != nil {
+		return execution, err
+	}
 
 	// ######################################
 	// ### CACHE 2 ###
@@ -219,11 +228,11 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	execution.Cached = util.BoolPointer(false)
 	if !opts.CacheDisabled {
 		if opts.Task.GetCachingOptions().GetEnableCache() && cachedTask != nil {
-			pd.Status = apiV2beta1.PipelineTaskDetail_CACHED
-			pd.Outputs = cachedTask.Outputs
+			taskToCreate.Status = apiV2beta1.PipelineTaskDetail_CACHED
+			taskToCreate.Outputs = cachedTask.Outputs
 			*execution.Cached = true
 			_, createErr := driverAPI.UpdateTask(ctx, &apiV2beta1.UpdateTaskRequest{
-				Task: pd,
+				Task: taskToCreate,
 			})
 			if createErr != nil {
 				return execution, fmt.Errorf("failed to update task: %w", createErr)
@@ -233,6 +242,10 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	} else {
 		glog.Info("Cache disabled globally at the server level.")
 	}
+
+	// ######################################
+	// ### PodSpecPatch ###
+	// ######################################
 
 	taskConfig := &TaskConfig{}
 

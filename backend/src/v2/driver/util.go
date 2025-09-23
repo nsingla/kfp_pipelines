@@ -15,10 +15,13 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -175,6 +178,99 @@ func validateNonRoot(opts Options) error {
 	}
 	if opts.ParentTaskID != "" {
 		return fmt.Errorf("Parent task ID is required")
+	}
+	return nil
+}
+
+func parsePipelineChannelName(name string) (key string, producerTaskName string, producerKey string) {
+	const prefix = "pipelinechannel--"
+	if !strings.HasPrefix(name, prefix) {
+		return name, "", ""
+	}
+
+	// Remove prefix
+	nameWithoutPrefix := strings.TrimPrefix(name, prefix)
+
+	// Split remaining string by last dash to separate producer task name and key
+	parts := strings.Split(nameWithoutPrefix, "-")
+	if len(parts) < 2 {
+		return nameWithoutPrefix, "", ""
+	}
+
+	key = parts[len(parts)-1]
+	producerTaskName = strings.Join(parts[:len(parts)-1], "-")
+	producerKey = key
+
+	return key, producerTaskName, producerKey
+}
+
+// handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_Parameter
+// for each parameter in the executor input.
+func handleTaskParametersCreation(
+	executorInput *pipelinespec.ExecutorInput,
+	task *apiV2beta1.PipelineTaskDetail,
+) (*apiV2beta1.PipelineTaskDetail, error) {
+	for parameterName, parameter := range executorInput.Inputs.ParameterValues {
+		// We expect that a parameter is either a pipelinechannel parameter or a regular parameter.
+		// in the latter case we expect that the parameter name is the key.
+		key, producerTaskName, producerKey := parsePipelineChannelName(parameterName)
+		if (producerTaskName == "" && producerKey != "") || (producerTaskName != "" && producerKey == "") {
+			return nil, fmt.Errorf("either both producerTaskName and producerKey must be specified, or both must be empty")
+		}
+		parameterNew := &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+			Value: parameter,
+		}
+		if key != "" {
+			if producerTaskName != "" {
+				return nil, fmt.Errorf("producer and key cannot be specified at the same time")
+			}
+			parameterNew.Source = &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+				ParameterName: key,
+			}
+		} else {
+			parameterNew.Source = &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_Producer{
+				Producer: &apiV2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
+					TaskName: producerTaskName,
+					Key:      producerKey,
+				},
+			}
+		}
+		task.Inputs.Parameters = append(task.Inputs.Parameters, parameterNew)
+	}
+	return task, nil
+}
+func handleTaskArtifactsCreation(
+	ctx context.Context,
+	executorInput *pipelinespec.ExecutorInput,
+	opts Options,
+	task *apiV2beta1.PipelineTaskDetail,
+	driverAPI DriverAPI,
+) error {
+	var artifactTasks []*apiV2beta1.ArtifactTask
+	for parameterName, artifactList := range executorInput.Inputs.Artifacts {
+		for _, artifact := range artifactList.Artifacts {
+			if artifact.ArtifactId == "" {
+				return fmt.Errorf("artifact id is required")
+			}
+			key, producerTaskName, producerKey := parsePipelineChannelName(parameterName)
+			at := &apiV2beta1.ArtifactTask{
+				ArtifactId:       artifact.ArtifactId,
+				RunId:            opts.RunID,
+				TaskId:           task.TaskId,
+				Type:             apiV2beta1.ArtifactTaskType_INPUT,
+				ArtifactKey:      key,
+				ProducerTaskName: producerTaskName,
+				ProducerKey:      producerKey,
+			}
+			artifactTasks = append(artifactTasks, at)
+		}
+	}
+	if len(artifactTasks) > 0 {
+		request := apiV2beta1.CreateArtifactTasksBulkRequest{ArtifactTasks: artifactTasks}
+		_, err := driverAPI.CreateArtifactTasks(ctx, &request)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

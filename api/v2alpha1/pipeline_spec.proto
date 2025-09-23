@@ -967,6 +967,9 @@ message RuntimeArtifact {
 
   // Properties of the Artifact.
   google.protobuf.Struct metadata = 6;
+
+  // The unique server generated id of the artifact.
+  string artifact_id = 7;
 }
 
 // Message that represents a list of artifacts.
