@@ -116,6 +116,20 @@ service ArtifactService {
       tags: "ArtifactService"
     };
   }
+
+  // Creates multiple artifact-task relationships in bulk.
+  // TODO(HumairAK): Implement the backend and test logic
+  rpc CreateArtifactTasksBulk(CreateArtifactTasksBulkRequest) returns (CreateArtifactTasksBulkResponse) {
+    option (google.api.http) = {
+      post: "/apis/v2beta1/artifact_tasks:batchCreate"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      operation_id: "batch_create_artifact_tasks"
+      summary: "Creates multiple artifact-task relationships in bulk."
+      tags: "ArtifactService"
+    };
+  }
 }
 
 message CreateArtifactRequest {
@@ -212,6 +226,16 @@ message CreateArtifactTaskRequest {
 enum ArtifactTaskType {
   INPUT = 0;
   OUTPUT = 1;
+}
+
+message CreateArtifactTasksBulkRequest {
+  // Required. The list of artifact-task relationships to create.
+  repeated ArtifactTask artifact_tasks = 1;
+}
+
+message CreateArtifactTasksBulkResponse {
+  // The list of created artifact-task relationships.
+  repeated ArtifactTask artifact_tasks = 1;
 }
 
 message ArtifactTask {

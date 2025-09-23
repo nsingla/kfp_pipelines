@@ -169,7 +169,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		if opts.KubernetesExecutorConfig != nil && opts.KubernetesExecutorConfig.GetPvcMount() != nil {
 			_, volumes, err := makeVolumeMountPatch(
 				ctx, opts, opts.KubernetesExecutorConfig.GetPvcMount(),
-				dag, pipeline, mlmd, inputParams)
+				inputParams)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract volume mount info while generating fingerprint: %w", err)
 			}
@@ -254,7 +254,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		return execution, err
 	}
 	if opts.KubernetesExecutorConfig != nil {
-		err = extendPodSpecPatch(ctx, podSpec, opts, dag, pipeline, mlmd, inputParams, taskConfig)
+		err = extendPodSpecPatch(ctx, podSpec, opts, opts.ParentTask, driverAPI, inputParams, taskConfig)
 		if err != nil {
 			return execution, err
 		}

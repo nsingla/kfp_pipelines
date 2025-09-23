@@ -122,25 +122,26 @@ func convertTaskInputArtifactsToExecutorInputArtifacts(
 	var convertedArtifactsMap = make(map[string]*pipelinespec.ArtifactList)
 	for _, artifactIO := range artifacts {
 		var convertedRuntimeArtifacts []*pipelinespec.RuntimeArtifact
-		artifact := artifactIO.Value
-		if artifact.GetName() == "" && artifact.GetUri() == "" {
-			return nil, fmt.Errorf("artifact name or uri cannot be empty")
-		}
-		runtimeArtifact := &pipelinespec.RuntimeArtifact{
-			Name: artifact.GetName(),
-			Type: &pipelinespec.ArtifactTypeSchema{
-				Kind: &pipelinespec.ArtifactTypeSchema_SchemaTitle{SchemaTitle: artifact.Type.String()},
-			},
-		}
-		if artifact.GetUri() != "" {
-			runtimeArtifact.Uri = artifact.GetUri()
-		}
-		if artifact.GetMetadata() != nil {
-			runtimeArtifact.Metadata = &structpb.Struct{
-				Fields: artifact.GetMetadata(),
+		for _, artifact := range artifactIO.Artifacts {
+			if artifact.GetName() == "" && artifact.GetUri() == "" {
+				return nil, fmt.Errorf("artifact name or uri cannot be empty")
 			}
+			runtimeArtifact := &pipelinespec.RuntimeArtifact{
+				Name: artifact.GetName(),
+				Type: &pipelinespec.ArtifactTypeSchema{
+					Kind: &pipelinespec.ArtifactTypeSchema_SchemaTitle{SchemaTitle: artifact.Type.String()},
+				},
+			}
+			if artifact.GetUri() != "" {
+				runtimeArtifact.Uri = artifact.GetUri()
+			}
+			if artifact.GetMetadata() != nil {
+				runtimeArtifact.Metadata = &structpb.Struct{
+					Fields: artifact.GetMetadata(),
+				}
+			}
+			convertedRuntimeArtifacts = append(convertedRuntimeArtifacts, runtimeArtifact)
 		}
-		convertedRuntimeArtifacts = append(convertedRuntimeArtifacts, runtimeArtifact)
 		name, err := parseIONameOrPipelineChannel(artifactIO.GetParameterName(), artifactIO.GetProducer())
 		if err != nil {
 			return nil, err
@@ -414,7 +415,7 @@ func resolveInputParameter(
 	ctx context.Context,
 	opts Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
-	inputParams map[string]*structpb.Value,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) (*structpb.Value, error) {
 	glog.V(4).Infof("paramSpec: %v", paramSpec)
 	paramError := func(err error) error {
@@ -531,7 +532,7 @@ func resolveInputParameterStr(
 	ctx context.Context,
 	opts Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
-	inputParams map[string]*structpb.Value,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) (*structpb.Value, error) {
 	val, err := resolveInputParameter(ctx, opts, paramSpec, inputParams)
 	if err != nil {

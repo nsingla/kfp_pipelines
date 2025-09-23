@@ -87,7 +87,7 @@ func extendPodSpecPatch(
 	opts Options,
 	parentTask *apiV2beta1.PipelineTaskDetail,
 	apiDriver DriverAPI,
-	inputParams map[string]*structpb.Value,
+	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 	taskConfig *TaskConfig,
 ) error {
 	kubernetesExecutorConfig := opts.KubernetesExecutorConfig
@@ -877,7 +877,7 @@ func makeVolumeMountPatch(
 	ctx context.Context,
 	opts Options,
 	pvcMounts []*kubernetesplatform.PvcMount,
-	inputParams map[string]*structpb.Value,
+	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) ([]k8score.VolumeMount, []k8score.Volume, error) {
 	if pvcMounts == nil {
 		return nil, nil, nil
@@ -903,8 +903,7 @@ func makeVolumeMountPatch(
 			}
 		}
 
-		resolvedPvcName, err := resolveInputParameterStr(ctx, dag, pipeline, opts, mlmd,
-			pvcNameParameter, inputParams)
+		resolvedPvcName, err := resolveInputParameterStr(ctx, opts, pvcNameParameter, inputParams)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to resolve pvc name: %w", err)
 		}

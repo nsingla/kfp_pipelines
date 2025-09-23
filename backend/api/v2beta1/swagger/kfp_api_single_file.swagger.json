@@ -156,6 +156,39 @@
         ]
       }
     },
+    "/apis/v2beta1/artifact_tasks:batchCreate": {
+      "post": {
+        "summary": "Creates multiple artifact-task relationships in bulk.",
+        "operationId": "batch_create_artifact_tasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactTasksBulkResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactTasksBulkRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
     "/apis/v2beta1/artifacts": {
       "get": {
         "summary": "Finds all artifacts within the specified namespace.",
@@ -2201,6 +2234,32 @@
       },
       "title": "Request to create an artifact-task relationship"
     },
+    "v2beta1CreateArtifactTasksBulkRequest": {
+      "type": "object",
+      "properties": {
+        "artifact_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1ArtifactTask"
+          },
+          "description": "Required. The list of artifact-task relationships to create."
+        }
+      }
+    },
+    "v2beta1CreateArtifactTasksBulkResponse": {
+      "type": "object",
+      "properties": {
+        "artifact_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1ArtifactTask"
+          },
+          "description": "The list of created artifact-task relationships."
+        }
+      }
+    },
     "v2beta1ListArtifactResponse": {
       "type": "object",
       "properties": {
@@ -2807,8 +2866,13 @@
     "InputOutputsIOArtifact": {
       "type": "object",
       "properties": {
-        "value": {
-          "$ref": "#/definitions/v2beta1Artifact"
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1Artifact"
+          },
+          "title": "An artifact input can be a list of artifacts\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer.key\": \"input_a\" }, { \"artifacts\": [...], \"producer.key\": \"input_b\"} }"
         },
         "parameter_name": {
           "type": "string",
@@ -2818,7 +2882,8 @@
           "$ref": "#/definitions/InputOutputsIOProducer",
           "description": "Handle Pipeline Channel case."
         }
-      }
+      },
+      "title": "Align structure with Executor Input"
     },
     "InputOutputsIOProducer": {
       "type": "object",

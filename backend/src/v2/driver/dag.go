@@ -49,19 +49,19 @@ func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Exe
 	}
 
 	// TODO(HumairAK): Do we need this?
-	var parentTask *gc.PipelineTaskDetail
-	if opts.ParentTaskID != "" {
-		glog.Infof("Parent task ID: %s", opts.ParentTaskID)
-		getTaskRequest := &gc.GetTaskRequest{
-			TaskId: opts.ParentTaskID,
-		}
-		parentTask, err = driverAPI.GetTask(ctx, getTaskRequest)
-		if err != nil {
-			return nil, err
-		}
-	}
+	//var parentTask *gc.PipelineTaskDetail
+	//if opts.ParentTaskID != "" {
+	//	glog.Infof("Parent task ID: %s", opts.ParentTaskID)
+	//	getTaskRequest := &gc.GetTaskRequest{
+	//		TaskId: opts.ParentTaskID,
+	//	}
+	//	parentTask, err = driverAPI.GetTask(ctx, getTaskRequest)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
 
-	inputs, err := resolveInputs(ctx, parentTask, iterationIndex, opts, driverAPI, expr)
+	inputs, err := resolveInputs(ctx, iterationIndex, opts, expr)
 	if err != nil {
 		return nil, err
 	}

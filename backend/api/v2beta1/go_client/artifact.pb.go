@@ -153,7 +153,7 @@ func (x Artifact_ArtifactType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Artifact_ArtifactType.Descriptor instead.
 func (Artifact_ArtifactType) EnumDescriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{8, 0}
+	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{10, 0}
 }
 
 type CreateArtifactRequest struct {
@@ -643,6 +643,96 @@ func (x *CreateArtifactTaskRequest) GetArtifactTask() *ArtifactTask {
 	return nil
 }
 
+type CreateArtifactTasksBulkRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The list of artifact-task relationships to create.
+	ArtifactTasks []*ArtifactTask `protobuf:"bytes,1,rep,name=artifact_tasks,json=artifactTasks,proto3" json:"artifact_tasks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateArtifactTasksBulkRequest) Reset() {
+	*x = CreateArtifactTasksBulkRequest{}
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateArtifactTasksBulkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateArtifactTasksBulkRequest) ProtoMessage() {}
+
+func (x *CreateArtifactTasksBulkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateArtifactTasksBulkRequest.ProtoReflect.Descriptor instead.
+func (*CreateArtifactTasksBulkRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CreateArtifactTasksBulkRequest) GetArtifactTasks() []*ArtifactTask {
+	if x != nil {
+		return x.ArtifactTasks
+	}
+	return nil
+}
+
+type CreateArtifactTasksBulkResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The list of created artifact-task relationships.
+	ArtifactTasks []*ArtifactTask `protobuf:"bytes,1,rep,name=artifact_tasks,json=artifactTasks,proto3" json:"artifact_tasks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateArtifactTasksBulkResponse) Reset() {
+	*x = CreateArtifactTasksBulkResponse{}
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateArtifactTasksBulkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateArtifactTasksBulkResponse) ProtoMessage() {}
+
+func (x *CreateArtifactTasksBulkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateArtifactTasksBulkResponse.ProtoReflect.Descriptor instead.
+func (*CreateArtifactTasksBulkResponse) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CreateArtifactTasksBulkResponse) GetArtifactTasks() []*ArtifactTask {
+	if x != nil {
+		return x.ArtifactTasks
+	}
+	return nil
+}
+
 type ArtifactTask struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The unique server generated id of the ArtifactTask.
@@ -687,7 +777,7 @@ type ArtifactTask struct {
 
 func (x *ArtifactTask) Reset() {
 	*x = ArtifactTask{}
-	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[7]
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -699,7 +789,7 @@ func (x *ArtifactTask) String() string {
 func (*ArtifactTask) ProtoMessage() {}
 
 func (x *ArtifactTask) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[7]
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,7 +802,7 @@ func (x *ArtifactTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactTask.ProtoReflect.Descriptor instead.
 func (*ArtifactTask) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{7}
+	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ArtifactTask) GetId() string {
@@ -803,7 +893,7 @@ type Artifact struct {
 
 func (x *Artifact) Reset() {
 	*x = Artifact{}
-	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[8]
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -815,7 +905,7 @@ func (x *Artifact) String() string {
 func (*Artifact) ProtoMessage() {}
 
 func (x *Artifact) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[8]
+	mi := &file_backend_api_v2beta1_artifact_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -828,7 +918,7 @@ func (x *Artifact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Artifact.ProtoReflect.Descriptor instead.
 func (*Artifact) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{8}
+	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Artifact) GetArtifactId() string {
@@ -935,7 +1025,11 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"total_size\x18\x02 \x01(\x05R\ttotalSize\x12&\n" +
 	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"v\n" +
 	"\x19CreateArtifactTaskRequest\x12Y\n" +
-	"\rartifact_task\x18\x01 \x01(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\fartifactTask\"\xb1\x02\n" +
+	"\rartifact_task\x18\x01 \x01(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\fartifactTask\"}\n" +
+	"\x1eCreateArtifactTasksBulkRequest\x12[\n" +
+	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"~\n" +
+	"\x1fCreateArtifactTasksBulkResponse\x12[\n" +
+	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"\xb1\x02\n" +
 	"\fArtifactTask\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vartifact_id\x18\x02 \x01(\tR\n" +
@@ -977,8 +1071,7 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x10ArtifactTaskType\x12\t\n" +
 	"\x05INPUT\x10\x00\x12\n" +
 	"\n" +
-	"\x06OUTPUT\x10\x012\x88\n" +
-	"\n" +
+	"\x06OUTPUT\x10\x012\xd3\f\n" +
 	"\x0fArtifactService\x12\x84\x02\n" +
 	"\rListArtifacts\x12;.kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse\"x\x92AV\n" +
 	"\x0fArtifactService\x123Finds all artifacts within the specified namespace.*\x0elist_artifacts\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/artifacts\x12\xee\x01\n" +
@@ -989,7 +1082,9 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x11ListArtifactTasks\x12@.kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest\x1aA.kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse\"q\x92AJ\n" +
 	"\x0fArtifactService\x12\"Lists artifact-task relationships.*\x13list_artifact_tasks\x82\xd3\xe4\x93\x02\x1e\x12\x1c/apis/v2beta1/artifact_tasks\x12\x88\x02\n" +
 	"\x12CreateArtifactTask\x12A.kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest\x1a4.kubeflow.pipelines.backend.api.v2beta1.ArtifactTask\"y\x92AO\n" +
-	"\x0fArtifactService\x12&Creates an artifact-task relationship.*\x14create_artifact_task\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/apis/v2beta1/artifact_tasksB\x8a\x01\x92AJ*\x02\x01\x02R#\n" +
+	"\x0fArtifactService\x12&Creates an artifact-task relationship.*\x14create_artifact_task\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/apis/v2beta1/artifact_tasks\x12\xc8\x02\n" +
+	"\x17CreateArtifactTasksBulk\x12F.kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkRequest\x1aG.kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkResponse\"\x9b\x01\x92Ae\n" +
+	"\x0fArtifactService\x125Creates multiple artifact-task relationships in bulk.*\x1bbatch_create_artifact_tasks\x82\xd3\xe4\x93\x02-:\x01*\"(/apis/v2beta1/artifact_tasks:batchCreateB\x8a\x01\x92AJ*\x02\x01\x02R#\n" +
 	"\adefault\x12\x18\x12\x16\n" +
 	"\x14\x1a\x12.google.rpc.StatusZ\x1f\n" +
 	"\x1d\n" +
@@ -1008,49 +1103,55 @@ func file_backend_api_v2beta1_artifact_proto_rawDescGZIP() []byte {
 }
 
 var file_backend_api_v2beta1_artifact_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_backend_api_v2beta1_artifact_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_backend_api_v2beta1_artifact_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_backend_api_v2beta1_artifact_proto_goTypes = []any{
-	(ArtifactTaskType)(0),             // 0: kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
-	(Artifact_ArtifactType)(0),        // 1: kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
-	(*CreateArtifactRequest)(nil),     // 2: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest
-	(*GetArtifactRequest)(nil),        // 3: kubeflow.pipelines.backend.api.v2beta1.GetArtifactRequest
-	(*ListArtifactRequest)(nil),       // 4: kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest
-	(*ListArtifactResponse)(nil),      // 5: kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse
-	(*ListArtifactTasksRequest)(nil),  // 6: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest
-	(*ListArtifactTasksResponse)(nil), // 7: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse
-	(*CreateArtifactTaskRequest)(nil), // 8: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest
-	(*ArtifactTask)(nil),              // 9: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
-	(*Artifact)(nil),                  // 10: kubeflow.pipelines.backend.api.v2beta1.Artifact
-	nil,                               // 11: kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry
-	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
-	(*structpb.Value)(nil),            // 13: google.protobuf.Value
+	(ArtifactTaskType)(0),                   // 0: kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
+	(Artifact_ArtifactType)(0),              // 1: kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
+	(*CreateArtifactRequest)(nil),           // 2: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest
+	(*GetArtifactRequest)(nil),              // 3: kubeflow.pipelines.backend.api.v2beta1.GetArtifactRequest
+	(*ListArtifactRequest)(nil),             // 4: kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest
+	(*ListArtifactResponse)(nil),            // 5: kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse
+	(*ListArtifactTasksRequest)(nil),        // 6: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest
+	(*ListArtifactTasksResponse)(nil),       // 7: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse
+	(*CreateArtifactTaskRequest)(nil),       // 8: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest
+	(*CreateArtifactTasksBulkRequest)(nil),  // 9: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkRequest
+	(*CreateArtifactTasksBulkResponse)(nil), // 10: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkResponse
+	(*ArtifactTask)(nil),                    // 11: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	(*Artifact)(nil),                        // 12: kubeflow.pipelines.backend.api.v2beta1.Artifact
+	nil,                                     // 13: kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry
+	(*timestamppb.Timestamp)(nil),           // 14: google.protobuf.Timestamp
+	(*structpb.Value)(nil),                  // 15: google.protobuf.Value
 }
 var file_backend_api_v2beta1_artifact_proto_depIdxs = []int32{
-	10, // 0: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest.artifact:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
-	10, // 1: kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse.artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
+	12, // 0: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest.artifact:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
+	12, // 1: kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse.artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
 	0,  // 2: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
-	9,  // 3: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
-	9,  // 4: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest.artifact_task:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
-	0,  // 5: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
-	1,  // 6: kubeflow.pipelines.backend.api.v2beta1.Artifact.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
-	11, // 7: kubeflow.pipelines.backend.api.v2beta1.Artifact.metadata:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry
-	12, // 8: kubeflow.pipelines.backend.api.v2beta1.Artifact.created_at:type_name -> google.protobuf.Timestamp
-	13, // 9: kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry.value:type_name -> google.protobuf.Value
-	4,  // 10: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifacts:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest
-	3,  // 11: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.GetArtifact:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetArtifactRequest
-	2,  // 12: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifact:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest
-	6,  // 13: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifactTasks:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest
-	8,  // 14: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTask:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest
-	5,  // 15: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifacts:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse
-	10, // 16: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.GetArtifact:output_type -> kubeflow.pipelines.backend.api.v2beta1.Artifact
-	10, // 17: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifact:output_type -> kubeflow.pipelines.backend.api.v2beta1.Artifact
-	7,  // 18: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifactTasks:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse
-	9,  // 19: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTask:output_type -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	11, // 3: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	11, // 4: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest.artifact_task:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	11, // 5: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkRequest.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	11, // 6: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkResponse.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
+	1,  // 8: kubeflow.pipelines.backend.api.v2beta1.Artifact.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
+	13, // 9: kubeflow.pipelines.backend.api.v2beta1.Artifact.metadata:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry
+	14, // 10: kubeflow.pipelines.backend.api.v2beta1.Artifact.created_at:type_name -> google.protobuf.Timestamp
+	15, // 11: kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry.value:type_name -> google.protobuf.Value
+	4,  // 12: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifacts:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest
+	3,  // 13: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.GetArtifact:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetArtifactRequest
+	2,  // 14: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifact:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest
+	6,  // 15: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifactTasks:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest
+	8,  // 16: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTask:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest
+	9,  // 17: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTasksBulk:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkRequest
+	5,  // 18: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifacts:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse
+	12, // 19: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.GetArtifact:output_type -> kubeflow.pipelines.backend.api.v2beta1.Artifact
+	12, // 20: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifact:output_type -> kubeflow.pipelines.backend.api.v2beta1.Artifact
+	7,  // 21: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.ListArtifactTasks:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse
+	11, // 22: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTask:output_type -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
+	10, // 23: kubeflow.pipelines.backend.api.v2beta1.ArtifactService.CreateArtifactTasksBulk:output_type -> kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkResponse
+	18, // [18:24] is the sub-list for method output_type
+	12, // [12:18] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_backend_api_v2beta1_artifact_proto_init() }
@@ -1058,14 +1159,14 @@ func file_backend_api_v2beta1_artifact_proto_init() {
 	if File_backend_api_v2beta1_artifact_proto != nil {
 		return
 	}
-	file_backend_api_v2beta1_artifact_proto_msgTypes[8].OneofWrappers = []any{}
+	file_backend_api_v2beta1_artifact_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_backend_api_v2beta1_artifact_proto_rawDesc), len(file_backend_api_v2beta1_artifact_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

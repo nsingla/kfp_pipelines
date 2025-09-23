@@ -20,6 +20,8 @@ import apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 type ArtifactTaskType apiv2beta1.ArtifactTaskType
 
 // ArtifactTask represents the relationship between artifacts and tasks (replaces MLMD Events)
+// TODO(HumairAK): we may need to add a unique index on ProducerKey when looking for artifacts associated with
+// a specific key, for a given task
 type ArtifactTask struct {
 	UUID             string           `gorm:"column:UUID; not null; primaryKey; type:varchar(191);"`
 	ArtifactID       string           `gorm:"column:ArtifactID; not null; type:varchar(191); index:idx_link_artifact_id; uniqueIndex:UniqueLink,priority:1;"`

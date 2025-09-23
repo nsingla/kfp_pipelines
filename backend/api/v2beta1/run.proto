@@ -468,15 +468,20 @@ message PipelineTaskDetail {
         IOProducer producer = 3;
       }
     }
+    // Align structure with Executor Input
     message IOArtifact {
-      Artifact value = 1;
+      // An artifact input can be a list of artifacts
+      // TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
+      // When reading artifacts for a task, we need to collect all artifacts that share the same producer key
+      // and include it in one artifacts list. So if you may have:
+      // []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer.key": "input_a" }, { "artifacts": [...], "producer.key": "input_b"} }
+      repeated Artifact artifacts = 1;
       oneof source {
         // This is included on Runtime Tasks when the parameter name is known.
         string parameter_name = 2;
         // Handle Pipeline Channel case.
         IOProducer producer = 3;
       }
-
     }
     repeated Parameter parameters = 1;
     // Output Only. To create Artifacts for a task are created

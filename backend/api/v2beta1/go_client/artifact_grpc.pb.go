@@ -33,11 +33,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ArtifactService_ListArtifacts_FullMethodName      = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/ListArtifacts"
-	ArtifactService_GetArtifact_FullMethodName        = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/GetArtifact"
-	ArtifactService_CreateArtifact_FullMethodName     = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/CreateArtifact"
-	ArtifactService_ListArtifactTasks_FullMethodName  = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/ListArtifactTasks"
-	ArtifactService_CreateArtifactTask_FullMethodName = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/CreateArtifactTask"
+	ArtifactService_ListArtifacts_FullMethodName           = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/ListArtifacts"
+	ArtifactService_GetArtifact_FullMethodName             = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/GetArtifact"
+	ArtifactService_CreateArtifact_FullMethodName          = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/CreateArtifact"
+	ArtifactService_ListArtifactTasks_FullMethodName       = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/ListArtifactTasks"
+	ArtifactService_CreateArtifactTask_FullMethodName      = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/CreateArtifactTask"
+	ArtifactService_CreateArtifactTasksBulk_FullMethodName = "/kubeflow.pipelines.backend.api.v2beta1.ArtifactService/CreateArtifactTasksBulk"
 )
 
 // ArtifactServiceClient is the client API for ArtifactService service.
@@ -57,6 +58,9 @@ type ArtifactServiceClient interface {
 	// In the case of Importer, we only create a link (and not an artifact)
 	// if Reimport = false.
 	CreateArtifactTask(ctx context.Context, in *CreateArtifactTaskRequest, opts ...grpc.CallOption) (*ArtifactTask, error)
+	// Creates multiple artifact-task relationships in bulk.
+	// TODO(HumairAK): Implement the backend and test logic
+	CreateArtifactTasksBulk(ctx context.Context, in *CreateArtifactTasksBulkRequest, opts ...grpc.CallOption) (*CreateArtifactTasksBulkResponse, error)
 }
 
 type artifactServiceClient struct {
@@ -117,6 +121,16 @@ func (c *artifactServiceClient) CreateArtifactTask(ctx context.Context, in *Crea
 	return out, nil
 }
 
+func (c *artifactServiceClient) CreateArtifactTasksBulk(ctx context.Context, in *CreateArtifactTasksBulkRequest, opts ...grpc.CallOption) (*CreateArtifactTasksBulkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateArtifactTasksBulkResponse)
+	err := c.cc.Invoke(ctx, ArtifactService_CreateArtifactTasksBulk_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ArtifactServiceServer is the server API for ArtifactService service.
 // All implementations must embed UnimplementedArtifactServiceServer
 // for forward compatibility.
@@ -134,6 +148,9 @@ type ArtifactServiceServer interface {
 	// In the case of Importer, we only create a link (and not an artifact)
 	// if Reimport = false.
 	CreateArtifactTask(context.Context, *CreateArtifactTaskRequest) (*ArtifactTask, error)
+	// Creates multiple artifact-task relationships in bulk.
+	// TODO(HumairAK): Implement the backend and test logic
+	CreateArtifactTasksBulk(context.Context, *CreateArtifactTasksBulkRequest) (*CreateArtifactTasksBulkResponse, error)
 	mustEmbedUnimplementedArtifactServiceServer()
 }
 
@@ -158,6 +175,9 @@ func (UnimplementedArtifactServiceServer) ListArtifactTasks(context.Context, *Li
 }
 func (UnimplementedArtifactServiceServer) CreateArtifactTask(context.Context, *CreateArtifactTaskRequest) (*ArtifactTask, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateArtifactTask not implemented")
+}
+func (UnimplementedArtifactServiceServer) CreateArtifactTasksBulk(context.Context, *CreateArtifactTasksBulkRequest) (*CreateArtifactTasksBulkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateArtifactTasksBulk not implemented")
 }
 func (UnimplementedArtifactServiceServer) mustEmbedUnimplementedArtifactServiceServer() {}
 func (UnimplementedArtifactServiceServer) testEmbeddedByValue()                         {}
@@ -270,6 +290,24 @@ func _ArtifactService_CreateArtifactTask_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ArtifactService_CreateArtifactTasksBulk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateArtifactTasksBulkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArtifactServiceServer).CreateArtifactTasksBulk(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ArtifactService_CreateArtifactTasksBulk_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArtifactServiceServer).CreateArtifactTasksBulk(ctx, req.(*CreateArtifactTasksBulkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ArtifactService_ServiceDesc is the grpc.ServiceDesc for ArtifactService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -296,6 +334,10 @@ var ArtifactService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateArtifactTask",
 			Handler:    _ArtifactService_CreateArtifactTask_Handler,
+		},
+		{
+			MethodName: "CreateArtifactTasksBulk",
+			Handler:    _ArtifactService_CreateArtifactTasksBulk_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

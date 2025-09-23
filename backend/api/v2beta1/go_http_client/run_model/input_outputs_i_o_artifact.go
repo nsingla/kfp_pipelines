@@ -7,42 +7,73 @@ package run_model
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 )
 
-// InputOutputsIOArtifact input outputs i o artifact
+// InputOutputsIOArtifact Align structure with Executor Input
 //
 // swagger:model InputOutputsIOArtifact
 type InputOutputsIOArtifact struct {
+
+	// An artifact input can be a list of artifacts
+	// TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
+	// When reading artifacts for a task, we need to collect all artifacts that share the same producer key
+	// and include it in one artifacts list. So if you may have:
+	// []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer.key": "input_a" }, { "artifacts": [...], "producer.key": "input_b"} }
+	Artifacts []*V2beta1Artifact `json:"artifacts"`
 
 	// This is included on Runtime Tasks when the parameter name is known.
 	ParameterName string `json:"parameter_name,omitempty"`
 
 	// Handle Pipeline Channel case.
 	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
-
-	// value
-	Value *V2beta1Artifact `json:"value,omitempty"`
 }
 
 // Validate validates this input outputs i o artifact
 func (m *InputOutputsIOArtifact) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateProducer(formats); err != nil {
+	if err := m.validateArtifacts(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateValue(formats); err != nil {
+	if err := m.validateProducer(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *InputOutputsIOArtifact) validateArtifacts(formats strfmt.Registry) error {
+	if swag.IsZero(m.Artifacts) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Artifacts); i++ {
+		if swag.IsZero(m.Artifacts[i]) { // not required
+			continue
+		}
+
+		if m.Artifacts[i] != nil {
+			if err := m.Artifacts[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("artifacts" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("artifacts" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -65,40 +96,46 @@ func (m *InputOutputsIOArtifact) validateProducer(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *InputOutputsIOArtifact) validateValue(formats strfmt.Registry) error {
-	if swag.IsZero(m.Value) { // not required
-		return nil
-	}
-
-	if m.Value != nil {
-		if err := m.Value.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("value")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("value")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
 // ContextValidate validate this input outputs i o artifact based on the context it is used
 func (m *InputOutputsIOArtifact) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateProducer(ctx, formats); err != nil {
+	if err := m.contextValidateArtifacts(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.contextValidateValue(ctx, formats); err != nil {
+	if err := m.contextValidateProducer(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *InputOutputsIOArtifact) contextValidateArtifacts(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Artifacts); i++ {
+
+		if m.Artifacts[i] != nil {
+
+			if swag.IsZero(m.Artifacts[i]) { // not required
+				return nil
+			}
+
+			if err := m.Artifacts[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("artifacts" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("artifacts" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -115,27 +152,6 @@ func (m *InputOutputsIOArtifact) contextValidateProducer(ctx context.Context, fo
 				return ve.ValidateName("producer")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("producer")
-			}
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m *InputOutputsIOArtifact) contextValidateValue(ctx context.Context, formats strfmt.Registry) error {
-
-	if m.Value != nil {
-
-		if swag.IsZero(m.Value) { // not required
-			return nil
-		}
-
-		if err := m.Value.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("value")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("value")
 			}
 			return err
 		}

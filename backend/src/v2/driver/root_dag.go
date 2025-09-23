@@ -38,8 +38,8 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 		for name, val := range opts.RuntimeConfig.GetParameterValues() {
 			n := name
 			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{
-				Name:  &n,
-				Value: val,
+				Source: &gc.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
+				Value:  val,
 			})
 		}
 		inputs = &gc.PipelineTaskDetail_InputOutputs{Parameters: params}

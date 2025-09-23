@@ -601,8 +601,13 @@
     "InputOutputsIOArtifact": {
       "type": "object",
       "properties": {
-        "value": {
-          "$ref": "#/definitions/v2beta1Artifact"
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1Artifact"
+          },
+          "title": "An artifact input can be a list of artifacts\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer.key\": \"input_a\" }, { \"artifacts\": [...], \"producer.key\": \"input_b\"} }"
         },
         "parameter_name": {
           "type": "string",
@@ -612,7 +617,8 @@
           "$ref": "#/definitions/InputOutputsIOProducer",
           "description": "Handle Pipeline Channel case."
         }
-      }
+      },
+      "title": "Align structure with Executor Input"
     },
     "InputOutputsIOProducer": {
       "type": "object",

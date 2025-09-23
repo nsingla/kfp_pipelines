@@ -146,6 +146,39 @@
         ]
       }
     },
+    "/apis/v2beta1/artifact_tasks:batchCreate": {
+      "post": {
+        "summary": "Creates multiple artifact-task relationships in bulk.",
+        "operationId": "batch_create_artifact_tasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactTasksBulkResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1CreateArtifactTasksBulkRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ArtifactService"
+        ]
+      }
+    },
     "/apis/v2beta1/artifacts": {
       "get": {
         "summary": "Finds all artifacts within the specified namespace.",
@@ -449,6 +482,32 @@
         }
       },
       "title": "Request to create an artifact-task relationship"
+    },
+    "v2beta1CreateArtifactTasksBulkRequest": {
+      "type": "object",
+      "properties": {
+        "artifact_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1ArtifactTask"
+          },
+          "description": "Required. The list of artifact-task relationships to create."
+        }
+      }
+    },
+    "v2beta1CreateArtifactTasksBulkResponse": {
+      "type": "object",
+      "properties": {
+        "artifact_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1ArtifactTask"
+          },
+          "description": "The list of created artifact-task relationships."
+        }
+      }
     },
     "v2beta1ListArtifactResponse": {
       "type": "object",

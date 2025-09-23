@@ -54,6 +54,8 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	BatchCreateArtifactTasks(params *BatchCreateArtifactTasksParams, opts ...ClientOption) (*BatchCreateArtifactTasksOK, error)
+
 	CreateArtifact(params *CreateArtifactParams, opts ...ClientOption) (*CreateArtifactOK, error)
 
 	CreateArtifactTask(params *CreateArtifactTaskParams, opts ...ClientOption) (*CreateArtifactTaskOK, error)
@@ -65,6 +67,43 @@ type ClientService interface {
 	ListArtifacts(params *ListArtifactsParams, opts ...ClientOption) (*ListArtifactsOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+BatchCreateArtifactTasks creates multiple artifact task relationships in bulk
+*/
+func (a *Client) BatchCreateArtifactTasks(params *BatchCreateArtifactTasksParams, opts ...ClientOption) (*BatchCreateArtifactTasksOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewBatchCreateArtifactTasksParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "batch_create_artifact_tasks",
+		Method:             "POST",
+		PathPattern:        "/apis/v2beta1/artifact_tasks:batchCreate",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &BatchCreateArtifactTasksReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*BatchCreateArtifactTasksOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*BatchCreateArtifactTasksDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
 /*
