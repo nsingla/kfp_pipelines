@@ -401,9 +401,9 @@ message PipelineTaskDetail {
     // Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run
     ROOT = 0;
     RUNTIME = 1;
-    CONDITION_BRANCH = 2;
+    CONDITION = 2;
+    CONDITION_BRANCH = 3;
     // Task Group for Condition Branches
-    CONDITION = 3;
     // Task Group for Loop Iterations
     LOOP = 4;
     LOOP_ITERATION = 5;
@@ -417,9 +417,9 @@ message PipelineTaskDetail {
 
   message TypeAttributes {
     // Optional. Applies to type LOOP_ITERATION
-    int64 iteration_index = 1;
+    optional int64 iteration_index = 1;
     // Optional. Applies to type LOOP
-    int64 iteration_count = 2;
+    optional int64 iteration_count = 2;
   }
 
   TypeAttributes type_attributes = 14;
@@ -437,12 +437,7 @@ message PipelineTaskDetail {
   message ChildTask {
     // System-generated ID of a task.
     string task_id = 1;
-
     string name = 2;
-
-    // Name of the corresponding pod assigned by the orchestration engine.
-    // Also known as node_id.
-    repeated TaskPod pods = 3;
   }
 
   // Sequence of dependent tasks.

@@ -120,7 +120,7 @@ func validateRootDAG(opts Options) (err error) {
 	if opts.PipelineName == "" {
 		return fmt.Errorf("pipeline name is required")
 	}
-	if opts.RunID == "" {
+	if opts.Run.GetRunId() == "" {
 		return fmt.Errorf("KFP run ID is required")
 	}
 	if opts.Component == nil {
@@ -164,7 +164,7 @@ func validateNonRoot(opts Options) error {
 	if opts.PipelineName == "" {
 		return fmt.Errorf("pipeline name is required")
 	}
-	if opts.RunID == "" {
+	if opts.Run.GetRunId() == "" {
 		return fmt.Errorf("KFP run ID is required")
 	}
 	if opts.Component == nil {
@@ -255,7 +255,7 @@ func handleTaskArtifactsCreation(
 			key, producerTaskName, producerKey := parsePipelineChannelName(parameterName)
 			at := &apiV2beta1.ArtifactTask{
 				ArtifactId:       artifact.ArtifactId,
-				RunId:            opts.RunID,
+				RunId:            opts.Run.GetRunId(),
 				TaskId:           task.TaskId,
 				Type:             apiV2beta1.ArtifactTaskType_INPUT,
 				ArtifactKey:      key,

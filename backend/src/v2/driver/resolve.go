@@ -45,42 +45,74 @@ type resolveUpstreamOutputsConfig struct {
 	err          func(error) error
 }
 
-// getDAGTasks is a recursive function that returns a map of all tasks across all DAGs in the context of nested DAGs.
-func getDAGTasks(
-	ctx context.Context,
-	opts Options,
-	flattenedTasks map[string]*metadata.Execution,
-) (map[string]*metadata.Execution, error) {
-	if flattenedTasks == nil {
-		flattenedTasks = make(map[string]*metadata.Execution)
+func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (string, error) {
+	if task == nil || task.Name == "" {
+		return "", fmt.Errorf("task can't be nil or name cannot be empty")
 	}
-	currentExecutionTasks, err := mlmd.GetExecutionsInDAG(ctx, dag, pipeline, true)
-	if err != nil {
-		return nil, err
+	taskName := fmt.Sprintf("%s_%s", task.Name, task.TaskId)
+
+	if task.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
+			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
+		}
+		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
+	} else if parentTask != nil && parentTask.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
+			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
+		}
+		taskName = fmt.Sprintf("%s_idx_%d", taskName, parentTask.TypeAttributes.IterationIndex)
 	}
-	for k, v := range currentExecutionTasks {
-		flattenedTasks[k] = v
+	return taskName, nil
+}
+
+func getChildTasks(
+	tasks []*apiv2beta1.PipelineTaskDetail,
+	parentTask *apiv2beta1.PipelineTaskDetail,
+) (map[string]*apiv2beta1.PipelineTaskDetail, error) {
+	if parentTask == nil {
+		return nil, fmt.Errorf("parent task cannot be nil")
 	}
-	for _, v := range currentExecutionTasks {
-		if v.GetExecution().GetType() == "system.DAGExecution" {
-			_, ok := v.GetExecution().GetCustomProperties()["iteration_count"]
-			if ok {
-				glog.V(4).Infof("Found a ParallelFor task, %v.", v.TaskName())
-			}
-			glog.V(4).Infof("Found a task, %v, with an execution type of system.DAGExecution. Adding its tasks to the task list.", v.TaskName())
-			subDAG, err := mlmd.GetDAG(ctx, v.GetExecution().GetId())
+	var taskMap map[string]*apiv2beta1.PipelineTaskDetail
+	for _, task := range tasks {
+		if task.ParentTaskId == parentTask.ParentTaskId {
+			taskName, err := generateUniqueTaskName(task, parentTask)
 			if err != nil {
 				return nil, err
 			}
-			// Pass the subDAG into a recursive call to getDAGTasks and update
-			// tasks to include the subDAG's tasks.
-			flattenedTasks, err = getDAGTasks(ctx, opts, flattenedTasks)
+			if taskName == "" {
+				return nil, fmt.Errorf("task name cannot be empty")
+			}
+			taskMap[taskName] = task
+		}
+	}
+	return taskMap, nil
+}
+
+func getSubTasks(
+	currentTask *apiv2beta1.PipelineTaskDetail,
+	allRuntasks []*apiv2beta1.PipelineTaskDetail,
+	flattenedTasks map[string]*apiv2beta1.PipelineTaskDetail,
+) (map[string]*apiv2beta1.PipelineTaskDetail, error) {
+
+	if flattenedTasks == nil {
+		flattenedTasks = make(map[string]*apiv2beta1.PipelineTaskDetail)
+	}
+
+	taskChildren, err := getChildTasks(allRuntasks, currentTask)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get child tasks for task %s: %w", currentTask.Name, err)
+	}
+	for taskName, task := range taskChildren {
+		flattenedTasks[taskName] = task
+	}
+	for _, task := range taskChildren {
+		if task.Type != apiv2beta1.PipelineTaskDetail_RUNTIME {
+			flattenedTasks, err = getSubTasks(task, allRuntasks, flattenedTasks)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
-
 	return flattenedTasks, nil
 }
 
@@ -396,7 +428,7 @@ func fetchInputParam(
 	paramName string,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter) (*structpb.Value, error) {
 	for _, param := range inputParams {
-		generateName, err := parseIONameOrPipelineChannel(param.GetParameterName(), param.GetProducer()
+		generateName, err := parseIONameOrPipelineChannel(param.GetParameterName(), param.GetProducer())
 		if err != nil {
 			return nil, err
 		}
@@ -405,6 +437,22 @@ func fetchInputParam(
 		}
 	}
 	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+func fetchTask(taskID string, tasks []*apiv2beta1.PipelineTaskDetail) (*apiv2beta1.PipelineTaskDetail, error) {
+	for _, t := range tasks {
+		if t.GetTaskId() == taskID {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find task %s", taskID)
+}
+
+// GetTaskNameWithTaskID appends the taskName with its parent dag id. This is
+// used to help avoid collisions when creating the taskMap for downstream input
+// resolution.
+func getTaskNameWithTaskID(taskName, taskID string) string {
+	return fmt.Sprintf("%s_%s", taskName, taskID)
 }
 
 // resolveInputParameter resolves an InputParameterSpec
@@ -472,7 +520,7 @@ func resolveInputParameter(
 			case "{{$.pipeline_job_resource_name}}":
 				v = structpb.NewStringValue(opts.RunName)
 			case "{{$.pipeline_job_uuid}}":
-				v = structpb.NewStringValue(opts.RunID)
+				v = structpb.NewStringValue(opts.Run.GetRunId())
 			case "{{$.pipeline_task_name}}":
 				v = structpb.NewStringValue(opts.TaskName)
 			// TODO(HumairAK): Shouldn't this be the name of the Runtime Task UUID ?
@@ -486,7 +534,7 @@ func resolveInputParameter(
 			return nil, paramError(fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_:
-		tasks, err := getDAGTasks(ctx, opts, nil)
+		tasks, err := getSubTasks(opts.ParentTask, opts.Run.Tasks, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -494,13 +542,13 @@ func resolveInputParameter(
 		if len(opts.Task.DependentTasks) < 1 {
 			return nil, fmt.Errorf("task %v has no dependent tasks", opts.Task.TaskInfo.GetName())
 		}
-		producer, ok := tasks[metadata.GetTaskNameWithDagID(opts.Task.DependentTasks[0], dag.Execution.GetID())]
+		producer, ok := tasks[getTaskNameWithTaskID(opts.Task.DependentTasks[0], opts.ParentTask.GetTaskId())]
 		if !ok {
-			return nil, fmt.Errorf("producer task, %v, not in tasks", producer.TaskName())
+			return nil, fmt.Errorf("producer task, %s, not in tasks", producer.GetName())
 		}
 		finalStatus := pipelinespec.PipelineTaskFinalStatus{
-			State:                   producer.GetExecution().GetLastKnownState().String(),
-			PipelineTaskName:        producer.TaskName(),
+			State:                   producer.GetStatus().String(),
+			PipelineTaskName:        producer.GetName(),
 			PipelineJobResourceName: opts.RunName,
 			// TODO: Implement fields "Message and "Code" below for Error status.
 			Error: &status.Status{},
@@ -609,7 +657,7 @@ func resolveUpstreamParameters(cfg resolveUpstreamOutputsConfig) (*structpb.Valu
 		return nil, cfg.err(fmt.Errorf("output parameter key is empty"))
 	}
 
-	producerTaskName = metadata.GetTaskNameWithDagID(producerTaskName, cfg.dag.Execution.GetID())
+	producerTaskName = getTaskNameWithTaskID(producerTaskName, cfg.opts.ParentTask.GetTaskId())
 	// For the scenario where 2 tasks are defined within a ParallelFor and 1
 	// receives the output of the other we must ensure that the downstream task
 	// resolves the approriate output of the iteration it is in. With knowing if
@@ -623,7 +671,7 @@ func resolveUpstreamParameters(cfg resolveUpstreamOutputsConfig) (*structpb.Valu
 	// results in a bunch of unhandled edge cases and test failures.
 	glog.V(4).Infof("producerTaskName: %v", producerTaskName)
 	glog.V(4).Infof("outputParameterKey: %v", outputParameterKey)
-	tasks, err := getDAGTasks(cfg.ctx, cfg.opts, nil)
+	tasks, err := getSubTasks(cfg.opts.ParentTask, cfg.opts.Run.Tasks, nil)
 	if err != nil {
 		return nil, cfg.err(err)
 	}
@@ -638,9 +686,9 @@ func resolveUpstreamParameters(cfg resolveUpstreamOutputsConfig) (*structpb.Valu
 	subTaskName := producerTaskName
 	// Continue looping until we reach a sub-task that is NOT a DAG.
 	for {
-		glog.V(4).Info("currentTask: ", currentTask.TaskName())
+		glog.V(4).Info("currentTask: ", currentTask.GetName())
 		// If the current task is a DAG:
-		if *currentTask.GetExecution().Type == "system.DAGExecution" {
+		if currentTask.GetType() != apiv2beta1.PipelineTaskDetail_RUNTIME {
 			// Since currentTask is a DAG, we need to deserialize its
 			// output parameter map so that we can look up its
 			// corresponding producer sub-task, reassign currentTask,
@@ -1123,27 +1171,19 @@ func GetProducerTask(parentTask *metadata.Execution, tasks map[string]*metadata.
 	return producerSubTaskName, tempOutputKey, nil
 }
 
+func getParallelForTaskName(taskName string, iterationIndex int64) string {
+	return fmt.Sprintf("%s_idx_%d", taskName, iterationIndex)
+}
+
 // Helper for determining if the current producerTask in question needs to pull from an iteration dag that it may exist in.
-func InferIndexedTaskName(producerTaskName string, dag *metadata.Execution) string {
-	// Check if the DAG in question is a parallelFor iteration DAG. If it is, we need to
+func InferIndexedTaskName(producerTaskName string, task *apiv2beta1.PipelineTaskDetail) string {
+	// Check if the Task in question is a parallelFor iteration Task. If it is, we need to
 	// update the producerTaskName so the downstream task resolves the appropriate index.
-	if dag.GetExecution().GetCustomProperties()["iteration_index"] != nil {
-		task_iteration_index := dag.GetExecution().GetCustomProperties()["iteration_index"].GetIntValue()
-		producerTaskName = metadata.GetParallelForTaskName(producerTaskName, task_iteration_index)
+	if task.GetType() == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+		taskIterationIndex := task.GetTypeAttributes().GetIterationIndex()
+		producerTaskName = getParallelForTaskName(producerTaskName, taskIterationIndex)
 		glog.V(4).Infof("TaskIteration - ProducerTaskName: %v", producerTaskName)
 		glog.Infof("Attempting to retrieve outputs from a ParallelFor iteration")
 	}
 	return producerTaskName
-}
-
-// Helper for checking if collecting outputs is required for downstream tasks.
-func getParallelForIterationCount(task *metadata.Execution, dag *metadata.Execution) int64 {
-	iterations := task.GetExecution().GetCustomProperties()["iteration_count"]
-	glog.V(4).Infof("task: %v, iterations: %v", task.TaskName(), iterations)
-	if iterations == nil {
-		glog.V(4).Infof("No iteration_count found on task %v, checking associated DAG", task.TaskName())
-		iterations = dag.GetExecution().GetCustomProperties()["iteration_count"]
-		glog.V(4).Infof("dag: %v, iterations: %v", dag.TaskName(), iterations)
-	}
-	return iterations.GetIntValue()
 }

@@ -38,7 +38,7 @@ type Options struct {
 	// required, pipeline context name
 	PipelineName string
 	// required, KFP run ID
-	RunID string
+	Run *apiv2beta1.Run
 	// required, Component spec
 	Component *pipelinespec.ComponentSpec
 	// required
@@ -94,7 +94,7 @@ type TaskConfig struct {
 
 // Identifying information used for error messages
 func (o Options) info() string {
-	msg := fmt.Sprintf("pipelineName=%v, runID=%v", o.PipelineName, o.RunID)
+	msg := fmt.Sprintf("pipelineName=%v, runID=%v", o.PipelineName, o.Run.GetRunId())
 	if o.Task.GetTaskInfo().GetName() != "" {
 		msg = msg + fmt.Sprintf(", taskDisplayName=%q", o.Task.GetTaskInfo().GetName())
 	}

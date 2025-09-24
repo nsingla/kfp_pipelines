@@ -50,7 +50,7 @@ func (s *ArtifactServer) CreateArtifact(ctx context.Context, request *apiv2beta1
 		Namespace: namespace,
 		Verb:      common.RbacResourceVerbCreate,
 	}
-	if err = s.canAccessRun(ctx, request.GetRunId(), resourceAttributes); err != nil {
+	if err = s.canAccessArtifacts(ctx, "", resourceAttributes); err != nil {
 		return nil, util.Wrap(err, "Failed to authorize the request")
 	}
 
@@ -116,7 +116,7 @@ func (s *ArtifactServer) GetArtifact(ctx context.Context, request *apiv2beta1.Ge
 		Namespace: artifact.Namespace,
 		Verb:      common.RbacResourceVerbGet,
 	}
-	if err = s.canAccessRun(ctx, "", resourceAttributes); err != nil {
+	if err = s.canAccessArtifacts(ctx, artifactID, resourceAttributes); err != nil {
 		return nil, util.Wrap(err, "Failed to authorize the request")
 	}
 
@@ -138,7 +138,7 @@ func (s *ArtifactServer) ListArtifacts(ctx context.Context, request *apiv2beta1.
 		Namespace: namespace,
 		Verb:      common.RbacResourceVerbList,
 	}
-	if err = s.canAccessRun(ctx, "", resourceAttributes); err != nil {
+	if err = s.canAccessArtifacts(ctx, "", resourceAttributes); err != nil {
 		return nil, util.Wrap(err, "Failed to authorize the request")
 	}
 
@@ -147,14 +147,14 @@ func (s *ArtifactServer) ListArtifacts(ctx context.Context, request *apiv2beta1.
 		return nil, util.Wrap(err, "Validating filter failed")
 	}
 
-	artifacts, total_size, nextPageToken, err := s.resourceManager.ListArtifacts([]*model.FilterContext{filterContext}, opts)
+	artifacts, totalSize, nextPageToken, err := s.resourceManager.ListArtifacts([]*model.FilterContext{filterContext}, opts)
 	if err != nil {
 		return nil, util.Wrap(err, "List artifacts failed")
 	}
 
 	return &apiv2beta1.ListArtifactResponse{
 		Artifacts:     toApiArtifacts(artifacts),
-		TotalSize:     int32(total_size),
+		TotalSize:     int32(totalSize),
 		NextPageToken: nextPageToken,
 	}, nil
 }
@@ -234,14 +234,14 @@ func (s *ArtifactServer) ListArtifactTasks(ctx context.Context, request *apiv2be
 		return nil, util.Wrap(err, "Validating filter failed")
 	}
 
-	artifactTasks, total_size, nextPageToken, err := s.resourceManager.ListArtifactTasks(filterContexts, opts)
+	artifactTasks, totalSize, nextPageToken, err := s.resourceManager.ListArtifactTasks(filterContexts, opts)
 	if err != nil {
 		return nil, util.Wrap(err, "List artifact tasks failed")
 	}
 
 	return &apiv2beta1.ListArtifactTasksResponse{
 		ArtifactTasks: toApiArtifactTasks(artifactTasks),
-		TotalSize:     int32(total_size),
+		TotalSize:     int32(totalSize),
 		NextPageToken: nextPageToken,
 	}, nil
 }
@@ -282,6 +282,37 @@ func (s *ArtifactServer) canAccessRun(ctx context.Context, runID string, resourc
 	resourceAttributes.Group = common.RbacPipelinesGroup
 	resourceAttributes.Version = common.RbacPipelinesVersion
 	resourceAttributes.Resource = common.RbacResourceTypeRuns
+	err := s.resourceManager.IsAuthorized(ctx, resourceAttributes)
+	if err != nil {
+		return util.Wrapf(err, "Failed to access resource. Check if you have access to namespace %s", resourceAttributes.Namespace)
+	}
+	return nil
+}
+
+func (s *ArtifactServer) canAccessArtifacts(ctx context.Context, artifactID string, resourceAttributes *authorizationv1.ResourceAttributes) error {
+	if !common.IsMultiUserMode() {
+		// Skip authz if not multi-user mode.
+		return nil
+	}
+
+	if artifactID != "" {
+		artifact, err := s.resourceManager.GetArtifact(artifactID)
+		if err != nil {
+			return util.Wrapf(err, "Failed to authorize with the artifact ID %v", artifactID)
+		}
+		if s.resourceManager.IsEmptyNamespace(artifact.Namespace) {
+			return util.NewInvalidInputError("artifact %v has an empty namespace", artifactID)
+		}
+		resourceAttributes.Namespace = artifact.Namespace
+	}
+
+	if s.resourceManager.IsEmptyNamespace(resourceAttributes.Namespace) {
+		return util.NewInvalidInputError("A resource cannot have an empty namespace in multi-user mode")
+	}
+
+	resourceAttributes.Group = common.RbacPipelinesGroup
+	resourceAttributes.Version = common.RbacPipelinesVersion
+	resourceAttributes.Resource = common.RbacResourceTypeArtifacts
 	err := s.resourceManager.IsAuthorized(ctx, resourceAttributes)
 	if err != nil {
 		return util.Wrapf(err, "Failed to access resource. Check if you have access to namespace %s", resourceAttributes.Namespace)

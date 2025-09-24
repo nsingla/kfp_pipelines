@@ -2922,14 +2922,6 @@
         },
         "name": {
           "type": "string"
-        },
-        "pods": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/PipelineTaskDetailTaskPod"
-          },
-          "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
         }
       },
       "description": "A dependent task that requires this one to succeed.\nRepresented by either task_id or pod_name."
@@ -3009,15 +3001,15 @@
       "enum": [
         "ROOT",
         "RUNTIME",
-        "CONDITION_BRANCH",
         "CONDITION",
+        "CONDITION_BRANCH",
         "LOOP",
         "LOOP_ITERATION",
         "EXIT_HANDLER",
         "DAG"
       ],
       "default": "ROOT",
-      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - CONDITION: Task Group for Condition Branches\n - LOOP: Task Group for Loop Iterations\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
+      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - LOOP: Task Group for Condition Branches\nTask Group for Loop Iterations\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
     },
     "PipelineTaskDetailTypeAttributes": {
       "type": "object",

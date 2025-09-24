@@ -403,9 +403,13 @@ StorageStates
 
 ### Auth Considerations
 
-The Driver/Launcher will be introducing a new `RunServerClient` and `ArtifactServerClient` using the `v2beta1`. All calls to this endpoint must be protected via SubjectAccessReview. The new server implementations can simply use `resourceManager.IsAuthorized(ctx, resourceAttributes)`, which is the standard everywhere else in KFP. All tasks/artifacts/metrics endpoints will be doing SAR on the `run` resource. If a user makes a REST request with a `verb` that matches their permissions on the `Run` KFP resource, they will be authorized to perform that action.
+The Driver/Launcher will be introducing a new `RunServerClient` and `ArtifactServerClient` using the `v2beta1`. All calls to this endpoint must be protected via SubjectAccessReview. The new server implementations can simply use `resourceManager.IsAuthorized(ctx, resourceAttributes)`, which is the standard everywhere else in KFP. 
+With Regards to Artifacts authorization will be handled in this way:
 
-For example, if a user makes a request to `ListArtifactRequest`, they require `list` verb on the `Run` resource for that particular namespace.
+* Artifacts in Runs: Users only need RBAC on the associated Run resource to access artifacts within a run.
+* Get/List Artifacts: To perform Get or List operations on artifacts, users require RBAC on the “artifacts” resource.
+* Reimport = false: For artifacts where Reimport is set to false, users need to get RBAC on the “artifacts” resource within the artifact's originating namespace. Note that the pipeline runner SA will still require creds from the users’ namespace to actually download and upload artifacts from/to objectstore.
+* UI Artifact Downloading: The UI will no longer directly download artifacts. Instead, a KFP server API endpoint will provide pre-signed URL download links. Authorization for these links will be handled via RBAC. Users will require to get the artifact via resource name or can get the run the artifact is a part of, then you can generate a presigned URL to download it.
 
 A few more notes: 
 * the Driver/Launcher communicates with the KFP API Server via the CacheClient. This has no auth mechanism today and will need to be updated.

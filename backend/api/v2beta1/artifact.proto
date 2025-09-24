@@ -65,6 +65,7 @@ service ArtifactService {
   }
 
   // Finds a specific Artifact by ID.
+  // TODO(HumairAK): How does this work for auth
   rpc GetArtifact(GetArtifactRequest) returns (Artifact) {
     option (google.api.http) = {
       get: "/apis/v2beta1/artifacts/{artifact_id}"

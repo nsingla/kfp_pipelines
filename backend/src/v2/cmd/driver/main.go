@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
@@ -184,9 +185,17 @@ func drive() (err error) {
 		return fmt.Errorf("KFP_POD_UID and KFP_POD_NAME environment variables must be set")
 	}
 
+	if runID == nil {
+		return fmt.Errorf("argument --%s must be specified", runID)
+	}
+	run, err := driverAPI.GetRun(ctx, &go_client.GetRunRequest{RunId: *runID})
+	if err != nil {
+		return err
+	}
+
 	options := driver.Options{
 		PipelineName:     *pipelineName,
-		RunID:            *runID,
+		Run:              run,
 		RunName:          *runName,
 		RunDisplayName:   *runDisplayName,
 		Namespace:        namespace,

@@ -96,7 +96,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		opts.PublishLogs = "false"
 	}
 
-	run, err := driverAPI.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.RunID})
+	run, err := driverAPI.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.Run.GetRunId()})
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	taskToCreate := &apiV2beta1.PipelineTaskDetail{
 		Name:        opts.TaskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
-		RunId:       opts.RunID,
+		RunId:       opts.Run.GetRunId(),
 		Type:        apiV2beta1.PipelineTaskDetail_RUNTIME,
 		Pods: []*apiV2beta1.PipelineTaskDetail_TaskPod{
 			{
@@ -255,7 +255,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		executorInput,
 		execution.TaskID,
 		opts.PipelineName,
-		opts.RunID,
+		opts.Run.GetRunId(),
 		opts.RunName,
 		opts.PipelineLogLevel,
 		opts.PublishLogs,

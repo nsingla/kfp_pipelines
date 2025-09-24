@@ -137,7 +137,7 @@ func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Exe
 	taskToCreate := &gc.PipelineTaskDetail{
 		Name:        taskName,
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
-		RunId:       opts.RunID,
+		RunId:       opts.Run.GetRunId(),
 		// Default to DAG
 		Type: gc.PipelineTaskDetail_DAG,
 		Pods: []*gc.PipelineTaskDetail_TaskPod{

@@ -120,7 +120,7 @@ func getFingerPrintsAndID(
 		},
 	}
 	tasks, err := driverAPI.ListTasks(ctx, &apiv2beta1.ListTasksRequest{
-		ParentFilter: &apiv2beta1.ListTasksRequest_RunId{RunId: opts.RunID},
+		ParentFilter: &apiv2beta1.ListTasksRequest_RunId{RunId: opts.Run.GetRunId()},
 		Filter:       filter.String(),
 	})
 	if err != nil {

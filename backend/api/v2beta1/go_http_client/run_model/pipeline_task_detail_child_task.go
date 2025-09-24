@@ -7,9 +7,7 @@ package run_model
 
 import (
 	"context"
-	"strconv"
 
-	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 )
@@ -23,90 +21,17 @@ type PipelineTaskDetailChildTask struct {
 	// name
 	Name string `json:"name,omitempty"`
 
-	// Name of the corresponding pod assigned by the orchestration engine.
-	// Also known as node_id.
-	Pods []*PipelineTaskDetailTaskPod `json:"pods"`
-
 	// System-generated ID of a task.
 	TaskID string `json:"task_id,omitempty"`
 }
 
 // Validate validates this pipeline task detail child task
 func (m *PipelineTaskDetailChildTask) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validatePods(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
 	return nil
 }
 
-func (m *PipelineTaskDetailChildTask) validatePods(formats strfmt.Registry) error {
-	if swag.IsZero(m.Pods) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Pods); i++ {
-		if swag.IsZero(m.Pods[i]) { // not required
-			continue
-		}
-
-		if m.Pods[i] != nil {
-			if err := m.Pods[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("pods" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("pods" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// ContextValidate validate this pipeline task detail child task based on the context it is used
+// ContextValidate validates this pipeline task detail child task based on context it is used
 func (m *PipelineTaskDetailChildTask) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.contextValidatePods(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *PipelineTaskDetailChildTask) contextValidatePods(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Pods); i++ {
-
-		if m.Pods[i] != nil {
-
-			if swag.IsZero(m.Pods[i]) { // not required
-				return nil
-			}
-
-			if err := m.Pods[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("pods" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("pods" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
 	return nil
 }
 
