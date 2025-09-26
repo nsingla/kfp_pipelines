@@ -5,6 +5,10 @@ components:
     dag:
       outputs:
         artifacts:
+          pipelinechannel--param-to-artifact-2-a:
+            artifactSelectors:
+            - outputArtifactKey: a
+              producerSubtask: param-to-artifact-2
           pipelinechannel--param-to-artifact-a:
             artifactSelectors:
             - outputArtifactKey: a
@@ -21,25 +25,6 @@ components:
                 componentInputParameter: pipelinechannel--flip-coin-Output
           taskInfo:
             name: param-to-artifact
-    inputDefinitions:
-      parameters:
-        pipelinechannel--flip-coin-Output:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        pipelinechannel--param-to-artifact-a:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-  comp-condition-3:
-    dag:
-      outputs:
-        artifacts:
-          pipelinechannel--param-to-artifact-2-a:
-            artifactSelectors:
-            - outputArtifactKey: a
-              producerSubtask: param-to-artifact-2
-      tasks:
         param-to-artifact-2:
           cachingOptions:
             enableCache: true
@@ -61,6 +46,40 @@ components:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
+        pipelinechannel--param-to-artifact-a:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-condition-3:
+    dag:
+      outputs:
+        artifacts:
+          pipelinechannel--param-to-artifact-3-a:
+            artifactSelectors:
+            - outputArtifactKey: a
+              producerSubtask: param-to-artifact-3
+      tasks:
+        param-to-artifact-3:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-param-to-artifact-3
+          inputs:
+            parameters:
+              val:
+                componentInputParameter: pipelinechannel--flip-coin-Output
+          taskInfo:
+            name: param-to-artifact-3
+    inputDefinitions:
+      parameters:
+        pipelinechannel--flip-coin-Output:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        pipelinechannel--param-to-artifact-3-a:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
   comp-condition-branches-1:
     dag:
       outputs:
@@ -69,8 +88,10 @@ components:
             artifactSelectors:
             - outputArtifactKey: pipelinechannel--param-to-artifact-a
               producerSubtask: condition-2
-            - outputArtifactKey: pipelinechannel--param-to-artifact-2-a
+            - outputArtifactKey: pipelinechannel--param-to-artifact-3-a
               producerSubtask: condition-3
+            - outputArtifactKey: pipelinechannel--param-to-artifact-2-a
+              producerSubtask: condition-2
       tasks:
         condition-2:
           componentRef:
@@ -141,21 +162,6 @@ components:
             name: comp-flip-coin
           taskInfo:
             name: flip-coin
-        print-artifact:
-          cachingOptions:
-            enableCache: true
-          componentRef:
-            name: comp-print-artifact
-          dependentTasks:
-          - condition-branches-1
-          inputs:
-            artifacts:
-              a:
-                taskOutputArtifact:
-                  outputArtifactKey: pipelinechannel--condition-branches-1-oneof-1
-                  producerTask: condition-branches-1
-          taskInfo:
-            name: print-artifact
     outputDefinitions:
       artifacts:
         Output:
@@ -174,6 +180,10 @@ components:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
+        b:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
   comp-param-to-artifact-2:
     executorLabel: exec-param-to-artifact-2
     inputDefinitions:
@@ -186,16 +196,28 @@ components:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
-  comp-print-artifact:
-    executorLabel: exec-print-artifact
+        b:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-param-to-artifact-3:
+    executorLabel: exec-param-to-artifact-3
     inputDefinitions:
+      parameters:
+        val:
+          parameterType: STRING
+    outputDefinitions:
       artifacts:
         a:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
-  comp-print-artifact-2:
-    executorLabel: exec-print-artifact-2
+        b:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-print-artifact:
+    executorLabel: exec-print-artifact
     inputDefinitions:
       artifacts:
         a:
@@ -216,7 +238,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -245,7 +267,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -259,8 +281,8 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef param_to_artifact(val: str, a: Output[Artifact]):\n    with open(a.path,\
-          \ 'w') as f:\n        f.write(val)\n\n"
+          \ *\n\ndef param_to_artifact(val: str, a: Output[Artifact], b: Output[Artifact]):\n\
+          \    with open(a.path, 'w') as f:\n        f.write(val)\n\n"
         image: python:3.9
     exec-param-to-artifact-2:
       container:
@@ -274,7 +296,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -288,8 +310,37 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef param_to_artifact(val: str, a: Output[Artifact]):\n    with open(a.path,\
-          \ 'w') as f:\n        f.write(val)\n\n"
+          \ *\n\ndef param_to_artifact(val: str, a: Output[Artifact], b: Output[Artifact]):\n\
+          \    with open(a.path, 'w') as f:\n        f.write(val)\n\n"
+        image: python:3.9
+    exec-param-to-artifact-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - param_to_artifact
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef param_to_artifact(val: str, a: Output[Artifact], b: Output[Artifact]):\n\
+          \    with open(a.path, 'w') as f:\n        f.write(val)\n\n"
         image: python:3.9
     exec-print-artifact:
       container:
@@ -303,36 +354,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
-          $0\" \"$@\"\n"
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef print_artifact(a: Input[Artifact]):\n    with open(a.path) as\
-          \ f:\n        print(f.read())\n\n"
-        image: python:3.9
-    exec-print-artifact-2:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - print_artifact
-        command:
-        - sh
-        - -c
-        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
-          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.13.0'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -365,7 +387,7 @@ root:
         cachingOptions:
           enableCache: true
         componentRef:
-          name: comp-print-artifact-2
+          name: comp-print-artifact
         dependentTasks:
         - flip-coin-pipeline
         inputs:
@@ -377,4 +399,4 @@ root:
         taskInfo:
           name: print-artifact
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.13.0
+sdkVersion: kfp-2.14.2

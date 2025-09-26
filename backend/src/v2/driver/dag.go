@@ -156,12 +156,15 @@ func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Exe
 	// In the future the KFP Sdk should add a Task Type enum to the task Info proto
 	// to assist with inferring type. For now we infer the type based on attribute
 	// heuristics.
+
 	if iterationCount != nil {
-		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: int64(*iterationCount)}
+		iterationCount := int64(*iterationCount)
+		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: &iterationCount}
 		taskToCreate.Type = gc.PipelineTaskDetail_LOOP
 		taskToCreate.DisplayName = "Loop"
 	} else if iterationIndex != nil {
-		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		iterationCount := int64(*iterationCount)
+		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: &iterationCount}
 		taskToCreate.Type = gc.PipelineTaskDetail_LOOP_ITERATION
 		taskToCreate.DisplayName = fmt.Sprintf("Loop Iteration %d", *iterationIndex)
 	} else if condition != "" {
