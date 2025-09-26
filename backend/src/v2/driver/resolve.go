@@ -1146,11 +1146,11 @@ func GetProducerTask(
 			if !successfulOneOfTask {
 				return "", "", fmt.Errorf("processing OneOf: No successful task found")
 			}
+			// If there's only one output, then it's a normal case and we can just use the one artifact producer in the selector
 		} else if len(outputArtifacts) == 1 {
 			producerSubTaskName = outputArtifacts[0].GetProducer().GetTaskName()
 			tempOutputKey = outputArtifacts[0].GetProducer().GetKey()
 		}
-
 	} else {
 		producerTaskValue := parentTask.GetExecution().GetCustomProperties()["parameter_producer_task"]
 		if producerTaskValue != nil {
