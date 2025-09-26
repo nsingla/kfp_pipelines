@@ -1,4 +1,6 @@
 import os.path
+
+import pytest
 import re
 import tempfile
 from dataclasses import dataclass
@@ -6,7 +8,6 @@ from typing import Optional, Callable
 
 import kfp
 from kfp import compiler
-import pytest
 
 from test_data.components.add_numbers import add_numbers
 from test_data.components.hello_world import echo
@@ -42,7 +43,7 @@ from test_data.components.nested_pipelines.nested_pipeline_opt_input_child_level
 from test_data.components.pythonic_artifcats.pythonic_artifacts_test_pipeline import pythonic_artifacts_test_pipeline
 from test_data.components.components_with_optional_artifacts import pipeline as optional_artifacts_pipeline
 from test_data.components.lightweight_python_functions_pipeline import pipeline as lightweight_python_pipeline
-# from test_data.components.xgboost_sample_pipeline import xgboost_pipeline
+from test_data.components.xgboost_sample_pipeline import xgboost_pipeline
 from test_data.components.pipeline_with_after import my_pipeline as after_pipeline
 from test_data.components.metrics_visualization_v2 import metrics_visualization_pipeline
 from test_data.components.pipeline_with_nested_conditions import my_pipeline as nested_conditions_pipeline
@@ -84,6 +85,16 @@ from test_data.components.containerized_python_component import concat_message a
 from test_data.components.with_artifacts.container_with_artifact_output import container_with_artifact_output
 from test_data.components.parallelfor_fan_in.nested_with_parameters import math_pipeline as nested_with_parameters_pipeline
 from test_data.components.parallelfor_fan_in.parameters_complex import math_pipeline as parameters_complex_pipeline
+# Additional missing pipeline imports
+from test_data.components.component_with_metadata_fields import dataset_joiner
+from test_data.components.with_pip_customizations.component_with_pip_index_urls import pipeline as pip_index_urls_pipeline
+from test_data.components.with_pip_customizations.component_with_pip_install_in_venv import component_with_pip_install as pip_install_venv_pipeline
+from test_data.components.with_pip_customizations.component_with_pip_install import component_with_pip_install as pip_install_pipeline
+from test_data.components.component_with_task_final_status import exit_comp as task_final_status_pipeline
+from test_data.components.parallelfor_fan_in.pipeline_producer_consumer import math_pipeline as producer_consumer_parallel_for_pipeline
+from test_data.components.pipeline_with_utils import pipeline_with_utils
+from test_data.components.pipeline_with_k8s_spec.pipeline_with_secret_as_volume import pipeline_secret_volume
+from test_data.components.flip_coin import flipcoin_pipeline as flip_coin
 import yaml
 
 
@@ -357,13 +368,13 @@ class TestPipelineCompilation:
                      compiled_file_name='lightweight_python_functions_pipeline.yaml',
                      expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/lightweight_python_functions_pipeline.yaml'
                      ),
-            # TestData(pipeline_display_name='XGBoost Sample Pipeline',
-            #          pipeline_name='xgboost-sample-pipeline',
-            #          pipeline_func=xgboost_pipeline,
-            #          pipline_func_args=None,
-            #          compiled_file_name='xgboost_sample_pipeline.yaml',
-            #          expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/xgboost_sample_pipeline.yaml'
-            #          ),
+            TestData(pipeline_display_name='XGBoost Sample Pipeline',
+                     pipeline_name='xgboost-sample-pipeline',
+                     pipeline_func=xgboost_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='xgboost_sample_pipeline.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/xgboost_sample_pipeline.yaml'
+                     ),
             TestData(pipeline_display_name='Pipeline with After Dependencies',
                      pipeline_name='pipeline-with-after',
                      pipeline_func=after_pipeline,
@@ -576,6 +587,148 @@ class TestPipelineCompilation:
                      pipline_func_args=None,
                      compiled_file_name='pipeline_in_pipeline_complex.yaml',
                      expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_in_pipeline_complex.yaml'
+                     ),
+            # Additional high-priority missing pipeline test cases
+            TestData(pipeline_display_name='Lucky Number Pipeline (If Elif Else Complex)',
+                     pipeline_name='lucky-number-pipeline',
+                     pipeline_func=lucky_number_pipeline,
+                     pipline_func_args={'add_drumroll': True, 'repeat_if_lucky_number': True, 'trials': [1, 2, 3]},
+                     compiled_file_name='if_elif_else_complex.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/if_elif_else_complex.yaml'
+                     ),
+            TestData(pipeline_display_name='If Elif Else with OneOf Parameters',
+                     pipeline_name='if-elif-else-with-oneof-parameters',
+                     pipeline_func=if_elif_else_oneof_params_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='if_elif_else_with_oneof_parameters.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/if_elif_else_with_oneof_parameters.yaml'
+                     ),
+            TestData(pipeline_display_name='If Else with OneOf Parameters',
+                     pipeline_name='if-else-with-oneof-parameters',
+                     pipeline_func=if_else_oneof_params_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='if_else_with_oneof_parameters.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/if_else_with_oneof_parameters.yaml'
+                     ),
+            TestData(pipeline_display_name='If Else with OneOf Artifacts',
+                     pipeline_name='if-else-with-oneof-artifacts',
+                     pipeline_func=if_else_oneof_artifacts_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='if_else_with_oneof_artifacts.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/if_else_with_oneof_artifacts.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Loops and Conditions',
+                     pipeline_name='pipeline-with-loops-and-conditions',
+                     pipeline_func=loops_and_conditions_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_loops_and_conditions.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_loops_and_conditions.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Various IO Types',
+                     pipeline_name='pipeline-with-various-io-types',
+                     pipeline_func=various_io_types_pipeline,
+                     pipline_func_args={'input1': 'Hello', 'input4': 'World'},
+                     compiled_file_name='pipeline_with_various_io_types.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_various_io_types.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Metrics Outputs',
+                     pipeline_name='pipeline-with-metrics-outputs',
+                     pipeline_func=metrics_outputs_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_metrics_outputs.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_metrics_outputs.yaml'
+                     ),
+            TestData(pipeline_display_name='Containerized Python Component',
+                     pipeline_name='containerized-concat-message',
+                     pipeline_func=containerized_concat_message,
+                     pipline_func_args={'message1': 'Hello', 'message2': ' Containerized!'},
+                     compiled_file_name='containerized_python_component.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/containerized_python_component.yaml'
+                     ),
+            TestData(pipeline_display_name='Container with Artifact Output',
+                     pipeline_name='container-with-artifact-output',
+                     pipeline_func=container_with_artifact_output,
+                     pipline_func_args={'num_epochs': 10},
+                     compiled_file_name='container_with_artifact_output.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/container_with_artifact_output.yaml'
+                     ),
+            TestData(pipeline_display_name='Nested with Parameters Pipeline',
+                     pipeline_name='math-pipeline',
+                     pipeline_func=nested_with_parameters_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='nested_with_parameters.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/nested_with_parameters.yaml'
+                     ),
+            TestData(pipeline_display_name='Parameters Complex Pipeline',
+                     pipeline_name='math-pipeline',
+                     pipeline_func=parameters_complex_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='parameters_complex.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/parameters_complex.yaml'
+                     ),
+            # Additional critical missing pipeline test cases
+            TestData(pipeline_display_name='Component with Metadata Fields',
+                     pipeline_name='dataset-joiner',
+                     pipeline_func=dataset_joiner,
+                     pipline_func_args=None,
+                     compiled_file_name='component_with_metadata_fields.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/component_with_metadata_fields.yaml'
+                     ),
+            TestData(pipeline_display_name='Component with Pip Index URLs',
+                     pipeline_name='my-test-pipeline',
+                     pipeline_func=pip_index_urls_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='component_with_pip_index_urls.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/component_with_pip_index_urls.yaml'
+                     ),
+            TestData(pipeline_display_name='Flip Coin Pipeline',
+                     pipeline_name='flip-coin',
+                     pipeline_func=flip_coin,
+                     pipline_func_args=None,
+                     compiled_file_name='flip_coin.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/critical/flip_coin.yaml'
+                     ),
+            TestData(pipeline_display_name='Component with Pip Install in Venv',
+                     pipeline_name='component-with-pip-install-in-venv',
+                     pipeline_func=pip_install_venv_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='component_with_pip_install_in_venv.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/component_with_pip_install_in_venv.yaml'
+                     ),
+            TestData(pipeline_display_name='Component with Pip Install',
+                     pipeline_name='component-with-pip-install',
+                     pipeline_func=pip_install_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='component_with_pip_install.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/component_with_pip_install.yaml'
+                     ),
+            TestData(pipeline_display_name='Component with Task Final Status',
+                     pipeline_name='component-with-task-final-status',
+                     pipeline_func=task_final_status_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='component_with_task_final_status_GH-12033.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/component_with_task_final_status_GH-12033.yaml'
+                     ),
+            TestData(pipeline_display_name='Producer Consumer Parallel For Pipeline',
+                     pipeline_name='math-pipeline',
+                     pipeline_func=producer_consumer_parallel_for_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_producer_consumer.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_producer_consumer.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Secret as Volume',
+                     pipeline_name='pipeline-with-secret-as-volume',
+                     pipeline_func=pipeline_secret_volume,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_secret_as_volume.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_secret_as_volume.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Utils',
+                     pipeline_name='pipeline-with-utils',
+                     pipeline_func=pipeline_with_utils,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_utils.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_utils.yaml'
                      ),
         ],
         ids=str)
