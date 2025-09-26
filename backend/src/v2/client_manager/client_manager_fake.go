@@ -1,7 +1,6 @@
 package client_manager
 
 import (
-	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"k8s.io/client-go/kubernetes"
 )
@@ -9,7 +8,6 @@ import (
 type FakeClientManager struct {
 	k8sClient      kubernetes.Interface
 	metadataClient metadata.ClientInterface
-	cacheClient    cacheutils.Client
 }
 
 // Ensure FakeClientManager implements ClientManagerInterface
@@ -23,14 +21,9 @@ func (f *FakeClientManager) MetadataClient() metadata.ClientInterface {
 	return f.metadataClient
 }
 
-func (f *FakeClientManager) CacheClient() cacheutils.Client {
-	return f.cacheClient
-}
-
-func NewFakeClientManager(k8sClient kubernetes.Interface, metadataClient metadata.ClientInterface, cacheClient cacheutils.Client) *FakeClientManager {
+func NewFakeClientManager(k8sClient kubernetes.Interface, metadataClient metadata.ClientInterface) *FakeClientManager {
 	return &FakeClientManager{
 		k8sClient:      k8sClient,
 		metadataClient: metadataClient,
-		cacheClient:    cacheClient,
 	}
 }

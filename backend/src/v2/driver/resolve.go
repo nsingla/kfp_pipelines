@@ -27,7 +27,6 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
-	removethis "github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -720,7 +719,7 @@ func resolveUpstreamParameters(cfg resolveUpstreamOutputsConfig) (*structpb.Valu
 			}
 			// Support for the 2 DagOutputParameterSpec types:
 			// ValueFromParameter & ValueFromOneof
-			subTaskName, outputParameterKey, err = GetProducerTask(currentTask, subTasks, subTaskName, outputParameterKey, false)
+			subTaskName, outputParameterKey, err = GetParameterProducerTask(currentTask, subTasks, subTaskName, outputParameterKey)
 			if err != nil {
 				return nil, cfg.err(err)
 			}
@@ -823,7 +822,7 @@ func resolveUpstreamArtifacts(cfg resolveUpstreamOutputsConfig) (*pipelinespec.A
 				}
 				return artifactList, nil
 			}
-			subTaskName, outputArtifactKey, err = GetProducerTask(currentTask, tasks, subTaskName, outputArtifactKey, true)
+			subTaskName, outputArtifactKey, err = GetArtifactProducerTask(currentTask, tasks, subTaskName, outputArtifactKey)
 			if err != nil {
 				return nil, cfg.err(err)
 			}
@@ -1006,8 +1005,13 @@ func CollectInputs(
 
 		previousTaskName = currentTask.GetName()
 		previousWorkingOutputKey = workingOutputKey
-		workingSubTaskName, workingOutputKey, _ = GetProducerTask(
-			currentTask, tasks, workingSubTaskName, workingOutputKey, isArtifact)
+		if isArtifact {
+			workingSubTaskName, workingOutputKey, _ = GetArtifactProducerTask(
+				currentTask, tasks, workingSubTaskName, workingOutputKey)
+		} else {
+			workingSubTaskName, workingOutputKey, _ = GetParameterProducerTask(
+				currentTask, tasks, workingSubTaskName, workingOutputKey)
+		}
 
 		glog.V(4).Infof("currentTask ID: %v", currentTask.GetTaskId())
 		glog.V(4).Infof("currentTask Name: %v", currentTask.GetName())
@@ -1111,96 +1115,85 @@ func collectContainerOutput(
 	return param, convertedRuntimeArtifacts, nil
 }
 
-// GetProducerTask gets the updated ProducerSubTask /
-// Output[Artifact|Parameter]Key if they exists, else it returns the original
+// GetParameterProducerTask gets the updated ProducerSubTask /
+// Output[Parameter]Key if they exists, else it returns the original
 // input.
-func GetProducerTask(
+func GetParameterProducerTask(
 	parentTask *apiv2beta1.PipelineTaskDetail,
 	tasks map[string]*apiv2beta1.PipelineTaskDetail,
 	subTaskName string,
 	outputParameterKey string,
-	isArtifact bool,
 ) (producerSubTaskName string, tempOutputKey string, err error) {
-
 	tempOutputKey = outputParameterKey
-	if isArtifact {
-		outputArtifacts := parentTask.GetOutputs().GetArtifacts()
-
-		// If there's more than one output, then it's a dsl.OneOF case and we need to
-		// iterate through the list to find the correct output
-		successfulOneOfTask := false
-		if len(outputArtifacts) > 1 {
-			for _, artifactIO := range outputArtifacts {
-				producerSubTaskName = artifactIO.GetProducer().GetTaskName()
-				updatedSubTaskName := getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())
-				if subTask, ok := tasks[updatedSubTaskName]; ok {
-					subTaskState := subTask.GetStatus()
-					glog.V(4).Infof("subTask: %w , subTaskState: %v", updatedSubTaskName, subTaskState)
-					if subTaskState == apiv2beta1.PipelineTaskDetail_CACHED || subTaskState == apiv2beta1.PipelineTaskDetail_SUCCEEDED {
-						tempOutputKey = artifactIO.GetProducer().GetKey()
-						successfulOneOfTask = true
-						break
-					}
+	outputParameters := parentTask.GetOutputs().GetParameters()
+	// If there's more than one output, then it's a dsl.OneOF case and we need to
+	// iterate through the list to find the correct output
+	successfulOneOfTask := false
+	if len(outputParameters) > 1 {
+		for _, paramIO := range outputParameters {
+			producerSubTaskName = paramIO.GetProducer().GetTaskName()
+			updatedSubTaskName := getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())
+			if subTask, ok := tasks[updatedSubTaskName]; ok {
+				subTaskState := subTask.GetStatus()
+				glog.V(4).Infof("subTask: %s , subTaskState: %v", updatedSubTaskName, subTaskState)
+				if subTaskState == apiv2beta1.PipelineTaskDetail_CACHED || subTaskState == apiv2beta1.PipelineTaskDetail_SUCCEEDED {
+					tempOutputKey = paramIO.GetProducer().GetKey()
+					successfulOneOfTask = true
+					break
 				}
 			}
-			if !successfulOneOfTask {
-				return "", "", fmt.Errorf("processing OneOf: No successful task found")
-			}
-			// If there's only one output, then it's a normal case and we can just use the one artifact producer in the selector
-		} else if len(outputArtifacts) == 1 {
-			producerSubTaskName = outputArtifacts[0].GetProducer().GetTaskName()
-			tempOutputKey = outputArtifacts[0].GetProducer().GetKey()
 		}
+		if !successfulOneOfTask {
+			return "", "", fmt.Errorf("processing OneOf: No successful task found")
+		}
+		// If there's only one output, then it's a normal case and we can just use the one artifact producer in the selector
+	} else if len(outputParameters) == 1 {
+		producerSubTaskName = outputParameters[0].GetProducer().GetTaskName()
+		tempOutputKey = outputParameters[0].GetProducer().GetKey()
+	}
+	if producerSubTaskName != "" {
+		producerSubTaskName = getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())
 	} else {
-		producerTaskValue := parentTask.GetExecution().GetCustomProperties()["parameter_producer_task"]
-		if producerTaskValue != nil {
-			tempOutputParametersMap := make(map[string]*pipelinespec.DagOutputsSpec_DagOutputParameterSpec)
-			for name, value := range producerTaskValue.GetStructValue().GetFields() {
-				outputSpec := &pipelinespec.DagOutputsSpec_DagOutputParameterSpec{}
-				err := protojson.Unmarshal([]byte(value.GetStringValue()), outputSpec)
-				if err != nil {
-					return "", "", err
-				}
-				tempOutputParametersMap[name] = outputSpec
-			}
-			glog.V(4).Infof("tempOutputParametersMap: %#v", tempOutputParametersMap)
-			switch tempOutputParametersMap[tempOutputKey].Kind.(type) {
-			case *pipelinespec.DagOutputsSpec_DagOutputParameterSpec_ValueFromParameter:
-				producerSubTaskName = tempOutputParametersMap[tempOutputKey].GetValueFromParameter().GetProducerSubtask()
-				tempOutputKey = tempOutputParametersMap[tempOutputKey].GetValueFromParameter().GetOutputParameterKey()
-			case *pipelinespec.DagOutputsSpec_DagOutputParameterSpec_ValueFromOneof:
-				// When OneOf is specified in a pipeline, the output of only 1
-				// task is consumed even though there may be more than 1 task
-				// output set. In this case we will attempt to grab the first
-				// successful task output.
-				paramSelectors := tempOutputParametersMap[tempOutputKey].GetValueFromOneof().GetParameterSelectors()
-				glog.V(4).Infof("paramSelectors: %v", paramSelectors)
-				// Since we have the tasks map, we can iterate through the
-				// parameterSelectors if the ProducerSubTask is not present in
-				// the task map and then assign the new OutputParameterKey only
-				// if it exists.
-				successfulOneOfTask := false
-				for _, paramSelector := range paramSelectors {
-					producerSubTaskName = paramSelector.GetProducerSubtask()
-					// Used just for retrieval since we lookup the task in the map
-					updatedSubTaskName := getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())
-					glog.V(4).Infof("subTaskName with Dag ID from paramSelector: %v", updatedSubTaskName)
-					glog.V(4).Infof("outputParameterKey from paramSelector: %v", paramSelector.GetOutputParameterKey())
-					if subTask, ok := tasks[updatedSubTaskName]; ok {
-						subTaskState := subTask.GetStatus()
-						glog.V(4).Infof("subTask: %w , subTaskState: %v", updatedSubTaskName, subTaskState)
-						if subTaskState == apiv2beta1.PipelineTaskDetail_CACHED || subTaskState == apiv2beta1.PipelineTaskDetail_SUCCEEDED {
-							tempOutputKey = paramSelector.GetOutputParameterKey()
-							successfulOneOfTask = true
-							break
-						}
-					}
-				}
-				if !successfulOneOfTask {
-					return "", "", fmt.Errorf("processing OneOf: No successful task found")
+		producerSubTaskName = subTaskName
+	}
+	return producerSubTaskName, tempOutputKey, nil
+}
+
+// GetArtifactProducerTask gets the updated ProducerSubTask /
+// Output[Artifact]Key if they exists, else it returns the original
+// input.
+func GetArtifactProducerTask(
+	parentTask *apiv2beta1.PipelineTaskDetail,
+	tasks map[string]*apiv2beta1.PipelineTaskDetail,
+	subTaskName string,
+	outputParameterKey string,
+) (producerSubTaskName string, tempOutputKey string, err error) {
+	tempOutputKey = outputParameterKey
+	outputArtifacts := parentTask.GetOutputs().GetArtifacts()
+	// If there's more than one output, then it's a dsl.OneOF case and we need to
+	// iterate through the list to find the correct output
+	successfulOneOfTask := false
+	if len(outputArtifacts) > 1 {
+		for _, artifactIO := range outputArtifacts {
+			producerSubTaskName = artifactIO.GetProducer().GetTaskName()
+			updatedSubTaskName := getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())
+			if subTask, ok := tasks[updatedSubTaskName]; ok {
+				subTaskState := subTask.GetStatus()
+				glog.V(4).Infof("subTask: %w , subTaskState: %v", updatedSubTaskName, subTaskState)
+				if subTaskState == apiv2beta1.PipelineTaskDetail_CACHED || subTaskState == apiv2beta1.PipelineTaskDetail_SUCCEEDED {
+					tempOutputKey = artifactIO.GetProducer().GetKey()
+					successfulOneOfTask = true
+					break
 				}
 			}
 		}
+		if !successfulOneOfTask {
+			return "", "", fmt.Errorf("processing OneOf: No successful task found")
+		}
+		// If there's only one output, then it's a normal case and we can just use the one artifact producer in the selector
+	} else if len(outputArtifacts) == 1 {
+		producerSubTaskName = outputArtifacts[0].GetProducer().GetTaskName()
+		tempOutputKey = outputArtifacts[0].GetProducer().GetKey()
 	}
 	if producerSubTaskName != "" {
 		producerSubTaskName = getTaskNameWithTaskID(producerSubTaskName, parentTask.GetTaskId())

@@ -138,7 +138,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		taskToCreate.ParentTaskId = &pid
 	}
 	if iterationIndex != nil {
-		taskToCreate.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: int64(*iterationIndex)}
+		taskToCreate.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: util.Int64Pointer(int64(*iterationIndex))}
 	}
 
 	// ######################################

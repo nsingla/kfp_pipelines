@@ -67,14 +67,8 @@ type LauncherV2 struct {
 	clientManager client_manager.ClientManagerInterface
 }
 
-// Client is the struct to hold the Kubernetes Clientset
-type kubernetesClient struct {
-	Clientset kubernetes.Interface
-}
-
 // NewLauncherV2 is a factory function that returns an instance of LauncherV2.
 func NewLauncherV2(
-	ctx context.Context,
 	executionID int64,
 	executorInputJSON,
 	componentSpecJSON string,
@@ -243,14 +237,11 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 	if executorOutput != nil && len(executorOutput.GetParameterValues()) > 0 {
 		params := make([]*gc.PipelineTaskDetail_InputOutputs_Parameter, 0, len(executorOutput.GetParameterValues()))
 		for name, val := range executorOutput.GetParameterValues() {
-			v := val.GetStringValue()
-			// Fallback: marshal non-string values
-			if v == "" && val != nil {
-				b, _ := protojson.Marshal(val)
-				v = string(b)
-			}
 			n := name
-			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{Name: &n, Value: v})
+			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{
+				Source: &gc.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
+				Value:  val,
+			})
 		}
 		_, uerr := kfpAPIClient.Run.UpdateTask(ctx, &gc.UpdateTaskRequest{Task: &gc.PipelineTaskDetail{
 			TaskId:  l.options.TaskID,

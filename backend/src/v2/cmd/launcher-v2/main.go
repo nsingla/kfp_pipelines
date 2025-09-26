@@ -115,7 +115,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		launcher, err := component.NewLauncherV2(ctx, *executionID, *executorInputJSON, *componentSpecJSON, flag.Args(), launcherV2Opts, clientManager)
+		launcher, err := component.NewLauncherV2(*executionID, *executorInputJSON, *componentSpecJSON, flag.Args(), launcherV2Opts, clientManager)
 		if err != nil {
 			return err
 		}
