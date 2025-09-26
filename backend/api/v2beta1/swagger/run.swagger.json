@@ -607,7 +607,7 @@
             "type": "object",
             "$ref": "#/definitions/v2beta1Artifact"
           },
-          "title": "An artifact input can be a list of artifacts\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer.key\": \"input_a\" }, { \"artifacts\": [...], \"producer.key\": \"input_b\"} }"
+          "title": "An artifact input can be a list of artifacts??\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer.key\": \"input_a\" }, { \"artifacts\": [...], \"producer.key\": \"input_b\"} }"
         },
         "parameter_name": {
           "type": "string",
@@ -736,15 +736,15 @@
       "enum": [
         "ROOT",
         "RUNTIME",
-        "CONDITION",
         "CONDITION_BRANCH",
+        "CONDITION",
         "LOOP",
         "LOOP_ITERATION",
         "EXIT_HANDLER",
         "DAG"
       ],
       "default": "ROOT",
-      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - LOOP: Task Group for Condition Branches\nTask Group for Loop Iterations\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
+      "description": " - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run\n - CONDITION_BRANCH: Condition Branch is the wrapper If block\n - CONDITION: Condition is an individual if branch (this feels counter intuitive but this is how it's named in the SDK IR)\nand we are consistent with the naming here.\n - LOOP: Task Group for Condition Branches\nTask Group for Loop Iterations\n - DAG: Generic DAG task type for types like Nested Pipelines\nwhere there is no declarative way to detect this within\na driver."
     },
     "PipelineTaskDetailTypeAttributes": {
       "type": "object",

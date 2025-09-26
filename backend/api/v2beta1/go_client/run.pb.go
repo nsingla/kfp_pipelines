@@ -288,10 +288,13 @@ type PipelineTaskDetail_TaskType int32
 
 const (
 	// Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run
-	PipelineTaskDetail_ROOT             PipelineTaskDetail_TaskType = 0
-	PipelineTaskDetail_RUNTIME          PipelineTaskDetail_TaskType = 1
-	PipelineTaskDetail_CONDITION        PipelineTaskDetail_TaskType = 2
-	PipelineTaskDetail_CONDITION_BRANCH PipelineTaskDetail_TaskType = 3
+	PipelineTaskDetail_ROOT    PipelineTaskDetail_TaskType = 0
+	PipelineTaskDetail_RUNTIME PipelineTaskDetail_TaskType = 1
+	// Condition Branch is the wrapper If block
+	PipelineTaskDetail_CONDITION_BRANCH PipelineTaskDetail_TaskType = 2
+	// Condition is an individual if branch (this feels counter intuitive but this is how it's named in the SDK IR)
+	// and we are consistent with the naming here.
+	PipelineTaskDetail_CONDITION PipelineTaskDetail_TaskType = 3
 	// Task Group for Condition Branches
 	// Task Group for Loop Iterations
 	PipelineTaskDetail_LOOP           PipelineTaskDetail_TaskType = 4
@@ -308,8 +311,8 @@ var (
 	PipelineTaskDetail_TaskType_name = map[int32]string{
 		0: "ROOT",
 		1: "RUNTIME",
-		2: "CONDITION",
-		3: "CONDITION_BRANCH",
+		2: "CONDITION_BRANCH",
+		3: "CONDITION",
 		4: "LOOP",
 		5: "LOOP_ITERATION",
 		6: "EXIT_HANDLER",
@@ -318,8 +321,8 @@ var (
 	PipelineTaskDetail_TaskType_value = map[string]int32{
 		"ROOT":             0,
 		"RUNTIME":          1,
-		"CONDITION":        2,
-		"CONDITION_BRANCH": 3,
+		"CONDITION_BRANCH": 2,
+		"CONDITION":        3,
 		"LOOP":             4,
 		"LOOP_ITERATION":   5,
 		"EXIT_HANDLER":     6,
@@ -2566,7 +2569,7 @@ func (*PipelineTaskDetail_InputOutputs_Parameter_Producer) isPipelineTaskDetail_
 // Align structure with Executor Input
 type PipelineTaskDetail_InputOutputs_IOArtifact struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// An artifact input can be a list of artifacts
+	// An artifact input can be a list of artifacts??
 	// TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
 	// When reading artifacts for a task, we need to collect all artifacts that share the same producer key
 	// and include it in one artifacts list. So if you may have:
@@ -2789,9 +2792,9 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\x06CACHED\x10\x05\"\x7f\n" +
 	"\bTaskType\x12\b\n" +
 	"\x04ROOT\x10\x00\x12\v\n" +
-	"\aRUNTIME\x10\x01\x12\r\n" +
-	"\tCONDITION\x10\x02\x12\x14\n" +
-	"\x10CONDITION_BRANCH\x10\x03\x12\b\n" +
+	"\aRUNTIME\x10\x01\x12\x14\n" +
+	"\x10CONDITION_BRANCH\x10\x02\x12\r\n" +
+	"\tCONDITION\x10\x03\x12\b\n" +
 	"\x04LOOP\x10\x04\x12\x12\n" +
 	"\x0eLOOP_ITERATION\x10\x05\x12\x10\n" +
 	"\fEXIT_HANDLER\x10\x06\x12\a\n" +

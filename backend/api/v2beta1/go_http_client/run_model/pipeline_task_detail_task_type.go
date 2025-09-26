@@ -15,6 +15,10 @@ import (
 )
 
 // PipelineTaskDetailTaskType  - ROOT: Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run
+//   - CONDITION_BRANCH: Condition Branch is the wrapper If block
+//   - CONDITION: Condition is an individual if branch (this feels counter intuitive but this is how it's named in the SDK IR)
+//
+// and we are consistent with the naming here.
 //   - LOOP: Task Group for Condition Branches
 //
 // Task Group for Loop Iterations
@@ -43,11 +47,11 @@ const (
 	// PipelineTaskDetailTaskTypeRUNTIME captures enum value "RUNTIME"
 	PipelineTaskDetailTaskTypeRUNTIME PipelineTaskDetailTaskType = "RUNTIME"
 
-	// PipelineTaskDetailTaskTypeCONDITION captures enum value "CONDITION"
-	PipelineTaskDetailTaskTypeCONDITION PipelineTaskDetailTaskType = "CONDITION"
-
 	// PipelineTaskDetailTaskTypeCONDITIONBRANCH captures enum value "CONDITION_BRANCH"
 	PipelineTaskDetailTaskTypeCONDITIONBRANCH PipelineTaskDetailTaskType = "CONDITION_BRANCH"
+
+	// PipelineTaskDetailTaskTypeCONDITION captures enum value "CONDITION"
+	PipelineTaskDetailTaskTypeCONDITION PipelineTaskDetailTaskType = "CONDITION"
 
 	// PipelineTaskDetailTaskTypeLOOP captures enum value "LOOP"
 	PipelineTaskDetailTaskTypeLOOP PipelineTaskDetailTaskType = "LOOP"
@@ -67,7 +71,7 @@ var pipelineTaskDetailTaskTypeEnum []interface{}
 
 func init() {
 	var res []PipelineTaskDetailTaskType
-	if err := json.Unmarshal([]byte(`["ROOT","RUNTIME","CONDITION","CONDITION_BRANCH","LOOP","LOOP_ITERATION","EXIT_HANDLER","DAG"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["ROOT","RUNTIME","CONDITION_BRANCH","CONDITION","LOOP","LOOP_ITERATION","EXIT_HANDLER","DAG"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

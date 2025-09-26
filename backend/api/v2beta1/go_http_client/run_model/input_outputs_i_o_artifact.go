@@ -19,7 +19,7 @@ import (
 // swagger:model InputOutputsIOArtifact
 type InputOutputsIOArtifact struct {
 
-	// An artifact input can be a list of artifacts
+	// An artifact input can be a list of artifacts??
 	// TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
 	// When reading artifacts for a task, we need to collect all artifacts that share the same producer key
 	// and include it in one artifacts list. So if you may have:

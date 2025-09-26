@@ -48,7 +48,6 @@ type ArtifactServiceClient interface {
 	// Finds all artifacts within the specified namespace.
 	ListArtifacts(ctx context.Context, in *ListArtifactRequest, opts ...grpc.CallOption) (*ListArtifactResponse, error)
 	// Finds a specific Artifact by ID.
-	// TODO(HumairAK): How does this work for auth
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*Artifact, error)
 	// Creates a new artifact.
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*Artifact, error)
@@ -139,7 +138,6 @@ type ArtifactServiceServer interface {
 	// Finds all artifacts within the specified namespace.
 	ListArtifacts(context.Context, *ListArtifactRequest) (*ListArtifactResponse, error)
 	// Finds a specific Artifact by ID.
-	// TODO(HumairAK): How does this work for auth
 	GetArtifact(context.Context, *GetArtifactRequest) (*Artifact, error)
 	// Creates a new artifact.
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*Artifact, error)

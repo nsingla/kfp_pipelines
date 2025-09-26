@@ -401,8 +401,11 @@ message PipelineTaskDetail {
     // Root task replaces Root Execution, it is the top ancestor task to all tasks in the pipeline run
     ROOT = 0;
     RUNTIME = 1;
-    CONDITION = 2;
-    CONDITION_BRANCH = 3;
+    // Condition Branch is the wrapper If block
+    CONDITION_BRANCH = 2;
+    // Condition is an individual if branch (this feels counter intuitive but this is how it's named in the SDK IR)
+    // and we are consistent with the naming here.
+    CONDITION = 3;
     // Task Group for Condition Branches
     // Task Group for Loop Iterations
     LOOP = 4;
@@ -469,7 +472,7 @@ message PipelineTaskDetail {
       // TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
       // When reading artifacts for a task, we need to collect all artifacts that share the same producer key
       // and include it in one artifacts list. So if you may have:
-      // []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer.key": "input_a" }, { "artifacts": [...], "producer.key": "input_b"} }
+      // []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer": {"key": "input_a"} }, { "artifacts": [...], "producer": {"key": "input_b"} } }
       repeated Artifact artifacts = 1;
       oneof source {
         // This is included on Runtime Tasks when the parameter name is known.
