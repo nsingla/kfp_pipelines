@@ -19,6 +19,7 @@ from kfp import components
 from kfp import dsl
 from kfp.dsl import Artifact
 from kfp.dsl import Input
+from sdk.python.test.test_utils.file_utils import FileUtils
 
 
 @dsl.component
@@ -26,9 +27,8 @@ def print_op1(data: Input[Artifact]):
     with open(data.path, 'r') as f:
         print(f.read())
 
-
-reuse_yaml_pipeline = components.load_component_from_file(
-    pathlib.Path(__file__).parent / 'pipeline_with_outputs.yaml')
+PIPELINE_FILES_DIR = FileUtils.VALID_PIPELINE_FILES
+reuse_yaml_pipeline = components.load_component_from_file(file_path=f'{PIPELINE_FILES_DIR}/pipeline_with_outputs.yaml')
 
 
 @dsl.pipeline(name='pipeline-in-pipeline')

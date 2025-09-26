@@ -8,6 +8,8 @@ from typing import Optional, Callable
 
 import kfp
 from kfp import compiler
+from sdk.python.test.test_utils.comparison_utils import ComparisonUtils
+from sdk.python.test.test_utils.file_utils import FileUtils
 
 from test_data.components.add_numbers import add_numbers
 from test_data.components.hello_world import echo
@@ -95,14 +97,30 @@ from test_data.components.parallelfor_fan_in.pipeline_producer_consumer import m
 from test_data.components.pipeline_with_utils import pipeline_with_utils
 from test_data.components.pipeline_with_k8s_spec.pipeline_with_secret_as_volume import pipeline_secret_volume
 from test_data.components.flip_coin import flipcoin_pipeline as flip_coin
+
+# Additional missing pipeline imports for remaining files
+from test_data.components.arguments_parameters import echo as arguments_parameters_echo
+from test_data.components.container_no_input import container_no_input
+from test_data.components.env_var import test_env_exists
+from test_data.components.pipeline_with_k8s_spec.create_pod_metadata_complex import pipeline_with_pod_metadata as create_pod_metadata_complex
+from test_data.components.nested_pipelines.nested_pipeline_opt_inputs_nil import nested_pipeline_opt_inputs_nil
+from test_data.components.nested_pipelines.nested_pipeline_opt_inputs_parent_level import nested_pipeline_opt_inputs_parent_level
+
+# Additional remaining missing pipeline imports
+from test_data.components.cross_loop_after_topology import my_pipeline as cross_loop_after_topology_pipeline
+from test_data.components.pipeline_as_exit_task import my_pipeline as pipeline_as_exit_task
+from test_data.components.pipeline_in_pipeline_loaded_from_yaml import my_pipeline as pipeline_in_pipeline_loaded_from_yaml
+from test_data.components.pipeline_with_dynamic_importer_metadata import my_pipeline as pipeline_with_dynamic_importer_metadata
+from test_data.components.pipeline_with_google_artifact_type import my_pipeline as pipeline_with_google_artifact_type
+from test_data.components.pipeline_with_metadata_fields import dataset_concatenator as pipeline_with_metadata_fields
+from test_data.components.pythonic_artifcats.pythonic_artifacts_with_list_of_artifacts import make_and_join_datasets as pythonic_artifacts_with_list_of_artifacts
+from test_data.components.pythonic_artifcats.pythonic_artifact_with_single_return import make_language_model_pipeline as pythonic_artifact_with_single_return
+
 import yaml
 
 
 class TestPipelineCompilation:
-    _PROJECT_ROOT = os.path.abspath(os.path.join(__file__, *([os.path.pardir] * 4)))
-    _TEST_DATA = os.path.join(_PROJECT_ROOT, "test_data")
-    _VALID_PIPELINE_FILES = os.path.join(_TEST_DATA, "pipeline_files", "valid")
-    _COMPONENTS = os.path.join(_TEST_DATA, "components")
+    _VALID_PIPELINE_FILES = FileUtils.VALID_PIPELINE_FILES
 
     @dataclass
     class TestData:
@@ -730,10 +748,111 @@ class TestPipelineCompilation:
                      compiled_file_name='pipeline_with_utils.yaml',
                      expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_utils.yaml'
                      ),
+            # Additional missing pipeline test cases
+            TestData(pipeline_display_name='Arguments Parameters Pipeline',
+                     pipeline_name='echo',
+                     pipeline_func=arguments_parameters_echo,
+                     pipline_func_args={'param1': 'hello', 'param2': 'world'},
+                     compiled_file_name='arguments_parameters.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/arguments-parameters.yaml'
+                     ),
+            TestData(pipeline_display_name='Container No Input',
+                     pipeline_name='container-no-input',
+                     pipeline_func=container_no_input,
+                     pipline_func_args=None,
+                     compiled_file_name='container_no_input.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/container_no_input.yaml'
+                     ),
+            TestData(pipeline_display_name='Environment Variable Test',
+                     pipeline_name='test-env-exists',
+                     pipeline_func=test_env_exists,
+                     pipline_func_args={'env_var': 'HOME'},
+                     compiled_file_name='env_var.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/env-var.yaml'
+                     ),
+            TestData(pipeline_display_name='Create Pod Metadata Complex',
+                     pipeline_name='create-pod-metadata-complex',
+                     pipeline_func=create_pod_metadata_complex,
+                     pipline_func_args=None,
+                     compiled_file_name='create_pod_metadata_complex.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/create_pod_metadata_complex.yaml'
+                     ),
+            TestData(pipeline_display_name='Nested Pipeline Opt Inputs Nil',
+                     pipeline_name='nested-pipeline-opt-inputs-nil',
+                     pipeline_func=nested_pipeline_opt_inputs_nil,
+                     pipline_func_args=None,
+                     compiled_file_name='nested_pipeline_opt_inputs_nil.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/critical/nested_pipeline_opt_inputs_nil_compiled.yaml'
+                     ),
+            TestData(pipeline_display_name='Nested Pipeline Opt Inputs Parent Level',
+                     pipeline_name='nested-pipeline-opt-inputs-parent-level',
+                     pipeline_func=nested_pipeline_opt_inputs_parent_level,
+                     pipline_func_args=None,
+                     compiled_file_name='nested_pipeline_opt_inputs_parent_level.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/critical/nested_pipeline_opt_inputs_parent_level_compiled.yaml'
+                     ),
+            # Final remaining missing pipeline test cases
+            TestData(pipeline_display_name='Cross Loop After Topology',
+                     pipeline_name='cross-loop-after-topology',
+                     pipeline_func=cross_loop_after_topology_pipeline,
+                     pipline_func_args=None,
+                     compiled_file_name='cross_loop_after_topology.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/cross_loop_after_topology.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline as Exit Task',
+                     pipeline_name='pipeline-with-task-final-status-conditional',
+                     pipeline_func=pipeline_as_exit_task,
+                     pipline_func_args={'message': 'Hello Exit Task!'},
+                     compiled_file_name='pipeline_as_exit_task.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_as_exit_task.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline in Pipeline Loaded from YAML',
+                     pipeline_name='pipeline-in-pipeline-loaded-from-yaml',
+                     pipeline_func=pipeline_in_pipeline_loaded_from_yaml,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_in_pipeline_loaded_from_yaml.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_in_pipeline_loaded_from_yaml.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Dynamic Importer Metadata',
+                     pipeline_name='dynamic-importer-metadata-pipeline',
+                     pipeline_func=pipeline_with_dynamic_importer_metadata,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_dynamic_importer_metadata.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_dynamic_importer_metadata.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Google Artifact Type',
+                     pipeline_name='pipeline-with-google-artifact-types',
+                     pipeline_func=pipeline_with_google_artifact_type,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_google_artifact_type.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_google_artifact_type.yaml'
+                     ),
+            TestData(pipeline_display_name='Pipeline with Metadata Fields',
+                     pipeline_name='pipeline-with-metadata-fields',
+                     pipeline_func=pipeline_with_metadata_fields,
+                     pipline_func_args=None,
+                     compiled_file_name='pipeline_with_metadata_fields.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pipeline_with_metadata_fields.yaml'
+                     ),
+            TestData(pipeline_display_name='Pythonic Artifacts with List of Artifacts',
+                     pipeline_name='make-and-join-datasets',
+                     pipeline_func=pythonic_artifacts_with_list_of_artifacts,
+                     pipline_func_args={'texts': ['text1', 'text2']},
+                     compiled_file_name='pythonic_artifacts_with_list_of_artifacts.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pythonic_artifacts_with_list_of_artifacts.yaml'
+                     ),
+            TestData(pipeline_display_name='Pythonic Artifact with Single Return',
+                     pipeline_name='make-language-model-pipeline',
+                     pipeline_func=pythonic_artifact_with_single_return,
+                     pipline_func_args=None,
+                     compiled_file_name='pythonic_artifact_with_single_return.yaml',
+                     expected_compiled_file_path=f'{_VALID_PIPELINE_FILES}/pythonic_artifact_with_single_return.yaml'
+                     ),
         ],
         ids=str)
     def test_compilation(self, pipeline_data: TestData):
         temp_compiled_pipeline_file = os.path.join(tempfile.gettempdir(), pipeline_data.compiled_file_name)
+
         compiler.Compiler().compile(
             pipeline_func=pipeline_data.pipeline_func,
             pipeline_name=pipeline_data.pipeline_name,
@@ -742,66 +861,17 @@ class TestPipelineCompilation:
         )
         print(f'Pipeline Created at : {temp_compiled_pipeline_file}')
         print(f'Parsing expected yaml {pipeline_data.expected_compiled_file_path} for comparison')
-        expected_pipeline_specs, expected_platform_specs = self.read_yaml_file(pipeline_data.expected_compiled_file_path)
+        expected_pipeline_specs, expected_platform_specs = FileUtils.read_yaml_file(pipeline_data.expected_compiled_file_path)
         print(f'Parsing compiled yaml {temp_compiled_pipeline_file} for comparison')
-        generated_pipeline_specs, generated_platform_specs = self.read_yaml_file(temp_compiled_pipeline_file)
+        generated_pipeline_specs, generated_platform_specs = FileUtils.read_yaml_file(temp_compiled_pipeline_file)
         print('Verify that the generated yaml matches expected yaml or not')
-        self.compare_dict(
+        ComparisonUtils.compare_pipeline_spec_dicts(
             actual=generated_pipeline_specs,
             expected=expected_pipeline_specs,
             display_name=pipeline_data.pipeline_display_name,
             name=pipeline_data.pipeline_name,
             runtime_params=pipeline_data.pipline_func_args,
         )
-        self.compare_dict(
+        ComparisonUtils.compare_pipeline_spec_dicts(
             actual=generated_platform_specs,
             expected=expected_platform_specs)
-
-    def read_yaml_file(self, filepath) -> tuple:
-        pipeline_specs: dict = None
-        platform_specs: dict = None
-        with open(filepath, 'r') as file:
-            try:
-                yaml_data = yaml.safe_load_all(file)
-                for data in yaml_data:
-                    if 'pipelineInfo' in data.keys():
-                        pipeline_specs = data
-                    else:
-                        platform_specs = data
-                return pipeline_specs, platform_specs
-            except yaml.YAMLError as ex:
-                print(f'Error parsing YAML file: {ex}')
-                raise f'Could not load yaml file: {filepath} due to {ex}'
-
-    def compare_dict(self, actual: dict, expected: dict, **kwargs):
-        if expected is None:
-            assert actual is None, "Actual is not None when its expected to be None"
-        else:
-            for key, value in expected.items():
-                if type(value) == dict:
-                    # Override Pipeline Name and Display Name if those were overridden during compilation
-                    if key == 'pipelineInfo':
-                        value['name'] = kwargs['name']
-                    if 'displayName' in value.keys():
-                        value['displayName'] = kwargs['name'] if kwargs['display_name'] is None else kwargs['display_name']
-
-                    # Override Run Time Params in the expected object if runtime params were overridden when compiling pipeline
-                    if 'runtime_params' in kwargs:
-                        if kwargs['runtime_params'] is not None:
-                            if key == 'root':
-                                for param_key, param_value in value['inputDefinitions']['parameters'].items():
-                                    if param_key in kwargs['runtime_params'].keys():
-                                        value['inputDefinitions']['parameters'][param_key]['defaultValue'] = kwargs['runtime_params'][param_key]
-
-                    self.compare_dict(actual[key], value, **kwargs)
-                else:
-                    # Override SDK Version to match the current version
-                    if key in self.keys_to_ignore_for_comparison:
-                        if key == 'sdkVersion':
-                            value = f'kfp-{kfp.__version__}'
-                    # Override SDK Version in the args as well to match the current version
-                    if key == 'command':
-                        for index, command in enumerate(value):
-                            if re.search("kfp==[0-9].[0-9]+.[0-9]+", command) is not None:
-                                value[index] = re.sub("kfp==[0-9].[0-9]+.[0-9]+", f"kfp=={kfp.__version__}", command)
-                    assert value == actual[key], f'Value for "{key}" is not the same'
