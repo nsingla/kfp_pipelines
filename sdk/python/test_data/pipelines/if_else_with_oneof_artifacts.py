@@ -24,7 +24,7 @@ def flip_coin() -> str:
 
 
 @dsl.component
-def param_to_artifact(val: str, a: Output[Artifact], b: Output[Artifact]):
+def param_to_artifact(val: str, a: Output[Artifact]):
     with open(a.path, 'w') as f:
         f.write(val)
 
@@ -40,11 +40,10 @@ def flip_coin_pipeline() -> Artifact:
     flip_coin_task = flip_coin()
     with dsl.If(flip_coin_task.output == 'heads'):
         t1 = param_to_artifact(val=flip_coin_task.output)
-        t3 = param_to_artifact(val=flip_coin_task.output)
     with dsl.Else():
         t2 = param_to_artifact(val=flip_coin_task.output)
-    oneof = dsl.OneOf(t1.outputs['a'], t2.outputs['a'], t3.outputs['a'])
-    oneof2 = dsl.OneOf(t1.outputs['a'], t3.outputs['b'])
+    oneof = dsl.OneOf(t1.outputs['a'], t2.outputs['a'])
+    print_artifact(a=oneof)
     return oneof
 
 
