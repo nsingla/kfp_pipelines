@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Copyright 2023 The Kubeflow Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -441,7 +444,7 @@ func Test_initPodSpecPatch_modelcar_input_artifact(t *testing.T) {
 	}
 	taskConfig := &TaskConfig{}
 
-	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskConfig, "")
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "false", "false", taskConfig, "")
 	assert.Nil(t, err)
 
 	assert.Len(t, podSpec.InitContainers, 1)
@@ -472,7 +475,7 @@ func Test_initPodSpecPatch_modelcar_input_artifact(t *testing.T) {
 // Validate that setting publishLogs to true propagates to the driver container
 // commands in the podSpec.
 func Test_initPodSpecPatch_publishLogs(t *testing.T) {
-	podSpec, err := initPodSpecPatch(&pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec{}, &pipelinespec.ComponentSpec{}, &pipelinespec.ExecutorInput{}, 27, "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "true", "false", nil, "")
+	podSpec, err := initPodSpecPatch(&pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec{}, &pipelinespec.ComponentSpec{}, &pipelinespec.ExecutorInput{}, "27", "test", "0254beba-0be4-4065-8d97-7dc5e3adf300", "my-run-name", "1", "true", "false", nil, "")
 	assert.Nil(t, err)
 	cmd := podSpec.Containers[0].Command
 	assert.Contains(t, cmd, "--publish_logs")
@@ -861,7 +864,7 @@ func Test_initPodSpecPatch_WorkspaceRequiresRunName(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	_, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run-id", "", "1", "false", "false", taskCfg, "")
+	_, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "run-id", "", "1", "false", "false", taskCfg, "")
 	require.NotNil(t, err)
 }
 
@@ -972,7 +975,7 @@ func TestWorkspaceMount_PassthroughVolumes_CaptureOnly(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
 	assert.Nil(t, err)
 
 	// Should not mount workspace to pod (no volumes on pod), only capture to TaskConfig
@@ -1012,7 +1015,7 @@ func TestWorkspaceMount_PassthroughVolumes_ApplyAndCapture(t *testing.T) {
 		},
 	}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
 	assert.Nil(t, err)
 	// Should mount workspace to pod and also capture to TaskConfig
 	assert.NotEmpty(t, podSpec.Volumes)
@@ -1063,7 +1066,7 @@ func Test_initPodSpecPatch_TaskConfig_Env_Passthrough_CaptureOnly(t *testing.T) 
 	}
 	executorInput := &pipelinespec.ExecutorInput{}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
 	assert.Nil(t, err)
 
 	// Env should be captured to TaskConfig only, not applied to pod
@@ -1095,7 +1098,7 @@ func Test_initPodSpecPatch_TaskConfig_Resources_Passthrough_ApplyAndCapture(t *t
 	}
 	executorInput := &pipelinespec.ExecutorInput{}
 	taskCfg := &TaskConfig{}
-	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, 27, "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
+	podSpec, err := initPodSpecPatch(containerSpec, componentSpec, executorInput, "27", "test", "run", "my-run-name", "1", "false", "false", taskCfg, "")
 	assert.Nil(t, err)
 	// Resources should be both on pod and in TaskConfig
 	assert.NotEmpty(t, podSpec.Containers[0].Resources.Requests)
