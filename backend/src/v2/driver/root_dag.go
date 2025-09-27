@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 )
 
 // RootDAG handles initial root dag task creation
@@ -32,35 +32,35 @@ func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execu
 
 	// Build minimal PipelineTaskDetail for root DAG task under the run.
 	// Inputs: pass runtime parameters into task inputs for record.
-	var inputs *gc.PipelineTaskDetail_InputOutputs
+	var inputs *apiV2beta1.PipelineTaskDetail_InputOutputs
 	if opts.RuntimeConfig != nil && opts.RuntimeConfig.GetParameterValues() != nil {
-		params := make([]*gc.PipelineTaskDetail_InputOutputs_Parameter, 0, len(opts.RuntimeConfig.GetParameterValues()))
+		params := make([]*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter, 0, len(opts.RuntimeConfig.GetParameterValues()))
 		for name, val := range opts.RuntimeConfig.GetParameterValues() {
 			n := name
-			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{
-				Source: &gc.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
+			params = append(params, &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+				Source: &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
 				Value:  val,
 			})
 		}
-		inputs = &gc.PipelineTaskDetail_InputOutputs{Parameters: params}
+		inputs = &apiV2beta1.PipelineTaskDetail_InputOutputs{Parameters: params}
 	}
-	pd := &gc.PipelineTaskDetail{
+	pd := &apiV2beta1.PipelineTaskDetail{
 		Name:           opts.PipelineName,
 		DisplayName:    opts.RunDisplayName,
 		RunId:          opts.Run.GetRunId(),
-		Type:           gc.PipelineTaskDetail_ROOT,
+		Type:           apiV2beta1.PipelineTaskDetail_ROOT,
 		Inputs:         inputs,
-		TypeAttributes: &gc.PipelineTaskDetail_TypeAttributes{},
-		Status:         gc.PipelineTaskDetail_SUCCEEDED,
-		Pods: []*gc.PipelineTaskDetail_TaskPod{
+		TypeAttributes: &apiV2beta1.PipelineTaskDetail_TypeAttributes{},
+		Status:         apiV2beta1.PipelineTaskDetail_SUCCEEDED,
+		Pods: []*apiV2beta1.PipelineTaskDetail_TaskPod{
 			{
 				Name: opts.PodName,
 				Uid:  opts.PodUID,
-				Type: gc.PipelineTaskDetail_DRIVER,
+				Type: apiV2beta1.PipelineTaskDetail_DRIVER,
 			},
 		},
 	}
-	task, err := api.CreateTask(ctx, &gc.CreateTaskRequest{Task: pd})
+	task, err := api.CreateTask(ctx, &apiV2beta1.CreateTaskRequest{Task: pd})
 	if err != nil {
 		return nil, err
 	}

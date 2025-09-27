@@ -65,20 +65,14 @@ type Options struct {
 	// optional, required only if the {{$.pipeline_job_resource_name}} placeholder is used or the run uses a workspace
 	RunName string
 	// optional, required only if the {{$.pipeline_job_name}} placeholder is used
-	RunDisplayName string
-
+	RunDisplayName   string
 	PipelineLogLevel string
-
-	PublishLogs string
-
-	CacheDisabled bool
-
-	DriverType string
-
-	TaskName string // the original name of the task, used for input resolution
-
-	PodName string
-	PodUID  string
+	PublishLogs      string
+	CacheDisabled    bool
+	DriverType       string
+	TaskName         string // the original name of the task, used for input resolution
+	PodName          string
+	PodUID           string
 }
 
 // TaskConfig needs to stay aligned with the TaskConfig in the SDK.
