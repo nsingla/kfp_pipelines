@@ -305,7 +305,13 @@ func (ts *TestSetup) CreateTestRun(t *testing.T, pipelineName string) *apiv2beta
 }
 
 // CreateTestTask creates a test task with the given configuration
-func (ts *TestSetup) CreateTestTask(t *testing.T, runID, taskName string, taskType apiv2beta1.PipelineTaskDetail_TaskType) *apiv2beta1.PipelineTaskDetail {
+func (ts *TestSetup) CreateTestTask(
+	t *testing.T,
+	runID,
+	taskName string,
+	taskType apiv2beta1.PipelineTaskDetail_TaskType,
+	inputParams, outputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
+) *apiv2beta1.PipelineTaskDetail {
 	t.Helper()
 
 	podUuid, _ := uuid.NewRandom()
@@ -322,8 +328,12 @@ func (ts *TestSetup) CreateTestTask(t *testing.T, runID, taskName string, taskTy
 				Type: apiv2beta1.PipelineTaskDetail_DRIVER,
 			},
 		},
-		Inputs:  &apiv2beta1.PipelineTaskDetail_InputOutputs{},
-		Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{},
+		Inputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{
+			Parameters: inputParams,
+		},
+		Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{
+			Parameters: outputParams,
+		},
 	}
 
 	createdTask, err := ts.DriverAPI.CreateTask(context.Background(), &apiv2beta1.CreateTaskRequest{
@@ -457,14 +467,25 @@ func AssertTaskType(t *testing.T, driverAPI DriverAPI, taskID string, expectedTy
 }
 
 // CreateParameter creates a test parameter with the given name and value
-func CreateParameter(name, value string) *apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter {
-	val, _ := structpb.NewValue(value)
-	return &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-		Value: val,
-		Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
-			ParameterName: name,
-		},
+func CreateParameter(name, value string, producer *apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer) *apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter {
+	if name != "" && producer != nil {
+		panic("Cannot specify both name and producer")
 	}
+	val, _ := structpb.NewValue(value)
+	param := &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+		Value: val,
+	}
+	if name != "" {
+		param.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+			ParameterName: name,
+		}
+	} else {
+		param.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_Producer{
+			Producer: producer,
+		}
+	}
+
+	return param
 }
 
 // CreateParameterWithProducer creates a parameter with a producer reference
@@ -507,8 +528,23 @@ func TestRootDAGTestSetup(t *testing.T) {
 	assert.Equal(t, "test-pipeline", run.GetPipelineSpec().Fields["pipelineInfo"].GetStructValue().Fields["name"].GetStringValue())
 
 	// Create test tasks
-	task1 := testSetup.CreateTestTask(t, run.RunId, "producer-task", apiv2beta1.PipelineTaskDetail_RUNTIME)
-	task2 := testSetup.CreateTestTask(t, run.RunId, "consumer-task", apiv2beta1.PipelineTaskDetail_RUNTIME)
+	task1 := testSetup.CreateTestTask(t, run.RunId, "producer-task", apiv2beta1.PipelineTaskDetail_RUNTIME,
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+			CreateParameter("input1", "test-input1", nil),
+			CreateParameter("", "test-input2", &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{TaskName: "some-task", Key: "some-key"}),
+		},
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+			CreateParameter("output1", "test-output1", nil),
+			CreateParameter("output2", "test-output2", nil),
+		})
+	task2 := testSetup.CreateTestTask(t, run.RunId, "consumer-task", apiv2beta1.PipelineTaskDetail_RUNTIME,
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+			CreateParameterWithProducer("test-input3", "producer-task", "output1"),
+			CreateParameter("input4", "test-input4", nil),
+		},
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
+			CreateParameter("output3", "test-output3", nil),
+		})
 
 	// Create test artifacts
 	artifact1 := testSetup.CreateTestArtifact(t, "output-data", "dataset")
