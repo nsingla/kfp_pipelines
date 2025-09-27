@@ -9,6 +9,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/apiserver/resource"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Helper to create a simple run via resource manager and return its ID.
@@ -25,16 +26,30 @@ func TestTask_Create_Update_Get_List(t *testing.T) {
 	runSrv := createRunServer(manager)
 
 	// Create task with inputs/outputs
+	v1, err := structpb.NewValue("v1")
+	assert.NoError(t, err)
+	v2, err := structpb.NewValue("3.14")
+	assert.NoError(t, err)
 	inParams := []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-		{Name: strPTR("p1"), Value: "v1"},
+		{
+			Value: v1,
+			Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+				ParameterName: "p1",
+			},
+		},
 	}
 	outParams := []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-		{Name: strPTR("op1"), Value: "3.14"},
+		{
+			Value: v2,
+			Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+				ParameterName: "op1",
+			},
+		},
 	}
 	createReq := &apiv2beta1.CreateTaskRequest{Task: &apiv2beta1.PipelineTaskDetail{
 		RunId:   runID,
 		Name:    "trainer",
-		Status:  apiv2beta1.RuntimeState_RUNNING,
+		Status:  apiv2beta1.PipelineTaskDetail_RUNNING,
 		Type:    apiv2beta1.PipelineTaskDetail_RUNTIME,
 		Inputs:  &apiv2beta1.PipelineTaskDetail_InputOutputs{Parameters: inParams},
 		Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{Parameters: outParams},
@@ -46,30 +61,35 @@ func TestTask_Create_Update_Get_List(t *testing.T) {
 	assert.Equal(t, "trainer", created.GetName())
 	// Verify inputs/outputs echoed back
 	assert.Len(t, created.GetInputs().GetParameters(), 1)
-	assert.Equal(t, "p1", created.GetInputs().GetParameters()[0].GetName())
+	assert.Equal(t, "p1", created.GetInputs().GetParameters()[0].GetParameterName())
 	assert.Len(t, created.GetOutputs().GetParameters(), 1)
-	assert.Equal(t, "op1", created.GetOutputs().GetParameters()[0].GetName())
+	assert.Equal(t, "op1", created.GetOutputs().GetParameters()[0].GetParameterName())
 
 	// Update task: change status and outputs
 	updReq := &apiv2beta1.UpdateTaskRequest{TaskId: created.GetTaskId(), Task: &apiv2beta1.PipelineTaskDetail{
 		TaskId: created.GetTaskId(),
 		RunId:  runID,
 		Name:   "trainer",
-		Status: apiv2beta1.RuntimeState_SUCCEEDED,
+		Status: apiv2beta1.PipelineTaskDetail_SUCCEEDED,
 		Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{Parameters: []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			{Name: strPTR("op1"), Value: "done"},
+			{
+				Value: func() *structpb.Value { v, _ := structpb.NewValue("done"); return v }(),
+				Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+					ParameterName: "op1",
+				},
+			},
 		}},
 	}}
 	updated, err := runSrv.UpdateTask(context.Background(), updReq)
 	assert.NoError(t, err)
-	assert.Equal(t, apiv2beta1.RuntimeState_SUCCEEDED, updated.GetStatus())
-	assert.Equal(t, "done", updated.GetOutputs().GetParameters()[0].GetValue())
+	assert.Equal(t, apiv2beta1.PipelineTaskDetail_SUCCEEDED, updated.GetStatus())
+	assert.Equal(t, "done", updated.GetOutputs().GetParameters()[0].GetValue().AsInterface())
 
 	// GetTask
 	got, err := runSrv.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: created.GetTaskId()})
 	assert.NoError(t, err)
 	assert.Equal(t, created.GetTaskId(), got.GetTaskId())
-	assert.Equal(t, apiv2beta1.RuntimeState_SUCCEEDED, got.GetStatus())
+	assert.Equal(t, apiv2beta1.PipelineTaskDetail_SUCCEEDED, got.GetStatus())
 
 	// ListTasks by run ID
 	listResp, err := runSrv.ListTasks(context.Background(), &apiv2beta1.ListTasksRequest{ParentFilter: &apiv2beta1.ListTasksRequest_RunId{RunId: runID}, PageSize: 50})
@@ -101,12 +121,22 @@ func TestTask_RunHydration_WithInputsOutputs_ArtifactsAndMetrics(t *testing.T) {
 		Task: &apiv2beta1.PipelineTaskDetail{
 			RunId:  run.UUID,
 			Name:   "preprocess",
-			Status: apiv2beta1.RuntimeState_RUNNING,
+			Status: apiv2beta1.PipelineTaskDetail_RUNNING,
 			Inputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{Parameters: []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-				{Name: strPTR("threshold"), Value: "0.5"},
+				{
+					Value: func() *structpb.Value { v, _ := structpb.NewValue("0.5"); return v }(),
+					Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+						ParameterName: "threshold",
+					},
+				},
 			}},
 			Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{Parameters: []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-				{Name: strPTR("rows"), Value: "100"},
+				{
+					Value: func() *structpb.Value { v, _ := structpb.NewValue("100"); return v }(),
+					Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
+						ParameterName: "rows",
+					},
+				},
 			}},
 		}}
 	created, err := runSrv.CreateTask(ctxWithUser(), create)
@@ -143,7 +173,7 @@ func TestTask_RunHydration_WithInputsOutputs_ArtifactsAndMetrics(t *testing.T) {
 			Task: &apiv2beta1.PipelineTaskDetail{
 				TaskId:  created.GetTaskId(),
 				RunId:   run.UUID,
-				Status:  apiv2beta1.RuntimeState_SUCCEEDED,
+				Status:  apiv2beta1.PipelineTaskDetail_SUCCEEDED,
 				Outputs: &apiv2beta1.PipelineTaskDetail_InputOutputs{},
 			}})
 	assert.NoError(t, err)
@@ -164,16 +194,22 @@ func TestTask_RunHydration_WithInputsOutputs_ArtifactsAndMetrics(t *testing.T) {
 		// Parameters present
 		assert.Equal(t, 1, len(taskFound.GetInputs().GetParameters()))
 		if assert.NotNil(t, taskFound.GetInputs().GetParameters(), "parameters not present in hydrated task") {
-			assert.Equal(t, "threshold", taskFound.GetInputs().GetParameters()[0].GetName())
+			assert.Equal(t, "threshold", taskFound.GetInputs().GetParameters()[0].GetParameterName())
 			// Outputs updated and artifact reference present
-			assert.Equal(t, apiv2beta1.RuntimeState_SUCCEEDED, taskFound.GetStatus())
+			assert.Equal(t, apiv2beta1.PipelineTaskDetail_SUCCEEDED, taskFound.GetStatus())
 		}
 		assert.Equal(t, 1, len(taskFound.GetOutputs().GetArtifacts()))
 		if assert.NotNil(t, taskFound.GetOutputs().GetArtifacts(), "artifacts not present in hydrated task") {
-			assert.Equal(t, taskFound.Name, taskFound.GetOutputs().GetArtifacts()[0].GetProducer().GetTaskName())
-			assert.Equal(t, "some-parent-task-output", taskFound.GetOutputs().GetArtifacts()[0].GetProducer().Key)
-			assert.Equal(t, "gs://bucket/model", *taskFound.GetOutputs().GetArtifacts()[0].GetValue().Uri)
-			assert.Equal(t, "m1", taskFound.GetOutputs().GetArtifacts()[0].GetValue().Name)
+			ioArtifact := taskFound.GetOutputs().GetArtifacts()[0]
+			if assert.NotNil(t, ioArtifact.GetProducer()) {
+				assert.Equal(t, taskFound.Name, ioArtifact.GetProducer().GetTaskName())
+				assert.Equal(t, "some-parent-task-output", ioArtifact.GetProducer().Key)
+			}
+			if len(ioArtifact.GetArtifacts()) > 0 {
+				artifact := ioArtifact.GetArtifacts()[0]
+				assert.Equal(t, "gs://bucket/model", *artifact.Uri)
+				assert.Equal(t, "m1", artifact.Name)
+			}
 		}
 	}
 

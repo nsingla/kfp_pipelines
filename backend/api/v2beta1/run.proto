@@ -474,6 +474,9 @@ message PipelineTaskDetail {
       // and include it in one artifacts list. So if you may have:
       // []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer": {"key": "input_a"} }, { "artifacts": [...], "producer": {"key": "input_b"} } }
       repeated Artifact artifacts = 1;
+      // TODO(HumairAK): An artifact actually always has a producer task and output parameter key
+      // So this shouldn't really be a oneOf? Need to revisit this.
+      // But in input case, there can be a parameter_name, and a producer
       oneof source {
         // This is included on Runtime Tasks when the parameter name is known.
         string parameter_name = 2;

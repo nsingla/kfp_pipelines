@@ -83,9 +83,8 @@ func (p *PodNames) Value() (driver.Value, error) {
 
 // TaskArtifactHydrated holds hydrated artifact info per task (not stored in DB)
 type TaskArtifactHydrated struct {
-	ParameterName string
-	Value         *Artifact
-	Producer      IOProducer
+	Value    *Artifact
+	Producer *IOProducer
 }
 type IOProducer struct {
 	TaskName string

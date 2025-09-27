@@ -271,9 +271,8 @@ func hydrateArtifactsForTasks(db *DB, tasks []*model.Task) error {
 		}
 
 		h := model.TaskArtifactHydrated{
-			ParameterName: mArtifact.Name,
-			Value:         mArtifact,
-			Producer: model.IOProducer{
+			Value: mArtifact,
+			Producer: &model.IOProducer{
 				TaskName: producerTaskName,
 				Key:      producerKey,
 			},

@@ -2374,9 +2374,9 @@ func toModelTask(apiTask *apiv2beta1.PipelineTaskDetail) (*model.Task, error) {
 		task.Pods = pods
 	}
 
-	// Convert status metadata using the same pattern as toModelArtifact
+	// Convert status metadata from new StatusMetadata struct
 	if apiTask.GetStatusMetadata() != nil {
-		sm, err := model.StructValueMapToJSONData(apiTask.GetStatusMetadata())
+		sm, err := model.ProtoMessageToJSONData(apiTask.GetStatusMetadata())
 		if err != nil {
 			return nil, err
 		}
@@ -2457,7 +2457,7 @@ func toApiTask(modelTask *model.Task, childTasks []*model.Task) (*apiv2beta1.Pip
 	}
 
 	// Convert status
-	apiTask.Status = apiv2beta1.RuntimeState(modelTask.Status)
+	apiTask.Status = apiv2beta1.PipelineTaskDetail_TaskState(modelTask.Status)
 
 	// Convert task type
 	apiTask.Type = apiv2beta1.PipelineTaskDetail_TaskType(modelTask.Type)
@@ -2475,13 +2475,17 @@ func toApiTask(modelTask *model.Task, childTasks []*model.Task) (*apiv2beta1.Pip
 		apiTask.Pods = apiPods
 	}
 
-	// Convert status metadata using the reverse of toModelArtifact pattern
+	// Convert status metadata to new StatusMetadata struct
 	if modelTask.StatusMetadata != nil {
-		apiSM, err := model.JSONDataToStructValueMap(modelTask.StatusMetadata)
+		statusMeta, err := model.JSONDataToProtoMessage(
+			modelTask.StatusMetadata,
+			func() *apiv2beta1.PipelineTaskDetail_StatusMetadata {
+				return &apiv2beta1.PipelineTaskDetail_StatusMetadata{}
+			})
 		if err != nil {
 			return nil, err
 		}
-		apiTask.StatusMetadata = apiSM
+		apiTask.StatusMetadata = statusMeta
 	}
 
 	// Convert state history from JSONData back to RuntimeStatus slice using structured approach
@@ -2538,14 +2542,19 @@ func toApiTask(modelTask *model.Task, childTasks []*model.Task) (*apiv2beta1.Pip
 				}
 				apiArt = apiArtConv
 			}
-			out = append(out, &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-				ParameterName: h.ParameterName,
-				Value:         apiArt,
+			ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+				Artifacts: []*apiv2beta1.Artifact{apiArt},
+			}
+			if h.Producer == nil {
+				return nil, util.NewInternalServerError(nil, "Producer is nil")
+			}
+			ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
 				Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
 					TaskName: h.Producer.TaskName,
 					Key:      h.Producer.Key,
 				},
-			})
+			}
+			out = append(out, ioArtifact)
 		}
 		return out, nil
 	}
@@ -2579,17 +2588,6 @@ func toApiTask(modelTask *model.Task, childTasks []*model.Task) (*apiv2beta1.Pip
 		apiChildTask := &apiv2beta1.PipelineTaskDetail_ChildTask{
 			TaskId: childTask.UUID,
 			Name:   childTask.Name,
-		}
-		if len(childTask.Pods) > 0 {
-			apiPods, err := model.JSONSliceToProtoSlice(
-				childTask.Pods,
-				func() *apiv2beta1.PipelineTaskDetail_TaskPod {
-					return &apiv2beta1.PipelineTaskDetail_TaskPod{}
-				})
-			if err != nil {
-				return nil, err
-			}
-			apiChildTask.Pods = apiPods
 		}
 		apiChildTasks = append(apiChildTasks, apiChildTask)
 	}
