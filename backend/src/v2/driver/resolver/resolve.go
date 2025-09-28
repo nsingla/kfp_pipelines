@@ -36,7 +36,7 @@ func ResolveInputs(
 			}
 		}
 
-		v, err := resolveInputParameterV3(ctx, opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
+		v, err := resolveInputParameter(ctx, opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
 		if err != nil {
 			if !errors.Is(err, ErrResolvedParameterNull) {
 				return nil, err
@@ -55,14 +55,14 @@ func ResolveInputs(
 		inputs.ParameterValues[name] = v
 	}
 
-	//Handle artifacts.
-	//for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-	//	v, err := resolveInputArtifactV3(ctx, opts, name, artifactSpec, inputArtifacts, task)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	inputs.Artifacts[name] = v
-	//}
+	// Handle artifacts.
+	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
+		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec)
+		if err != nil {
+			return nil, err
+		}
+		inputs.Artifacts[name] = v
+	}
 
 	return inputs, nil
 }

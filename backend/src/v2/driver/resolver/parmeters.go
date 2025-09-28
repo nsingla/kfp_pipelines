@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func resolveInputParameterV3(
+func resolveInputParameter(
 	ctx context.Context,
 	opts common.Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
