@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -111,7 +112,7 @@ func getItems(value *structpb.Value) (items []*structpb.Value, err error) {
 }
 
 // validateRootDAG contains validation for root DAG driver options, without MLMD dependencies.
-func validateRootDAG(opts Options) (err error) {
+func validateRootDAG(opts common.Options) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("invalid root DAG driver args: %w", err)
@@ -148,7 +149,7 @@ func validateRootDAG(opts Options) (err error) {
 }
 
 // validateDAG validates non-root DAG options without MLMD.
-func validateDAG(opts Options) (err error) {
+func validateDAG(opts common.Options) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("invalid DAG driver args: %w", err)
@@ -160,7 +161,7 @@ func validateDAG(opts Options) (err error) {
 	return validateNonRoot(opts)
 }
 
-func validateNonRoot(opts Options) error {
+func validateNonRoot(opts common.Options) error {
 	if opts.PipelineName == "" {
 		return fmt.Errorf("pipeline name is required")
 	}
@@ -254,9 +255,9 @@ func handleTaskParametersCreation(
 func handleTaskArtifactsCreation(
 	ctx context.Context,
 	executorInput *pipelinespec.ExecutorInput,
-	opts Options,
+	opts common.Options,
 	task *apiV2beta1.PipelineTaskDetail,
-	driverAPI DriverAPI,
+	driverAPI common.DriverAPI,
 ) error {
 	var artifactTasks []*apiV2beta1.ArtifactTask
 	for parameterName, artifactList := range executorInput.Inputs.Artifacts {

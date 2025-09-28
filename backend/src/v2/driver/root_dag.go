@@ -7,14 +7,15 @@ import (
 
 	"github.com/golang/glog"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 )
 
 // RootDAG handles initial root dag task creation
 // and runtime parameter resolution.
-func RootDAG(ctx context.Context, opts Options, api DriverAPI) (execution *Execution, err error) {
+func RootDAG(ctx context.Context, opts common.Options, api common.DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.RootDAG(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.RootDAG(%s) failed: %w", opts.Info(), err)
 		}
 	}()
 

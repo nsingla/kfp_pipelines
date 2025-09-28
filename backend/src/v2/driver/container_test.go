@@ -6,6 +6,7 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func setupOptions(
 	taskSpec *pipelinespec.PipelineTaskSpec,
 	pipelineSpec *pipelinespec.PipelineSpec,
 	KubernetesExecutorConfig *kubernetesplatform.KubernetesExecutorConfig,
-) Options {
+) common.Options {
 	componentSpec := pipelineSpec.Components[taskSpec.ComponentRef.Name]
 
 	ds := pipelineSpec.GetDeploymentSpec()
@@ -41,7 +42,7 @@ func setupOptions(
 	require.NoError(t, err)
 	assert.NotNil(t, containerExecutorSpec)
 
-	return Options{
+	return common.Options{
 		PipelineName:             testPipelineName,
 		Run:                      run,
 		Component:                componentSpec,

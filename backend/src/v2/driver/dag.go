@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -16,10 +17,10 @@ import (
 // DAG mirrors DAG but uses KFP RunService/ArtifactService instead of MLMD.
 // This initial version focuses on wiring and inputs; parent/iteration linkage
 // and full upstream resolution will be added incrementally.
-func DAG(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Execution, err error) {
+func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.DAG(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.DAG(%s) failed: %w", opts.Info(), err)
 		}
 	}()
 

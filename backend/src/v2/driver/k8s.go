@@ -26,6 +26,7 @@ import (
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"google.golang.org/protobuf/types/known/structpb"
 	k8score "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ var dummyImages = map[string]string{
 // kubernetesPlatformOps() carries out the Kubernetes-specific operations, such as create PVC,
 // delete PVC, etc. In these operations we skip the launcher due to there being no user container.
 // It also prepublishes and publishes the execution, which are usually done in the launcher.
-func kubernetesPlatformOps(ctx context.Context, driverAPI DriverAPI, execution *Execution, taskToCreate *apiV2beta1.PipelineTaskDetail, opts *Options) (err error) {
+func kubernetesPlatformOps(ctx context.Context, driverAPI common.DriverAPI, execution *Execution, taskToCreate *apiV2beta1.PipelineTaskDetail, opts *common.Options) (err error) {
 	k8sClient, err := createK8sClient()
 	if err != nil {
 		return fmt.Errorf("cannot generate k8s clientset: %w", err)
@@ -83,9 +84,9 @@ func GetWorkspacePVCName(runName string) string {
 func extendPodSpecPatch(
 	ctx context.Context,
 	podSpec *k8score.PodSpec,
-	opts Options,
+	opts common.Options,
 	parentTask *apiV2beta1.PipelineTaskDetail,
-	apiDriver DriverAPI,
+	apiDriver common.DriverAPI,
 	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 	taskConfig *TaskConfig,
 ) error {
@@ -635,8 +636,8 @@ func createPVCTask(
 	ctx context.Context,
 	k8sClient kubernetes.Interface,
 	execution Execution,
-	opts *Options,
-	driverAPI DriverAPI,
+	opts *common.Options,
+	driverAPI common.DriverAPI,
 	taskToCreate *apiV2beta1.PipelineTaskDetail,
 ) (err error) {
 	// Ensure that we update the final task state after creation, or if we fail the procedure
@@ -787,8 +788,8 @@ func deletePVCTask(
 	ctx context.Context,
 	k8sClient kubernetes.Interface,
 	execution Execution,
-	opts *Options,
-	driverAPI DriverAPI,
+	opts *common.Options,
+	driverAPI common.DriverAPI,
 	taskToCreate *apiV2beta1.PipelineTaskDetail,
 ) (err error) {
 	// Ensure that we update the final task state after creation, or if we fail the procedure
@@ -871,7 +872,7 @@ func deletePVCTask(
 
 func makeVolumeMountPatch(
 	ctx context.Context,
-	opts Options,
+	opts common.Options,
 	pvcMounts []*kubernetesplatform.PvcMount,
 	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) ([]k8score.VolumeMount, []k8score.Volume, error) {

@@ -26,6 +26,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -41,7 +42,7 @@ type resolveUpstreamOutputsConfig struct {
 	ctx          context.Context
 	paramSpec    *pipelinespec.TaskInputsSpec_InputParameterSpec
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec
-	opts         Options
+	opts         common.Options
 	err          func(error) error
 }
 
@@ -186,7 +187,7 @@ func convertTaskInputArtifactsToExecutorInputArtifacts(
 func resolveInputs(
 	ctx context.Context,
 	iterationIndex *int,
-	opts Options,
+	opts common.Options,
 	expr *expression.Expr,
 ) (inputs *pipelinespec.ExecutorInput_Inputs, err error) {
 	defer func() {
@@ -472,7 +473,7 @@ func getTaskNameWithTaskID(taskName, taskID string) string {
 // default). The caller can decide if this is allowed in that context.
 func resolveInputParameter(
 	ctx context.Context,
-	opts Options,
+	opts common.Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) (*structpb.Value, error) {
@@ -592,7 +593,7 @@ func resolveInputParameter(
 // string.
 func resolveInputParameterStr(
 	ctx context.Context,
-	opts Options,
+	opts common.Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 ) (*structpb.Value, error) {
@@ -616,7 +617,7 @@ func resolveInputParameterStr(
 // using a given input context via inputArtifacts.
 func resolveInputArtifact(
 	ctx context.Context,
-	opts Options,
+	opts common.Options,
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 	inputArtifacts map[string]*pipelinespec.ArtifactList,
@@ -933,7 +934,7 @@ func resolvePodSpecInputRuntimeParameter(parameterValue string, executorInput *p
 //   - res: The k8s resource to unmarshal the json to
 func resolveK8sJsonParameter[k8sResource any](
 	ctx context.Context,
-	opts Options,
+	opts common.Options,
 	pipelineInputParamSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
 	res *k8sResource,

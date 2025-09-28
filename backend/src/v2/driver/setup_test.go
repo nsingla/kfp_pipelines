@@ -13,6 +13,7 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -446,7 +447,7 @@ func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, ru
 	return createdArtifactTask
 }
 
-func CreateTestOptions(t *testing.T, driverAPI DriverAPI, run *apiv2beta1.Run) *Options {
+func CreateTestOptions(t *testing.T, driverAPI common.DriverAPI, run *apiv2beta1.Run) *common.Options {
 	t.Helper()
 
 	// Create a basic component spec
@@ -469,7 +470,7 @@ func CreateTestOptions(t *testing.T, driverAPI DriverAPI, run *apiv2beta1.Run) *
 		Status:      apiv2beta1.PipelineTaskDetail_RUNNING,
 	}
 
-	return &Options{
+	return &common.Options{
 		PipelineName:   "test-pipeline",
 		Run:            run,
 		Component:      component,
@@ -504,7 +505,7 @@ func CreateTestWorkflow(name, namespace string) *util.Workflow {
 }
 
 // AssertTaskStatus is a helper to check task status
-func AssertTaskStatus(t *testing.T, driverAPI DriverAPI, taskID string, expectedStatus apiv2beta1.PipelineTaskDetail_TaskState) {
+func AssertTaskStatus(t *testing.T, driverAPI common.DriverAPI, taskID string, expectedStatus apiv2beta1.PipelineTaskDetail_TaskState) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -514,7 +515,7 @@ func AssertTaskStatus(t *testing.T, driverAPI DriverAPI, taskID string, expected
 }
 
 // AssertTaskType is a helper to check task type
-func AssertTaskType(t *testing.T, driverAPI DriverAPI, taskID string, expectedType apiv2beta1.PipelineTaskDetail_TaskType) {
+func AssertTaskType(t *testing.T, driverAPI common.DriverAPI, taskID string, expectedType apiv2beta1.PipelineTaskDetail_TaskType) {
 	t.Helper()
 
 	ctx := context.Background()

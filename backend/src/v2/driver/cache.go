@@ -23,6 +23,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/cacheutils"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 )
 
@@ -52,7 +53,7 @@ func collectOutputArtifactMetadataFromCache(ctx context.Context, executorInput *
 // getFingerPrint generates a fingerprint for caching. The PVC names are included in the fingerprint since it's assumed
 // PVCs have side effects (e.g. files written for tasks later on in the run) on the execution. If the PVC names are
 // different, the execution shouldn't be reused for the cache.
-func getFingerPrint(opts Options, executorInput *pipelinespec.ExecutorInput, pvcNames []string) (string, error) {
+func getFingerPrint(opts common.Options, executorInput *pipelinespec.ExecutorInput, pvcNames []string) (string, error) {
 	outputParametersTypeMap := make(map[string]string)
 	for outputParamName, outputParamSpec := range opts.Component.GetOutputDefinitions().GetParameters() {
 		outputParametersTypeMap[outputParamName] = outputParamSpec.GetParameterType().String()
@@ -91,8 +92,8 @@ func getFingerPrint(opts Options, executorInput *pipelinespec.ExecutorInput, pvc
 func getFingerPrintsAndID(
 	ctx context.Context,
 	execution *Execution,
-	driverAPI DriverAPI,
-	opts *Options,
+	driverAPI common.DriverAPI,
+	opts *common.Options,
 	pvcNames []string) (fingerprint string, task *apiv2beta1.PipelineTaskDetail, err error) {
 
 	if opts.CacheDisabled || !execution.WillTrigger() || opts.Task.GetCachingOptions().GetEnableCache() == false {

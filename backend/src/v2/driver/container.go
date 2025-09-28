@@ -11,6 +11,8 @@ import (
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/config"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -19,10 +21,10 @@ import (
 // Container mirrors Container but uses KFP RunService/ArtifactService instead of MLMD.
 // Initial version wires inputs and creates a runtime task; output recording via
 // ArtifactService will be added in subsequent steps.
-func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (execution *Execution, err error) {
+func Container(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (execution *Execution, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("driver.Container(%s) failed: %w", opts.info(), err)
+			err = fmt.Errorf("driver.Container(%s) failed: %w", opts.Info(), err)
 		}
 	}()
 	b, err := json.Marshal(opts)
@@ -61,7 +63,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	// ######################################
 	// ### RESOLVE INPUTS ###
 	// ######################################
-	inputs, err := resolveInputsV3(ctx, iterationIndex, opts, expr)
+	inputs, err := resolver.ResolveInputs(ctx, iterationIndex, opts, expr)
 	if err != nil {
 		return nil, err
 	}
