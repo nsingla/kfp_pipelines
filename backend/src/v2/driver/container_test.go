@@ -154,7 +154,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, execution)
 	require.Nil(t, execution.ExecutorInput.Outputs)
-	taskResp, err = testSetup.DriverAPI.ListTasks(
+	analyzeTaskResp, err := testSetup.DriverAPI.ListTasks(
 		context.Background(),
 		&apiv2beta1.ListTasksRequest{
 			ParentFilter: &apiv2beta1.ListTasksRequest_ParentId{
@@ -163,9 +163,15 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	require.NotNil(t, taskResp)
-	require.Equal(t, 2, len(taskResp.Tasks))
+	require.NotNil(t, analyzeTaskResp)
+	require.Equal(t, 2, len(analyzeTaskResp.Tasks))
+	require.Equal(t, execution.TaskID, analyzeTaskResp.Tasks[1].TaskId)
 
+	require.Equal(t, 1, len(execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
+	artifact := execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
+	require.NotNil(t, artifact.Metadata)
+	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])
+	require.Equal(t, artifact.Metadata.GetFields()["display_name"].GetStringValue(), "output_text")
 }
 
 // TODO(HumairAK):
