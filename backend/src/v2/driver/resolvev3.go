@@ -57,6 +57,15 @@ func resolveInputsV3(
 		inputs.ParameterValues[name] = v
 	}
 
+	// Handle artifacts.
+	//for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
+	//	v, err := resolveInputArtifactV3(ctx, opts, name, artifactSpec, inputArtifacts, task)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	inputs.Artifacts[name] = v
+	//}
+
 	return inputs, nil
 }
 
@@ -72,6 +81,7 @@ func resolveInputParameterV3(
 		glog.V(4).Infof("resolving component input parameter %s", paramSpec.GetComponentInputParameter())
 		return resolveParameterComponentInputParameter(paramSpec, inputParams)
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
+		// TODO(HumairAK)
 		glog.V(4).Infof("resolving task output parameter %s", paramSpec.GetTaskOutputParameter().String())
 		return nil, paramError(paramSpec, fmt.Errorf("task output parameter not supported yet"))
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_RuntimeValue:
@@ -109,6 +119,7 @@ func resolveInputParameterV3(
 			return nil, paramError(paramSpec, fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_:
+		// TODO(HumairAK)
 		glog.V(4).Infof("resolving Task Final Statu %s", paramSpec.GetTaskFinalStatus().String())
 		return nil, paramError(paramSpec, fmt.Errorf("task output parameter not supported yet"))
 	default:
@@ -141,6 +152,38 @@ func resolveParameterComponentInputParameter(
 		}
 	}
 	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+func resolveInputArtifactV3(
+	ctx context.Context,
+	opts Options,
+	name string,
+	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
+	inputArtifacts map[string]*pipelinespec.ArtifactList,
+	task *pipelinespec.PipelineTaskSpec,
+) (*pipelinespec.ArtifactList, error) {
+	artifactError := func(err error) error {
+		return fmt.Errorf("failed to resolve input artifact %s with spec %s: %w", name, artifactSpec, err)
+	}
+	switch t := artifactSpec.Kind.(type) {
+	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_ComponentInputArtifact:
+		// TODO(HumairAK)
+		return nil, fmt.Errorf("not implemented yet")
+	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_TaskOutputArtifact:
+		cfg := resolveUpstreamOutputsConfig{
+			ctx:          ctx,
+			artifactSpec: artifactSpec,
+			opts:         opts,
+			err:          artifactError,
+		}
+		artifacts, err := resolveUpstreamArtifacts(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return artifacts, nil
+	default:
+		return nil, artifactError(fmt.Errorf("artifact spec of type %T not implemented yet", t))
+	}
 }
 
 func handleParameterExpressionSelector(
