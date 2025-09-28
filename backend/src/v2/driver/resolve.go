@@ -536,7 +536,10 @@ func resolveInputParameter(
 				v = structpb.NewStringValue(opts.TaskName)
 			// TODO(HumairAK): Shouldn't this be the name of the Runtime Task UUID ?
 			case "{{$.pipeline_task_uuid}}":
-				v = structpb.NewStringValue(fmt.Sprintf("%s", opts.ParentTaskID))
+				if opts.ParentTask == nil {
+					return nil, fmt.Errorf("parent task should not be nil")
+				}
+				v = structpb.NewStringValue(fmt.Sprintf("%s", opts.ParentTask.GetTaskId()))
 			default:
 				v = val
 			}

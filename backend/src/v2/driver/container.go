@@ -35,9 +35,11 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	if driverAPI == nil {
 		return nil, fmt.Errorf("driverAPI client is nil")
 	}
-
 	if opts.TaskName == "" {
 		return nil, fmt.Errorf("task name flag is required for Container")
+	}
+	if opts.ParentTask == nil {
+		return nil, fmt.Errorf("parent task is required for Runtime Task")
 	}
 
 	var iterationIndex *int
@@ -51,7 +53,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		return nil, err
 	}
 
-	parentTask, err := driverAPI.GetTask(ctx, &apiV2beta1.GetTaskRequest{TaskId: opts.ParentTaskID})
+	parentTask, err := driverAPI.GetTask(ctx, &apiV2beta1.GetTaskRequest{TaskId: opts.ParentTask.GetTaskId()})
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +135,8 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		},
 	}
 
-	if opts.ParentTaskID != "" {
-		pid := opts.ParentTaskID
-		taskToCreate.ParentTaskId = &pid
+	if opts.ParentTask != nil {
+		taskToCreate.ParentTaskId = opts.ParentTask.ParentTaskId
 	}
 	if iterationIndex != nil {
 		taskToCreate.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: util.Int64Pointer(int64(*iterationIndex))}

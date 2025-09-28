@@ -5,11 +5,62 @@ import (
 	"testing"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
+
+func setupOptions(
+	t *testing.T,
+	testSetup *TestSetup,
+	run *apiv2beta1.Run,
+	parentTask *apiv2beta1.PipelineTaskDetail,
+	taskSpec *pipelinespec.PipelineTaskSpec,
+	pipelineSpec *pipelinespec.PipelineSpec,
+	KubernetesExecutorConfig *kubernetesplatform.KubernetesExecutorConfig,
+) Options {
+	componentSpec := pipelineSpec.Components[taskSpec.ComponentRef.Name]
+
+	ds := pipelineSpec.GetDeploymentSpec()
+	platformDeploymentSpec := &pipelinespec.PlatformDeploymentConfig{}
+
+	b, err := protojson.Marshal(ds)
+	require.NoError(t, err)
+	err = protojson.Unmarshal(b, platformDeploymentSpec)
+	require.NoError(t, err)
+	assert.NotNil(t, platformDeploymentSpec)
+
+	cs := platformDeploymentSpec.Executors[componentSpec.GetExecutorLabel()]
+	containerExecutorSpec := &pipelinespec.PipelineDeploymentConfig_ExecutorSpec{}
+	b, err = protojson.Marshal(cs)
+	require.NoError(t, err)
+	err = protojson.Unmarshal(b, containerExecutorSpec)
+	require.NoError(t, err)
+	assert.NotNil(t, containerExecutorSpec)
+
+	return Options{
+		PipelineName:             testPipelineName,
+		Run:                      run,
+		Component:                componentSpec,
+		ParentTask:               parentTask,
+		DriverAPI:                testSetup.DriverAPI,
+		IterationIndex:           -1,
+		RuntimeConfig:            nil,
+		Namespace:                testNamespace,
+		Task:                     taskSpec,
+		Container:                containerExecutorSpec.GetContainer(),
+		KubernetesExecutorConfig: KubernetesExecutorConfig,
+		PipelineLogLevel:         "1",
+		PublishLogs:              "false",
+		CacheDisabled:            false,
+		DriverType:               "CONTAINER",
+		TaskName:                 taskSpec.TaskInfo.GetName(),
+		PodName:                  "system-container-impl",
+		PodUID:                   "some-uid",
+	}
+}
 
 func TestContainerComponentInputs(t *testing.T) {
 	// Setup test environment
@@ -19,61 +70,23 @@ func TestContainerComponentInputs(t *testing.T) {
 	run := testSetup.CreateTestRun(t, "test-pipeline")
 	assert.NotNil(t, run)
 
-	opts := Options{
-		PipelineName: "test-pipeline",
-		Run:          run,
-		Component: &pipelinespec.ComponentSpec{
-			Implementation: &pipelinespec.ComponentSpec_Dag{
-				Dag: &pipelinespec.DagSpec{
-					Tasks: map[string]*pipelinespec.PipelineTaskSpec{},
-				},
-			},
-		},
-		ParentTask:     nil,
-		ParentTaskID:   "",
-		DriverAPI:      testSetup.DriverAPI,
-		IterationIndex: -1,
-		RuntimeConfig: &pipelinespec.PipelineJob_RuntimeConfig{
-			ParameterValues: map[string]*structpb.Value{
-				"string_input": structpb.NewStringValue("test-input1"),
-				"number_input": structpb.NewNumberValue(42.5),
-				"bool_input":   structpb.NewBoolValue(true),
-				"null_input":   structpb.NewNullValue(),
-				"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
-					structpb.NewStringValue("value1"),
-					structpb.NewNumberValue(42),
-					structpb.NewBoolValue(true),
-				}}),
-				"map_input": structpb.NewStructValue(&structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"key1": structpb.NewStringValue("value1"),
-						"key2": structpb.NewNumberValue(42),
-						"key3": structpb.NewListValue(&structpb.ListValue{
-							Values: []*structpb.Value{
-								structpb.NewStringValue("nested1"),
-								structpb.NewStringValue("nested2"),
-							},
-						}),
-					},
-				}),
-			},
-		},
-		Namespace:                "test-namespace",
-		Task:                     &pipelinespec.PipelineTaskSpec{},
-		Container:                nil,
-		KubernetesExecutorConfig: &kubernetesplatform.KubernetesExecutorConfig{},
-		PipelineLogLevel:         "1",
-		PublishLogs:              "false",
-		CacheDisabled:            false,
-		DriverType:               "CONTAINER",
-		TaskName:                 "",
-		PodName:                  "system-dag-driver",
-		PodUID:                   "some-uid",
-	}
+	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/taskOutput_level_1_test.py.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, pipelineSpec)
 
-	// Execute RootDAG
+	rootDagExecution, err := setupBasicRootDag(testSetup, run, pipelineSpec, basicRuntimeConfig())
+	require.NoError(t, err)
+	require.NotNil(t, rootDagExecution)
+
+	parentTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
+		TaskId: rootDagExecution.TaskID,
+	})
+	require.NoError(t, err)
+
+	taskSpec := pipelineSpec.Root.GetDag().Tasks["process-dataset"]
+	opts := setupOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
+
 	execution, err := Container(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, execution)
-
 }

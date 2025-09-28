@@ -42,9 +42,8 @@ type Options struct {
 	// required, Component spec
 	Component *pipelinespec.ComponentSpec
 	// required
-	ParentTask   *apiv2beta1.PipelineTaskDetail
-	ParentTaskID string
-	DriverAPI    DriverAPI
+	ParentTask *apiv2beta1.PipelineTaskDetail
+	DriverAPI  DriverAPI
 
 	// optional, iteration index. -1 means not an iteration.
 	IterationIndex int
@@ -98,8 +97,8 @@ func (o Options) info() string {
 	if o.Task.GetComponentRef().GetName() != "" {
 		msg = msg + fmt.Sprintf(", component=%q", o.Task.GetComponentRef().GetName())
 	}
-	if o.ParentTaskID != "" {
-		msg = msg + fmt.Sprintf(", dagExecutionID=%v", o.ParentTaskID)
+	if o.ParentTask != nil {
+		msg = msg + fmt.Sprintf(", dagExecutionID=%v", o.ParentTask.GetParentTaskId())
 	}
 	if o.IterationIndex >= 0 {
 		msg = msg + fmt.Sprintf(", iterationIndex=%v", o.IterationIndex)

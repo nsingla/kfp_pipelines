@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -13,10 +14,66 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
+
+const testPipelineName = "test-pipeline"
+const testNamespace = "test-namespace"
+
+// LoadPipelineSpecFromYAML loads a pipeline spec from a YAML file path
+func LoadPipelineSpecFromYAML(path string) (*pipelinespec.PipelineSpec, error) {
+	yamlFile, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read YAML file: %w", err)
+	}
+
+	// Convert YAML -> JSON, then use protojson to honor proto field names
+	jsonBytes, err := yaml.YAMLToJSON(yamlFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert YAML to JSON: %w", err)
+	}
+
+	var spec pipelinespec.PipelineSpec
+	um := protojson.UnmarshalOptions{
+		DiscardUnknown: true, // tolerate extra fields
+	}
+	if err := um.Unmarshal(jsonBytes, &spec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal PipelineSpec (protojson): %w", err)
+	}
+	return &spec, nil
+}
+
+func basicRuntimeConfig() *pipelinespec.PipelineJob_RuntimeConfig {
+	return &pipelinespec.PipelineJob_RuntimeConfig{
+		ParameterValues: map[string]*structpb.Value{
+			"string_input": structpb.NewStringValue("test-input1"),
+			"number_input": structpb.NewNumberValue(42.5),
+			"bool_input":   structpb.NewBoolValue(true),
+			"null_input":   structpb.NewNullValue(),
+			"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewStringValue("value1"),
+				structpb.NewNumberValue(42),
+				structpb.NewBoolValue(true),
+			}}),
+			"map_input": structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"key1": structpb.NewStringValue("value1"),
+					"key2": structpb.NewNumberValue(42),
+					"key3": structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{
+							structpb.NewStringValue("nested1"),
+							structpb.NewStringValue("nested2"),
+						},
+					}),
+				},
+			}),
+		},
+	}
+}
 
 // MockDriverAPI provides a mock implementation of DriverAPI for testing
 type MockDriverAPI struct {
@@ -415,7 +472,6 @@ func CreateTestOptions(t *testing.T, driverAPI DriverAPI, run *apiv2beta1.Run) *
 		Run:            run,
 		Component:      component,
 		ParentTask:     parentTask,
-		ParentTaskID:   parentTask.TaskId,
 		DriverAPI:      driverAPI,
 		IterationIndex: -1, // Not an iteration
 	}

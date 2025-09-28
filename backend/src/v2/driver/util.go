@@ -135,8 +135,8 @@ func validateRootDAG(opts Options) (err error) {
 	if opts.Task.GetTaskInfo().GetName() != "" {
 		return fmt.Errorf("task spec is unnecessary")
 	}
-	if opts.ParentTaskID != "" {
-		return fmt.Errorf("DAG execution ID is unnecessary")
+	if opts.ParentTask != nil && opts.ParentTask.GetTaskId() == "" {
+		return fmt.Errorf("Parent task is required")
 	}
 	if opts.Container != nil {
 		return fmt.Errorf("container spec is unnecessary")
@@ -176,8 +176,8 @@ func validateNonRoot(opts Options) error {
 	if opts.RuntimeConfig != nil {
 		return fmt.Errorf("runtime config is unnecessary")
 	}
-	if opts.ParentTaskID != "" {
-		return fmt.Errorf("Parent task ID is required")
+	if opts.ParentTask != nil && opts.ParentTask.GetTaskId() == "" {
+		return fmt.Errorf("Parent task is required")
 	}
 	return nil
 }

@@ -193,6 +193,11 @@ func drive() (err error) {
 		return err
 	}
 
+	parentTask, err := driverAPI.GetTask(ctx, &go_client.GetTaskRequest{TaskId: *parentTaskID})
+	if err != nil {
+		return err
+	}
+
 	options := driver.Options{
 		PipelineName:     *pipelineName,
 		Run:              run,
@@ -207,7 +212,7 @@ func drive() (err error) {
 		CacheDisabled:    *cacheDisabledFlag,
 		DriverType:       *driverType,
 		TaskName:         *taskName,
-		ParentTaskID:     *parentTaskID,
+		ParentTask:       parentTask,
 		PodName:          podName,
 		PodUID:           podUID,
 		DriverAPI:        driverAPI,

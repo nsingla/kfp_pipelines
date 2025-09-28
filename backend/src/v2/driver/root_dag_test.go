@@ -12,55 +12,22 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestRootDagComponentInputs(t *testing.T) {
-	// Setup test environment
-	testSetup := NewTestSetup(t)
-
-	// Create a test run
-	run := testSetup.CreateTestRun(t, "test-pipeline")
-	assert.NotNil(t, run)
-
+func setupBasicRootDag(
+	testSetup *TestSetup,
+	run *apiv2beta1.Run,
+	pipelineSpec *pipelinespec.PipelineSpec,
+	runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig,
+) (*Execution, error) {
 	opts := Options{
-		PipelineName: "test-pipeline",
-		Run:          run,
-		Component: &pipelinespec.ComponentSpec{
-			Implementation: &pipelinespec.ComponentSpec_Dag{
-				Dag: &pipelinespec.DagSpec{
-					Tasks: map[string]*pipelinespec.PipelineTaskSpec{},
-				},
-			},
-		},
-		ParentTask:     nil,
-		ParentTaskID:   "",
-		DriverAPI:      testSetup.DriverAPI,
-		IterationIndex: -1,
-		RuntimeConfig: &pipelinespec.PipelineJob_RuntimeConfig{
-			ParameterValues: map[string]*structpb.Value{
-				"string_input": structpb.NewStringValue("test-input1"),
-				"number_input": structpb.NewNumberValue(42.5),
-				"bool_input":   structpb.NewBoolValue(true),
-				"null_input":   structpb.NewNullValue(),
-				"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
-					structpb.NewStringValue("value1"),
-					structpb.NewNumberValue(42),
-					structpb.NewBoolValue(true),
-				}}),
-				"map_input": structpb.NewStructValue(&structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"key1": structpb.NewStringValue("value1"),
-						"key2": structpb.NewNumberValue(42),
-						"key3": structpb.NewListValue(&structpb.ListValue{
-							Values: []*structpb.Value{
-								structpb.NewStringValue("nested1"),
-								structpb.NewStringValue("nested2"),
-							},
-						}),
-					},
-				}),
-			},
-		},
-		Namespace:                "test-namespace",
-		Task:                     &pipelinespec.PipelineTaskSpec{},
+		PipelineName:             testPipelineName,
+		Run:                      run,
+		Component:                pipelineSpec.Root,
+		ParentTask:               nil,
+		DriverAPI:                testSetup.DriverAPI,
+		IterationIndex:           -1,
+		RuntimeConfig:            runtimeConfig,
+		Namespace:                testNamespace,
+		Task:                     nil,
 		Container:                nil,
 		KubernetesExecutorConfig: &kubernetesplatform.KubernetesExecutorConfig{},
 		PipelineLogLevel:         "1",
@@ -74,6 +41,23 @@ func TestRootDagComponentInputs(t *testing.T) {
 
 	// Execute RootDAG
 	execution, err := RootDAG(context.Background(), opts, testSetup.DriverAPI)
+
+	return execution, err
+}
+
+func TestRootDagComponentInputs(t *testing.T) {
+	// Setup test environment
+	testSetup := NewTestSetup(t)
+
+	// Create a test run
+	run := testSetup.CreateTestRun(t, "test-pipeline")
+	assert.NotNil(t, run)
+
+	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/taskOutput_level_1_test.py.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, pipelineSpec)
+
+	execution, err := setupBasicRootDag(testSetup, run, pipelineSpec, basicRuntimeConfig())
 	require.NoError(t, err)
 	require.NotNil(t, execution)
 
