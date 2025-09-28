@@ -46,7 +46,7 @@ func RootDAG(ctx context.Context, opts common.Options, api common.DriverAPI) (ex
 		inputs = &apiV2beta1.PipelineTaskDetail_InputOutputs{Parameters: params}
 	}
 	pd := &apiV2beta1.PipelineTaskDetail{
-		Name:           opts.PipelineName,
+		Name:           "ROOT",
 		DisplayName:    opts.RunDisplayName,
 		RunId:          opts.Run.GetRunId(),
 		Type:           apiV2beta1.PipelineTaskDetail_ROOT,

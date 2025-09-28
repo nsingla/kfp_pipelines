@@ -61,6 +61,15 @@ func parseIONameOrPipelineChannel(name string, producer *apiV2beta1.PipelineTask
 	return result, nil
 }
 
+func fetchTaskInTaskList(taskID string, tasks []*apiV2beta1.PipelineTaskDetail) (*apiV2beta1.PipelineTaskDetail, error) {
+	for _, t := range tasks {
+		if t.GetTaskId() == taskID {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find task %s", taskID)
+}
+
 func handleParameterExpressionSelector(
 	task *pipelinespec.PipelineTaskSpec,
 	inputs *pipelinespec.ExecutorInput_Inputs,

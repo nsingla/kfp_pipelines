@@ -111,70 +111,7 @@ func (m *MockDriverAPI) GetRun(ctx context.Context, req *apiv2beta1.GetRunReques
 		for _, task := range m.tasks {
 			if task.RunId == req.RunId {
 				// Create a copy of the task to populate with artifacts
-				populatedTask := &apiv2beta1.PipelineTaskDetail{
-					TaskId:         task.TaskId,
-					Name:           task.Name,
-					DisplayName:    task.DisplayName,
-					RunId:          task.RunId,
-					Type:           task.Type,
-					Status:         task.Status,
-					ParentTaskId:   task.ParentTaskId,
-					Pods:           task.Pods,
-					StatusMetadata: task.StatusMetadata,
-					Inputs:         &apiv2beta1.PipelineTaskDetail_InputOutputs{},
-					Outputs:        &apiv2beta1.PipelineTaskDetail_InputOutputs{},
-				}
-
-				// Copy existing parameters if they exist
-				if task.Inputs != nil {
-					populatedTask.Inputs.Parameters = task.Inputs.Parameters
-				}
-				if task.Outputs != nil {
-					populatedTask.Outputs.Parameters = task.Outputs.Parameters
-				}
-
-				// Find artifacts associated with this task
-				var inputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
-				var outputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
-
-				for _, artifactTask := range m.artifactTasks {
-					if artifactTask.TaskId == task.TaskId {
-						// Get the associated artifact
-						if artifact, exists := m.artifacts[artifactTask.ArtifactId]; exists {
-							ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-								Artifacts: []*apiv2beta1.Artifact{artifact},
-							}
-
-							// Set the source based on producer information
-							if artifactTask.ProducerTaskName != "" && artifactTask.ProducerKey != "" {
-								ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
-									Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-										TaskName: artifactTask.ProducerTaskName,
-										Key:      artifactTask.ProducerKey,
-									},
-								}
-							} else {
-								// Use parameter name if no producer specified
-								ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
-									ParameterName: artifact.Name,
-								}
-							}
-
-							// Determine if this is an input or output artifact based on ArtifactTaskType
-							switch artifactTask.Type {
-							case apiv2beta1.ArtifactTaskType_INPUT:
-								inputArtifacts = append(inputArtifacts, ioArtifact)
-							case apiv2beta1.ArtifactTaskType_OUTPUT:
-								outputArtifacts = append(outputArtifacts, ioArtifact)
-							}
-						}
-					}
-				}
-
-				// Set the artifacts on the task
-				populatedTask.Inputs.Artifacts = inputArtifacts
-				populatedTask.Outputs.Artifacts = outputArtifacts
-
+				populatedTask := m.hydrateTask(task)
 				populatedRun.Tasks = append(populatedRun.Tasks, populatedTask)
 			}
 		}
@@ -182,6 +119,75 @@ func (m *MockDriverAPI) GetRun(ctx context.Context, req *apiv2beta1.GetRunReques
 		return populatedRun, nil
 	}
 	return nil, fmt.Errorf("run not found: %s", req.RunId)
+}
+
+func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2beta1.PipelineTaskDetail {
+	// Create a copy of the task to populate with artifacts
+	populatedTask := &apiv2beta1.PipelineTaskDetail{
+		TaskId:         task.TaskId,
+		Name:           task.Name,
+		DisplayName:    task.DisplayName,
+		RunId:          task.RunId,
+		Type:           task.Type,
+		Status:         task.Status,
+		ParentTaskId:   task.ParentTaskId,
+		Pods:           task.Pods,
+		StatusMetadata: task.StatusMetadata,
+		Inputs:         &apiv2beta1.PipelineTaskDetail_InputOutputs{},
+		Outputs:        &apiv2beta1.PipelineTaskDetail_InputOutputs{},
+	}
+
+	// Copy existing parameters if they exist
+	if task.Inputs != nil {
+		populatedTask.Inputs.Parameters = task.Inputs.Parameters
+	}
+	if task.Outputs != nil {
+		populatedTask.Outputs.Parameters = task.Outputs.Parameters
+	}
+
+	// Find artifacts associated with this task
+	var inputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+	var outputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+
+	for _, artifactTask := range m.artifactTasks {
+		if artifactTask.TaskId == task.TaskId {
+			// Get the associated artifact
+			if artifact, exists := m.artifacts[artifactTask.ArtifactId]; exists {
+				ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+					Artifacts: []*apiv2beta1.Artifact{artifact},
+				}
+
+				// Set the source based on producer information
+				if artifactTask.ProducerTaskName != "" && artifactTask.ProducerKey != "" {
+					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
+						Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
+							TaskName: artifactTask.ProducerTaskName,
+							Key:      artifactTask.ProducerKey,
+						},
+					}
+				} else {
+					// Use parameter name if no producer specified
+					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
+						ParameterName: artifact.Name,
+					}
+				}
+
+				// Determine if this is an input or output artifact based on ArtifactTaskType
+				switch artifactTask.Type {
+				case apiv2beta1.ArtifactTaskType_INPUT:
+					inputArtifacts = append(inputArtifacts, ioArtifact)
+				case apiv2beta1.ArtifactTaskType_OUTPUT:
+					outputArtifacts = append(outputArtifacts, ioArtifact)
+				}
+			}
+		}
+	}
+
+	// Set the artifacts on the task
+	populatedTask.Inputs.Artifacts = inputArtifacts
+	populatedTask.Outputs.Artifacts = outputArtifacts
+
+	return populatedTask
 }
 
 func (m *MockDriverAPI) CreateTask(ctx context.Context, req *apiv2beta1.CreateTaskRequest) (*apiv2beta1.PipelineTaskDetail, error) {
@@ -201,13 +207,16 @@ func (m *MockDriverAPI) UpdateTask(ctx context.Context, req *apiv2beta1.UpdateTa
 	task := req.Task
 	task.TaskId = req.TaskId
 	m.tasks[req.TaskId] = task
+	task = m.hydrateTask(task)
 	return task, nil
 }
 
 func (m *MockDriverAPI) GetTask(ctx context.Context, req *apiv2beta1.GetTaskRequest) (*apiv2beta1.PipelineTaskDetail, error) {
 	if task, exists := m.tasks[req.TaskId]; exists {
+		task = m.hydrateTask(m.tasks[req.TaskId])
 		return task, nil
 	}
+
 	return nil, fmt.Errorf("task not found: %s", req.TaskId)
 }
 
@@ -235,8 +244,13 @@ func (m *MockDriverAPI) ListTasks(ctx context.Context, req *apiv2beta1.ListTasks
 		}
 	}
 
+	var hydratedTasks []*apiv2beta1.PipelineTaskDetail
+	for _, task := range tasks {
+		hydratedTasks = append(hydratedTasks, m.hydrateTask(task))
+	}
+
 	return &apiv2beta1.ListTasksResponse{
-		Tasks:     tasks,
+		Tasks:     hydratedTasks,
 		TotalSize: int32(len(tasks)),
 	}, nil
 }

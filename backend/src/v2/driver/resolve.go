@@ -46,26 +46,6 @@ type resolveUpstreamOutputsConfig struct {
 	err          func(error) error
 }
 
-func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (string, error) {
-	if task == nil || task.Name == "" {
-		return "", fmt.Errorf("task can't be nil or name cannot be empty")
-	}
-	taskName := fmt.Sprintf("%s_%s", task.Name, task.TaskId)
-
-	if task.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
-		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
-			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
-		}
-		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
-	} else if parentTask != nil && parentTask.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
-		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
-			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
-		}
-		taskName = fmt.Sprintf("%s_idx_%d", taskName, parentTask.TypeAttributes.IterationIndex)
-	}
-	return taskName, nil
-}
-
 func getChildTasks(
 	tasks []*apiv2beta1.PipelineTaskDetail,
 	parentTask *apiv2beta1.PipelineTaskDetail,
@@ -94,11 +74,9 @@ func getSubTasks(
 	allRuntasks []*apiv2beta1.PipelineTaskDetail,
 	flattenedTasks map[string]*apiv2beta1.PipelineTaskDetail,
 ) (map[string]*apiv2beta1.PipelineTaskDetail, error) {
-
 	if flattenedTasks == nil {
 		flattenedTasks = make(map[string]*apiv2beta1.PipelineTaskDetail)
 	}
-
 	taskChildren, err := getChildTasks(allRuntasks, currentTask)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get child tasks for task %s: %w", currentTask.Name, err)
@@ -434,37 +412,6 @@ func resolveInputs(
 	}
 
 	return inputs, nil
-}
-
-func fetchInputParam(
-	paramName string,
-	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter) (*structpb.Value, error) {
-	for _, param := range inputParams {
-		generateName, err := parseIONameOrPipelineChannel(param.GetParameterName(), param.GetProducer())
-		if err != nil {
-			return nil, err
-		}
-		if paramName == generateName {
-			return param.GetValue(), nil
-		}
-	}
-	return nil, fmt.Errorf("failed to find input param %s", paramName)
-}
-
-func fetchTaskInTaskList(taskID string, tasks []*apiv2beta1.PipelineTaskDetail) (*apiv2beta1.PipelineTaskDetail, error) {
-	for _, t := range tasks {
-		if t.GetTaskId() == taskID {
-			return t, nil
-		}
-	}
-	return nil, fmt.Errorf("failed to find task %s", taskID)
-}
-
-// GetTaskNameWithTaskID appends the taskName with its parent dag id. This is
-// used to help avoid collisions when creating the taskMap for downstream input
-// resolution.
-func getTaskNameWithTaskID(taskName, taskID string) string {
-	return fmt.Sprintf("%s_%s", taskName, taskID)
 }
 
 // resolveInputParameter resolves an InputParameterSpec
@@ -1211,17 +1158,42 @@ func getParallelForTaskName(taskName string, iterationIndex int64) string {
 	return fmt.Sprintf("%s_idx_%d", taskName, iterationIndex)
 }
 
-// Helper for determining if the current producerTask in question needs to pull from an iteration dag that it may exist in.
+// GetTaskNameWithTaskID appends the taskName with its parent dag id. This is
+// used to help avoid collisions when creating the taskMap for downstream input
+// resolution.
+func getTaskNameWithTaskID(taskName, taskID string) string {
+	return fmt.Sprintf("%s_%s", taskName, taskID)
+}
+
+// InferIndexedTaskName determines if the current producerTask in question needs
+// to pull from an iteration dag that it may exist in.
 func InferIndexedTaskName(producerTaskName string, task *apiv2beta1.PipelineTaskDetail) string {
 	// Check if the Task in question is a parallelFor iteration Task. If it is, we need to
 	// update the producerTaskName so the downstream task resolves the appropriate index.
 	if task.GetType() == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
 		taskIterationIndex := task.GetTypeAttributes().GetIterationIndex()
 		producerTaskName = getParallelForTaskName(producerTaskName, taskIterationIndex)
-		glog.V(4).Infof("TaskIteration - ProducerTaskName: %v", producerTaskName)
-		glog.Infof("Attempting to retrieve outputs from a ParallelFor iteration")
 	}
 	return producerTaskName
+}
+
+func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (string, error) {
+	if task == nil || task.Name == "" {
+		return "", fmt.Errorf("task can't be nil or name cannot be empty")
+	}
+	taskName := fmt.Sprintf("%s_%s", task.Name, task.TaskId)
+	if task.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
+			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
+		}
+		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
+	} else if parentTask != nil && parentTask.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
+			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
+		}
+		taskName = fmt.Sprintf("%s_idx_%d", taskName, parentTask.TypeAttributes.IterationIndex)
+	}
+	return taskName, nil
 }
 
 // Helper for checking if collecting outputs is required for downstream tasks.
@@ -1270,4 +1242,28 @@ func pbValueToText(v *structpb.Value) (string, error) {
 		return "", wrap(fmt.Errorf("unknown type %T", t))
 	}
 	return text, nil
+}
+
+func fetchInputParam(
+	paramName string,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter) (*structpb.Value, error) {
+	for _, param := range inputParams {
+		generateName, err := parseIONameOrPipelineChannel(param.GetParameterName(), param.GetProducer())
+		if err != nil {
+			return nil, err
+		}
+		if paramName == generateName {
+			return param.GetValue(), nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+func fetchTaskInTaskList(taskID string, tasks []*apiv2beta1.PipelineTaskDetail) (*apiv2beta1.PipelineTaskDetail, error) {
+	for _, t := range tasks {
+		if t.GetTaskId() == taskID {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to find task %s", taskID)
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
@@ -98,6 +99,9 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Refresh Run
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+
 	// Run Container on the First Task
 	taskSpec := pipelineSpec.Root.GetDag().Tasks["process-inputs"]
 	opts := setupOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
@@ -127,25 +131,35 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["a_runtime_bool"].GetBoolValue(), true)
 
 	// Mock a Launcher run by updating the task with output data
-	processInputsTask.Outputs = &apiv2beta1.PipelineTaskDetail_InputOutputs{
-		Artifacts: []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-			{
-				Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
-					Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-						TaskName: "process-inputs",
-						Key:      "output_text",
-					},
-				},
-			},
+	outputArtifact := &apiv2beta1.Artifact{
+		ArtifactId: "some-artifact-id-1",
+		Name:       "output_text",
+		Type:       apiv2beta1.Artifact_Dataset,
+		Uri:        util.StringPointer("s3://some.location/output_text"),
+		Namespace:  testNamespace,
+		Metadata: map[string]*structpb.Value{
+			"display_name": structpb.NewStringValue("output_text"),
 		},
 	}
-	processInputsTask.Status = apiv2beta1.PipelineTaskDetail_SUCCEEDED
-	task, err := testSetup.DriverAPI.UpdateTask(context.Background(), &apiv2beta1.UpdateTaskRequest{
-		TaskId: processInputsTask.TaskId,
-		Task:   processInputsTask,
+
+	createArtifact, err := testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
+	require.NoError(t, err)
+	require.NotNil(t, createArtifact)
+	at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+		ArtifactTask: &apiv2beta1.ArtifactTask{
+			ArtifactId:       createArtifact.ArtifactId,
+			TaskId:           processInputsTask.TaskId,
+			RunId:            run.GetRunId(),
+			ProducerKey:      "output_text",
+			ProducerTaskName: "process-inputs",
+			Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+		},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, task)
+	require.NotNil(t, at)
+
+	// Refresh Run
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
 
 	// Run the Downstream Task that will use the output artifact
 	taskSpec = pipelineSpec.Root.GetDag().Tasks["analyze-inputs"]
@@ -171,9 +185,16 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	artifact := execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
 	require.NotNil(t, artifact.Metadata)
 	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])
-	require.Equal(t, artifact.Metadata.GetFields()["display_name"].GetStringValue(), "output_text")
+	require.Equal(t, "output_text", artifact.Metadata.GetFields()["display_name"].GetStringValue())
+	require.Equal(t, "s3://some.location/output_text", artifact.Uri)
+	require.Equal(t, apiv2beta1.Artifact_Dataset.String(), artifact.Type.GetSchemaTitle())
+	require.Equal(t, "output_text", artifact.Name)
 }
 
+// Try with multiple upstream tasks, but one has the correct input (maybe just update the above)
+
 // TODO(HumairAK):
+// Do an output that points to a Dag (for-loop-2)
+// Collect inputs
 // Caching tests
 // Optional fields
