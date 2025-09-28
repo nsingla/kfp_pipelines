@@ -1,0 +1,110 @@
+# PIPELINE DEFINITION
+# Name: primary-pipeline
+# Inputs:
+#    active: bool [Default: True]
+#    name: str [Default: 'default_name']
+#    number: int [Default: 42.0]
+#    threshold: float [Default: 0.5]
+components:
+  comp-process-inputs:
+    executorLabel: exec-process-inputs
+    inputDefinitions:
+      parameters:
+        a_runtime_var:
+          parameterType: STRING
+        active:
+          parameterType: BOOLEAN
+        name:
+          parameterType: STRING
+        number:
+          parameterType: NUMBER_INTEGER
+        threshold:
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        output_text:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-process-inputs:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - process_inputs
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef process_inputs(\n        name: str,\n        number: int,\n \
+          \       threshold: float,\n        active: bool,\n        a_runtime_var:\
+          \ str,\n        output_text: Output[Dataset]\n) -> None:\n    with open(output_text.path,\
+          \ 'w') as f:\n        f.write(f\"Name: {name}\\n\")\n        f.write(f\"\
+          Number doubled: {number * 2}\\n\")\n        f.write(f\"Threshold plus 10:\
+          \ {threshold + 10.0}\\n\")\n        f.write(f\"Active status: {'enabled'\
+          \ if active else 'disabled'}\\n\")\n\n    assert name == \"default_name\"\
+          \n    assert number == 42\n    assert threshold == 0.5\n    assert active\
+          \ == True\n    assert a_runtime_var == \"foo\"\n\n"
+        image: quay.io/opendatahub/ds-pipelines-ci-executor-image:v1.0
+pipelineInfo:
+  name: primary-pipeline
+root:
+  dag:
+    tasks:
+      process-inputs:
+        cachingOptions: {}
+        componentRef:
+          name: comp-process-inputs
+        inputs:
+          parameters:
+            a_runtime_var:
+              runtimeValue:
+                constant: foo
+            active:
+              componentInputParameter: active
+            name:
+              componentInputParameter: name
+            number:
+              componentInputParameter: number
+            threshold:
+              componentInputParameter: threshold
+        taskInfo:
+          name: process-inputs
+  inputDefinitions:
+    parameters:
+      active:
+        defaultValue: true
+        isOptional: true
+        parameterType: BOOLEAN
+      name:
+        defaultValue: default_name
+        isOptional: true
+        parameterType: STRING
+      number:
+        defaultValue: 42.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      threshold:
+        defaultValue: 0.5
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.14.2

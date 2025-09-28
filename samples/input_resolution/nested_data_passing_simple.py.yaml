@@ -1,0 +1,262 @@
+# PIPELINE DEFINITION
+# Name: artifact-passing-example
+components:
+  comp-analyze-artifact:
+    executorLabel: exec-analyze-artifact
+    inputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-create-dataset:
+    executorLabel: exec-create-dataset
+    outputDefinitions:
+      artifacts:
+        output_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-evaluate-analysis:
+    executorLabel: exec-evaluate-analysis
+    inputDefinitions:
+      artifacts:
+        analysis_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-process-dataset:
+    executorLabel: exec-process-dataset
+    inputDefinitions:
+      artifacts:
+        input_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-secondary-pipeline:
+    dag:
+      outputs:
+        artifacts:
+          Output:
+            artifactSelectors:
+            - outputArtifactKey: output_artifact
+              producerSubtask: analyze-artifact
+      tasks:
+        analyze-artifact:
+          cachingOptions: {}
+          componentRef:
+            name: comp-analyze-artifact
+          dependentTasks:
+          - process-dataset
+          inputs:
+            artifacts:
+              artifact:
+                taskOutputArtifact:
+                  outputArtifactKey: output_artifact
+                  producerTask: process-dataset
+          taskInfo:
+            name: analyze-artifact
+        process-dataset:
+          cachingOptions: {}
+          componentRef:
+            name: comp-process-dataset
+          inputs:
+            artifacts:
+              input_dataset:
+                componentInputArtifact: input_dataset
+          taskInfo:
+            name: process-dataset
+    inputDefinitions:
+      artifacts:
+        input_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        Output:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-analyze-artifact:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - analyze_artifact
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef analyze_artifact(artifact: Input[Artifact], output_artifact:\
+          \ Output[Artifact]):\n    with open(artifact.path, \"r\") as f:\n      \
+          \  data = f.read()\n    assert data == \"very_bad\"\n    with open(output_artifact.path,\
+          \ \"w\") as f:\n        f.write(f'done_analyzing')\n\n"
+        image: python:3.9
+    exec-create-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_dataset(output_dataset: Output[Dataset]):\n    with open(output_dataset.path,\
+          \ \"w\") as f:\n        f.write('hurricane')\n    output_dataset.metadata[\"\
+          category\"] = 5\n    output_dataset.metadata[\"description\"] = \"A simple\
+          \ dataset with hurricane\"\n\n"
+        image: python:3.9
+    exec-evaluate-analysis:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_analysis
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_analysis(analysis_artifact: Input[Artifact]) -> str:\n\
+          \    with open(analysis_artifact.path, \"r\") as f:\n        data = f.read()\n\
+          \    assert data == \"done_analyzing\"\n    return \"good\"\n\n"
+        image: python:3.9
+    exec-process-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - process_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef process_dataset(input_dataset: Input[Dataset], output_artifact:\
+          \ Output[Artifact]):\n    with open(input_dataset.path, \"r\") as f:\n \
+          \       data = f.read()\n    with open(output_artifact.path, \"w\") as f:\n\
+          \        f.write(\"very_bad\")\n\n"
+        image: python:3.9
+pipelineInfo:
+  name: artifact-passing-example
+root:
+  dag:
+    tasks:
+      create-dataset:
+        cachingOptions: {}
+        componentRef:
+          name: comp-create-dataset
+        taskInfo:
+          name: create-dataset
+      evaluate-analysis:
+        cachingOptions: {}
+        componentRef:
+          name: comp-evaluate-analysis
+        dependentTasks:
+        - secondary-pipeline
+        inputs:
+          artifacts:
+            analysis_artifact:
+              taskOutputArtifact:
+                outputArtifactKey: Output
+                producerTask: secondary-pipeline
+        taskInfo:
+          name: evaluate-analysis
+      secondary-pipeline:
+        cachingOptions: {}
+        componentRef:
+          name: comp-secondary-pipeline
+        dependentTasks:
+        - create-dataset
+        inputs:
+          artifacts:
+            input_dataset:
+              taskOutputArtifact:
+                outputArtifactKey: output_dataset
+                producerTask: create-dataset
+        taskInfo:
+          name: secondary-pipeline
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.14.2

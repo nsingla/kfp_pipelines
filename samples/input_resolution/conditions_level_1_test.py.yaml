@@ -1,0 +1,256 @@
+# PIPELINE DEFINITION
+# Name: primary-pipeline
+components:
+  comp-condition-2:
+    dag:
+      tasks:
+        print-msg:
+          cachingOptions: {}
+          componentRef:
+            name: comp-print-msg
+          inputs:
+            artifacts:
+              input_artifact:
+                componentInputArtifact: pipelinechannel--output-msg-output_artifact
+            parameters:
+              msg:
+                runtimeValue:
+                  constant: this
+          taskInfo:
+            name: print-msg
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--output-msg-output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--output-msg-a_msg:
+          parameterType: STRING
+  comp-condition-3:
+    dag:
+      tasks:
+        print-msg-2:
+          cachingOptions: {}
+          componentRef:
+            name: comp-print-msg-2
+          inputs:
+            artifacts:
+              input_artifact:
+                componentInputArtifact: pipelinechannel--output-msg-output_artifact
+            parameters:
+              msg:
+                runtimeValue:
+                  constant: that
+          taskInfo:
+            name: print-msg-2
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--output-msg-output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--output-msg-a_msg:
+          parameterType: STRING
+  comp-condition-branches-1:
+    dag:
+      tasks:
+        condition-2:
+          componentRef:
+            name: comp-condition-2
+          inputs:
+            artifacts:
+              pipelinechannel--output-msg-output_artifact:
+                componentInputArtifact: pipelinechannel--output-msg-output_artifact
+            parameters:
+              pipelinechannel--output-msg-a_msg:
+                componentInputParameter: pipelinechannel--output-msg-a_msg
+          taskInfo:
+            name: condition-2
+          triggerPolicy:
+            condition: inputs.parameter_values['pipelinechannel--output-msg-a_msg']
+              == 'this'
+        condition-3:
+          componentRef:
+            name: comp-condition-3
+          inputs:
+            artifacts:
+              pipelinechannel--output-msg-output_artifact:
+                componentInputArtifact: pipelinechannel--output-msg-output_artifact
+            parameters:
+              pipelinechannel--output-msg-a_msg:
+                componentInputParameter: pipelinechannel--output-msg-a_msg
+          taskInfo:
+            name: condition-3
+          triggerPolicy:
+            condition: '!(inputs.parameter_values[''pipelinechannel--output-msg-a_msg'']
+              == ''this'')'
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--output-msg-output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--output-msg-a_msg:
+          parameterType: STRING
+  comp-output-msg:
+    executorLabel: exec-output-msg
+    outputDefinitions:
+      artifacts:
+        output_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        a_msg:
+          parameterType: STRING
+  comp-print-msg:
+    executorLabel: exec-print-msg
+    inputDefinitions:
+      artifacts:
+        input_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        msg:
+          parameterType: STRING
+  comp-print-msg-2:
+    executorLabel: exec-print-msg-2
+    inputDefinitions:
+      artifacts:
+        input_artifact:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+      parameters:
+        msg:
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-output-msg:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - output_msg
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef output_msg(output_artifact: dsl.Output[dsl.Artifact], a_msg:\
+          \ dsl.OutputPath(str)):\n    with open(output_artifact.path, 'w') as f:\n\
+          \        f.write(\"some_artifact\")\n    with open(a_msg, 'w') as f:\n \
+          \       f.write(\"this\")\n\n"
+        image: quay.io/opendatahub/ds-pipelines-ci-executor-image:v1.0
+    exec-print-msg:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - print_msg
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef print_msg(input_artifact: dsl.Input[dsl.Artifact], msg: str):\n\
+          \    artifact = \"\"\n    with open(input_artifact.path, 'r') as f:\n  \
+          \      artifact = f.read()\n\n    assert artifact == \"some_artifact\"\n\
+          \    assert msg == \"this\"\n\n"
+        image: quay.io/opendatahub/ds-pipelines-ci-executor-image:v1.0
+    exec-print-msg-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - print_msg
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef print_msg(input_artifact: dsl.Input[dsl.Artifact], msg: str):\n\
+          \    artifact = \"\"\n    with open(input_artifact.path, 'r') as f:\n  \
+          \      artifact = f.read()\n\n    assert artifact == \"some_artifact\"\n\
+          \    assert msg == \"this\"\n\n"
+        image: quay.io/opendatahub/ds-pipelines-ci-executor-image:v1.0
+pipelineInfo:
+  name: primary-pipeline
+root:
+  dag:
+    tasks:
+      condition-branches-1:
+        componentRef:
+          name: comp-condition-branches-1
+        dependentTasks:
+        - output-msg
+        inputs:
+          artifacts:
+            pipelinechannel--output-msg-output_artifact:
+              taskOutputArtifact:
+                outputArtifactKey: output_artifact
+                producerTask: output-msg
+          parameters:
+            pipelinechannel--output-msg-a_msg:
+              taskOutputParameter:
+                outputParameterKey: a_msg
+                producerTask: output-msg
+        taskInfo:
+          name: condition-branches-1
+      output-msg:
+        cachingOptions: {}
+        componentRef:
+          name: comp-output-msg
+        taskInfo:
+          name: output-msg
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.14.2

@@ -516,7 +516,7 @@ func CreateStatusMetadata(message string, properties map[string]interface{}) *ap
 }
 
 // Example test demonstrating the usage including artifact population
-func TestRootDAGTestSetup(t *testing.T) {
+func TestSetupTestSetup(t *testing.T) {
 	// Setup test environment
 	testSetup := NewTestSetup(t)
 
