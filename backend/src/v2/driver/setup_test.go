@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -302,6 +303,7 @@ type TestSetup struct {
 // NewTestSetup creates a new test setup
 func NewTestSetup(t *testing.T) *TestSetup {
 	t.Helper()
+	proxy.InitializeConfigWithEmptyForTests()
 	return &TestSetup{
 		DriverAPI: NewMockDriverAPI(),
 	}

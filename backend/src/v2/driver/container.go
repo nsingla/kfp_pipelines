@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
@@ -62,7 +61,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	// ######################################
 	// ### RESOLVE INPUTS ###
 	// ######################################
-	inputs, err := resolveInputs(ctx, iterationIndex, opts, expr)
+	inputs, err := resolveInputsV3(ctx, iterationIndex, opts, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -98,19 +97,19 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		opts.PublishLogs = "false"
 	}
 
-	run, err := driverAPI.GetRun(ctx, &apiV2beta1.GetRunRequest{RunId: opts.Run.GetRunId()})
-	if err != nil {
-		return nil, err
-	}
-	if execution.WillTrigger() {
-		executorInput.Outputs = provisionOutputs(
-			run.RuntimeConfig.PipelineRoot,
-			opts.TaskName,
-			opts.Component.GetOutputDefinitions(),
-			uuid.NewString(),
-			opts.PublishLogs,
-		)
-	}
+	// TODO(HumairAK): Outputs should be provisioned in the launcher.
+	// For driver case maybe it makes sense to publish the producer of the outputs??
+	// and launcher provides the value?
+
+	//if execution.WillTrigger() {
+	//	executorInput.Outputs = provisionOutputs(
+	//		run.RuntimeConfig.PipelineRoot,
+	//		opts.TaskName,
+	//		opts.Component.GetOutputDefinitions(),
+	//		uuid.NewString(),
+	//		opts.PublishLogs,
+	//	)
+	//}
 
 	// ######################################
 	// ### TASK REQUEST ###
@@ -122,10 +121,11 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 
 	glog.Infof("Creating task %s in pod %s", opts.TaskName, podName)
 	taskToCreate := &apiV2beta1.PipelineTaskDetail{
-		Name:        opts.TaskName,
-		DisplayName: opts.Task.GetTaskInfo().GetName(),
-		RunId:       opts.Run.GetRunId(),
-		Type:        apiV2beta1.PipelineTaskDetail_RUNTIME,
+		Name:         opts.TaskName,
+		DisplayName:  opts.Task.GetTaskInfo().GetName(),
+		RunId:        opts.Run.GetRunId(),
+		Type:         apiV2beta1.PipelineTaskDetail_RUNTIME,
+		ParentTaskId: util.StringPointer(opts.ParentTask.TaskId),
 		Pods: []*apiV2beta1.PipelineTaskDetail_TaskPod{
 			{
 				Name: opts.PodName,
@@ -135,9 +135,6 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 		},
 	}
 
-	if opts.ParentTask != nil {
-		taskToCreate.ParentTaskId = opts.ParentTask.ParentTaskId
-	}
 	if iterationIndex != nil {
 		taskToCreate.TypeAttributes = &apiV2beta1.PipelineTaskDetail_TypeAttributes{IterationIndex: util.Int64Pointer(int64(*iterationIndex))}
 	}
@@ -145,7 +142,6 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	// ######################################
 	// ### HANDLE K8S OP ###
 	// ######################################
-
 	if isKubernetesPlatformOp {
 		return execution, kubernetesPlatformOps(ctx, driverAPI, execution, taskToCreate, &opts)
 	}
@@ -164,7 +160,7 @@ func Container(ctx context.Context, opts Options, driverAPI DriverAPI) (executio
 	var fingerPrint string
 	var cachedTask *apiV2beta1.PipelineTaskDetail
 	if !opts.CacheDisabled {
-		// Generate fingerprint and MLMD ID for cache
+		// Generate fingerprint
 		// Start by getting the names of the PVCs that need to be mounted.
 		var pvcNames []string
 		if opts.KubernetesExecutorConfig != nil && opts.KubernetesExecutorConfig.GetPvcMount() != nil {

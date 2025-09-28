@@ -210,6 +210,18 @@ func handleTaskParametersCreation(
 	executorInput *pipelinespec.ExecutorInput,
 	task *apiV2beta1.PipelineTaskDetail,
 ) (*apiV2beta1.PipelineTaskDetail, error) {
+
+	if task == nil {
+		return nil, fmt.Errorf("task is nil")
+	}
+	if task.Inputs == nil {
+		task.Inputs = &apiV2beta1.PipelineTaskDetail_InputOutputs{
+			Parameters: []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{},
+		}
+	} else if task.Inputs.Parameters == nil {
+		task.Inputs.Parameters = []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{}
+	}
+
 	for parameterName, parameter := range executorInput.Inputs.ParameterValues {
 		// We expect that a parameter is either a pipelinechannel parameter or a regular parameter.
 		// in the latter case we expect that the parameter name is the key.
