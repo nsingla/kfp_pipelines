@@ -10,6 +10,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -49,20 +50,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		return nil, err
 	}
 
-	// TODO(HumairAK): Do we need this?
-	//var parentTask *gc.PipelineTaskDetail
-	//if opts.ParentTaskID != "" {
-	//	glog.Infof("Parent task ID: %s", opts.ParentTaskID)
-	//	getTaskRequest := &gc.GetTaskRequest{
-	//		TaskId: opts.ParentTaskID,
-	//	}
-	//	parentTask, err = driverAPI.GetTask(ctx, getTaskRequest)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-
-	inputs, err := resolveInputs(ctx, iterationIndex, opts, expr)
+	inputs, err := resolver.ResolveInputs(ctx, iterationIndex, opts, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +128,8 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		DisplayName: opts.Task.GetTaskInfo().GetName(),
 		RunId:       opts.Run.GetRunId(),
 		// Default to DAG
-		Type: gc.PipelineTaskDetail_DAG,
+		Type:   gc.PipelineTaskDetail_DAG,
+		Status: gc.PipelineTaskDetail_RUNNING,
 		Pods: []*gc.PipelineTaskDetail_TaskPod{
 			{
 				Name: opts.PodName,

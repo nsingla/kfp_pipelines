@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
@@ -128,13 +129,14 @@ func drive() (err error) {
 
 	// Initialize connection to new KFP v2beta1 API server (Tasks/Artifacts)
 	apiCfg := apiclient.FromEnv()
+	// TODO(Add Auth consideration, use pipeline runner SA token)
 	kfpAPIClient, apiErr := apiclient.New(apiCfg)
 	if apiErr != nil {
 		return fmt.Errorf("failed to init KFP API client: %w", apiErr)
 	}
 	defer kfpAPIClient.Close()
-	var driverAPI driver.DriverAPI
-	driverAPI = driver.NewDriverAPI(kfpAPIClient)
+	var driverAPI common.DriverAPI
+	driverAPI = common.NewDriverAPI(kfpAPIClient)
 
 	glog.Infof("Initialized KFP API client at %s", kfpAPIClient.Endpoint)
 
@@ -198,7 +200,7 @@ func drive() (err error) {
 		return err
 	}
 
-	options := driver.Options{
+	options := common.Options{
 		PipelineName:     *pipelineName,
 		Run:              run,
 		RunName:          *runName,

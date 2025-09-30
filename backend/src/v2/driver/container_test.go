@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func setupOptions(
+func setupContainerOptions(
 	t *testing.T,
 	testSetup *TestSetup,
 	run *apiv2beta1.Run,
@@ -99,28 +99,22 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Refresh Run
+	// Refresh Run so it has the new tasks
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
 
 	// Run Container on the First Task
 	taskSpec := pipelineSpec.Root.GetDag().Tasks["process-inputs"]
-	opts := setupOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
+	opts := setupContainerOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
 	execution, err := Container(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, execution)
 	require.Nil(t, execution.ExecutorInput.Outputs)
-	taskResp, err := testSetup.DriverAPI.ListTasks(
-		context.Background(),
-		&apiv2beta1.ListTasksRequest{
-			ParentFilter: &apiv2beta1.ListTasksRequest_ParentId{
-				ParentId: parentTask.TaskId,
-			},
-		},
-	)
+
+	// Fetch the task created by the Container() call
+	processInputsTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
 	require.NoError(t, err)
-	require.NotNil(t, taskResp)
-	require.Equal(t, 1, len(taskResp.Tasks))
-	processInputsTask := taskResp.Tasks[0]
+	require.NotNil(t, processInputsTask)
 	require.Equal(t, execution.TaskID, processInputsTask.TaskId)
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
@@ -141,7 +135,6 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 			"display_name": structpb.NewStringValue("output_text"),
 		},
 	}
-
 	createArtifact, err := testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
 	require.NoError(t, err)
 	require.NotNil(t, createArtifact)
@@ -158,30 +151,25 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, at)
 
-	// Refresh Run
+	// Refresh Run so it has the new tasks
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
 
 	// Run the Downstream Task that will use the output artifact
 	taskSpec = pipelineSpec.Root.GetDag().Tasks["analyze-inputs"]
-	opts = setupOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
+	opts = setupContainerOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
 	execution, err = Container(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, execution)
 	require.Nil(t, execution.ExecutorInput.Outputs)
-	analyzeTaskResp, err := testSetup.DriverAPI.ListTasks(
-		context.Background(),
-		&apiv2beta1.ListTasksRequest{
-			ParentFilter: &apiv2beta1.ListTasksRequest_ParentId{
-				ParentId: parentTask.TaskId,
-			},
-		},
-	)
-	require.NoError(t, err)
-	require.NotNil(t, analyzeTaskResp)
-	require.Equal(t, 2, len(analyzeTaskResp.Tasks))
-	require.Equal(t, execution.TaskID, analyzeTaskResp.Tasks[1].TaskId)
 
+	// Fetch the task created by the Container() call
+	analyzeTaskResp, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
+	require.NoError(t, err)
+	require.Equal(t, execution.TaskID, analyzeTaskResp.TaskId)
 	require.Equal(t, 1, len(execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
+
+	// Verify Executor output has the correct artifact
 	artifact := execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
 	require.NotNil(t, artifact.Metadata)
 	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])
