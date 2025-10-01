@@ -607,7 +607,11 @@
             "type": "object",
             "$ref": "#/definitions/v2beta1Artifact"
           },
-          "title": "An artifact input can be a list of artifacts??\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer.key\": \"input_a\" }, { \"artifacts\": [...], \"producer.key\": \"input_b\"} }"
+          "title": "An artifact input can be a list of artifacts??\nTODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key\nWhen reading artifacts for a task, we need to collect all artifacts that share the same producer key\nand include it in one artifacts list. So if you may have:\n[]IOArtifact{ { \"artifacts\": [ {artifact_a}, {artifact_b} ], \"producer\": {\"key\": \"input_a\"} }, { \"artifacts\": [...], \"producer\": {\"key\": \"input_b\"} } }"
+        },
+        "type": {
+          "$ref": "#/definitions/v2beta1IOType",
+          "title": "TODO(HumairAK) add this to ArtifactTask column"
         },
         "parameter_name": {
           "type": "string",
@@ -636,6 +640,10 @@
       "type": "object",
       "properties": {
         "value": {
+          "title": "Required"
+        },
+        "type": {
+          "$ref": "#/definitions/v2beta1IOType",
           "title": "Required"
         },
         "parameter_name": {
@@ -669,7 +677,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/InputOutputsParameter"
-          }
+          },
+          "title": "For Loops parameters are filled with resolved\nparameterIterator.items"
         },
         "artifacts": {
           "type": "array",
@@ -677,7 +686,7 @@
             "type": "object",
             "$ref": "#/definitions/InputOutputsIOArtifact"
           },
-          "description": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks."
+          "title": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks.\nFor Loops parameters are filled with resolved\nartifactIterator.items"
         }
       }
     },
@@ -847,6 +856,17 @@
         }
       },
       "title": "Note to be confused with RuntimeArtifact in pipelinespec"
+    },
+    "v2beta1IOType": {
+      "type": "string",
+      "enum": [
+        "UNSPECIFIED",
+        "INPUT",
+        "OUTPUT",
+        "ITERATOR_INPUT"
+      ],
+      "default": "UNSPECIFIED",
+      "description": " - UNSPECIFIED: For validation\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator."
     },
     "v2beta1ListRunsResponse": {
       "type": "object",

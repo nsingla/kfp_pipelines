@@ -417,32 +417,23 @@ func (c *workflowCompiler) iterationItemTask(name string, task *pipelinespec.Pip
 	}
 
 	iterationCount := intstr.FromString(driverOutputs.iterationCount)
-	iterationTasks, err := c.task(
-		"iteration-item",
-		task,
-		taskInputs{
-			parentDagID:    inputParameter(paramParentDagTaskID),
-			iterationIndex: inputParameter(paramIterationIndex),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	iterationsTmpl := &wfapi.Template{
-		Inputs: wfapi.Inputs{
-			Parameters: []wfapi.Parameter{
-				{Name: paramParentDagTaskID},
-				{Name: paramIterationIndex},
+
+	// for each driver add the iterationIndex
+	c.templates[componentName].Inputs.Parameters = append(
+		c.templates[componentName].Inputs.Parameters,
+		wfapi.Parameter{Name: paramIterationIndex})
+
+	for i, t := range c.templates[componentName].DAG.Tasks {
+		c.templates[componentName].DAG.Tasks[i].Arguments.Parameters = append(
+			t.Arguments.Parameters, wfapi.Parameter{
+				Name:  paramIterationIndex,
+				Value: wfapi.AnyStringPtr(inputParameter(paramIterationIndex)),
 			},
-		},
-		DAG: &wfapi.DAGTemplate{
-			Tasks: iterationTasks,
-		},
+		)
+		// Sync with wf.spec since we are updating this post-hoc template generation
+		c.syncTemplate(componentName)
 	}
-	iterationsTmplName, err := c.addTemplate(iterationsTmpl, componentName+"-"+name)
-	if err != nil {
-		return nil, err
-	}
+
 	when := ""
 	if task.GetTriggerPolicy().GetCondition() != "" {
 		when = driverOutputs.condition + " != false"
@@ -452,7 +443,7 @@ func (c *workflowCompiler) iterationItemTask(name string, task *pipelinespec.Pip
 		*driver,
 		{
 			Name:     name + "-iterations",
-			Template: iterationsTmplName,
+			Template: componentName,
 			Depends:  depends([]string{driverArgoName}),
 			When:     when,
 			Arguments: wfapi.Arguments{
@@ -681,4 +672,19 @@ func depends(deps []string) string {
 		builder.WriteString(".Succeeded")
 	}
 	return builder.String()
+}
+
+func (c *workflowCompiler) syncTemplate(name string) {
+	t, ok := c.templates[name]
+	if !ok || t == nil {
+		return
+	}
+	for i := range c.wf.Spec.Templates {
+		if c.wf.Spec.Templates[i].Name == name {
+			c.wf.Spec.Templates[i] = *t
+			return
+		}
+	}
+	// Not found: append it.
+	c.wf.Spec.Templates = append(c.wf.Spec.Templates, *t)
 }

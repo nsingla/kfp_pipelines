@@ -98,9 +98,14 @@ type ListArtifactTasksParams struct {
 
 	/* Type.
 
-	   Optional. Only list artifact tasks that have artifacts of this type.
+	     Optional. Only list artifact tasks that have artifacts of this type.
 
-	   Default: "INPUT"
+	 - UNSPECIFIED: For validation
+	 - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type
+	is used to indicate whether this resolved input belongs
+	to a parameterIterator or artifactIterator.
+
+	     Default: "UNSPECIFIED"
 	*/
 	Type *string
 
@@ -122,7 +127,7 @@ func (o *ListArtifactTasksParams) WithDefaults() *ListArtifactTasksParams {
 // All values with no default are reset to their zero value.
 func (o *ListArtifactTasksParams) SetDefaults() {
 	var (
-		typeVarDefault = string("INPUT")
+		typeVarDefault = string("UNSPECIFIED")
 	)
 
 	val := ListArtifactTasksParams{

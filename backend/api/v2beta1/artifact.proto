@@ -51,6 +51,27 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   }
 };
 
+// Describes the I/O relationship between
+// this Artifacts & Parameters and Task
+// There are a couple of instances where
+// input/outputs have special types such
+// as in the case of LoopArguments or
+// dsl.Collected outputs.
+enum IOType {
+  // For validation
+  UNSPECIFIED = 0;
+
+  // Standard Input/Output types
+  INPUT = 1;
+  OUTPUT = 2;
+  // In a for loop task, introduced via ParallelFor, this type
+  // is used to indicate whether this resolved input belongs
+  // to a parameterIterator or artifactIterator.
+  ITERATOR_INPUT = 3;
+
+  // TODO(HumairAK): Add dsl.collected output?
+}
+
 service ArtifactService {
   // Finds all artifacts within the specified namespace.
   rpc ListArtifacts(ListArtifactRequest) returns (ListArtifactResponse) {
@@ -201,7 +222,7 @@ message ListArtifactTasksRequest {
   repeated string artifact_ids = 3;
   
   // Optional. Only list artifact tasks that have artifacts of this type.
-  ArtifactTaskType type = 4;
+  IOType type = 4;
   
   string page_token = 5;
   int32 page_size = 6;
@@ -221,12 +242,6 @@ message CreateArtifactTaskRequest {
   ArtifactTask artifact_task = 1;
 }
 
-// Describes the I/O relationship between
-// this Artifact and Task
-enum ArtifactTaskType {
-  INPUT = 0;
-  OUTPUT = 1;
-}
 
 message CreateArtifactTasksBulkRequest {
   // Required. The list of artifact-task relationships to create.
@@ -244,7 +259,7 @@ message ArtifactTask {
   string artifact_id = 2;
   string run_id = 3;
   string task_id = 4;
-  ArtifactTaskType type = 5;
+  IOType type = 5;
 
   // The task that produced this artifact
   // For example in the case of a pipeline channel

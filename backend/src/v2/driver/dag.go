@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
@@ -166,7 +167,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	}
 
 	if opts.ParentTask.GetTaskId() != "" {
-		taskToCreate.ParentTaskId = opts.ParentTask.ParentTaskId
+		taskToCreate.ParentTaskId = util.StringPointer(opts.ParentTask.GetTaskId())
 	}
 	taskToCreate, err = handleTaskParametersCreation(executorInput, taskToCreate)
 	if err != nil {

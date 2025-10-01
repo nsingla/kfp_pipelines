@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
@@ -183,48 +182,6 @@ func validateNonRoot(opts common.Options) error {
 	return nil
 }
 
-func parsePipelineChannelName(name string,
-) (key string, producerTaskName string, producerKey string, err error) {
-	const prefix = "pipelinechannel--"
-	if !strings.HasPrefix(name, prefix) {
-		return name, "", "", nil
-	}
-
-	// Remove prefix
-	nameWithoutPrefix := strings.TrimPrefix(name, prefix)
-
-	// Split remaining string by last dash to separate producer task name and key
-	parts := strings.Split(nameWithoutPrefix, "-")
-	if len(parts) < 2 {
-		return "", "", "",
-			fmt.Errorf("invalid pipeline channel name: %s", name)
-	}
-
-	// This is a parameterIterator Pipeline Channel, i.e. a LoopArgument
-	// There are two cases here:
-	// 1. It is a Raw parameterIterator in which case its format is "pipelinechannel--loop-item-param-{code}"
-	//    The {code} exists to avoid naming collisions for the declared LoopArgument parameter, for cases like nested parellelFor loops.
-	// 2. If it is an inputParameter parameterIterator, then its format is "pipelinechannel--{producerTaskName}-{producerKey}"'
-	if parts[0] == "loop" {
-		if parts[1] == "item" {
-			if len(parts) != 4 || parts[2] != "param" {
-				return "", "", "",
-					fmt.Errorf("invalid pipeline channel name: %s", name)
-			}
-			key = strings.Join(parts[:4], "-")
-			return key, "", "", nil
-		}
-
-		return
-	}
-
-	key = parts[len(parts)-1]
-	producerTaskName = strings.Join(parts[:len(parts)-1], "-")
-	producerKey = key
-
-	return key, producerTaskName, producerKey, nil
-}
-
 // handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_Parameter
 // for each parameter in the executor input.
 func handleTaskParametersCreation(
@@ -246,7 +203,7 @@ func handleTaskParametersCreation(
 	for parameterName, parameter := range executorInput.Inputs.ParameterValues {
 		// We expect that a parameter is either a pipelinechannel parameter or a regular parameter.
 		// in the latter case we expect that the parameter name is the key.
-		key, producerTaskName, producerKey, err := parsePipelineChannelName(parameterName)
+		key, producerTaskName, producerKey, err := common.ParameterNameToIOFields(parameterName)
 		if err != nil {
 			return nil, err
 		}
@@ -274,6 +231,11 @@ func handleTaskParametersCreation(
 				},
 			}
 		}
+		if common.IsPipelineChannel(parameterName) && task.Type == apiV2beta1.PipelineTaskDetail_LOOP {
+			parameterNew.Type = apiV2beta1.IOType_ITERATOR_INPUT
+		} else {
+			parameterNew.Type = apiV2beta1.IOType_INPUT
+		}
 		task.Inputs.Parameters = append(task.Inputs.Parameters, parameterNew)
 	}
 	return task, nil
@@ -291,7 +253,7 @@ func handleTaskArtifactsCreation(
 			if artifact.ArtifactId == "" {
 				return fmt.Errorf("artifact id is required")
 			}
-			key, producerTaskName, producerKey, err := parsePipelineChannelName(parameterName)
+			key, producerTaskName, producerKey, err := common.ParameterNameToIOFields(parameterName)
 			if err != nil {
 				return err
 			}
@@ -299,7 +261,7 @@ func handleTaskArtifactsCreation(
 				ArtifactId:       artifact.ArtifactId,
 				RunId:            opts.Run.GetRunId(),
 				TaskId:           task.TaskId,
-				Type:             apiV2beta1.ArtifactTaskType_INPUT,
+				Type:             apiV2beta1.IOType_INPUT,
 				ArtifactKey:      key,
 				ProducerTaskName: producerTaskName,
 				ProducerKey:      producerKey,

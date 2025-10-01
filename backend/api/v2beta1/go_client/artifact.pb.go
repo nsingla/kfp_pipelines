@@ -39,51 +39,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Describes the I/O relationship between
-// this Artifact and Task
-type ArtifactTaskType int32
+type IOType int32
 
 const (
-	ArtifactTaskType_INPUT  ArtifactTaskType = 0
-	ArtifactTaskType_OUTPUT ArtifactTaskType = 1
+	// For validation
+	IOType_UNSPECIFIED IOType = 0
+	IOType_INPUT       IOType = 1
+	IOType_OUTPUT      IOType = 2
+	// In a for loop task, introduced via ParallelFor, this type
+	// is used to indicate whether this resolved input belongs
+	// to a parameterIterator or artifactIterator.
+	IOType_ITERATOR_INPUT IOType = 3
 )
 
-// Enum value maps for ArtifactTaskType.
+// Enum value maps for IOType.
 var (
-	ArtifactTaskType_name = map[int32]string{
-		0: "INPUT",
-		1: "OUTPUT",
+	IOType_name = map[int32]string{
+		0: "UNSPECIFIED",
+		1: "INPUT",
+		2: "OUTPUT",
+		3: "ITERATOR_INPUT",
 	}
-	ArtifactTaskType_value = map[string]int32{
-		"INPUT":  0,
-		"OUTPUT": 1,
+	IOType_value = map[string]int32{
+		"UNSPECIFIED":    0,
+		"INPUT":          1,
+		"OUTPUT":         2,
+		"ITERATOR_INPUT": 3,
 	}
 )
 
-func (x ArtifactTaskType) Enum() *ArtifactTaskType {
-	p := new(ArtifactTaskType)
+func (x IOType) Enum() *IOType {
+	p := new(IOType)
 	*p = x
 	return p
 }
 
-func (x ArtifactTaskType) String() string {
+func (x IOType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ArtifactTaskType) Descriptor() protoreflect.EnumDescriptor {
+func (IOType) Descriptor() protoreflect.EnumDescriptor {
 	return file_backend_api_v2beta1_artifact_proto_enumTypes[0].Descriptor()
 }
 
-func (ArtifactTaskType) Type() protoreflect.EnumType {
+func (IOType) Type() protoreflect.EnumType {
 	return &file_backend_api_v2beta1_artifact_proto_enumTypes[0]
 }
 
-func (x ArtifactTaskType) Number() protoreflect.EnumNumber {
+func (x IOType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ArtifactTaskType.Descriptor instead.
-func (ArtifactTaskType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use IOType.Descriptor instead.
+func (IOType) EnumDescriptor() ([]byte, []int) {
 	return file_backend_api_v2beta1_artifact_proto_rawDescGZIP(), []int{0}
 }
 
@@ -442,11 +450,11 @@ type ListArtifactTasksRequest struct {
 	// We can also likely just rely on filter for this and omit this field
 	ArtifactIds []string `protobuf:"bytes,3,rep,name=artifact_ids,json=artifactIds,proto3" json:"artifact_ids,omitempty"`
 	// Optional. Only list artifact tasks that have artifacts of this type.
-	Type          ArtifactTaskType `protobuf:"varint,4,opt,name=type,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType" json:"type,omitempty"`
-	PageToken     string           `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	PageSize      int32            `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	SortBy        string           `protobuf:"bytes,7,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`
-	Filter        string           `protobuf:"bytes,8,opt,name=filter,proto3" json:"filter,omitempty"`
+	Type          IOType `protobuf:"varint,4,opt,name=type,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.IOType" json:"type,omitempty"`
+	PageToken     string `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageSize      int32  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	SortBy        string `protobuf:"bytes,7,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`
+	Filter        string `protobuf:"bytes,8,opt,name=filter,proto3" json:"filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -502,11 +510,11 @@ func (x *ListArtifactTasksRequest) GetArtifactIds() []string {
 	return nil
 }
 
-func (x *ListArtifactTasksRequest) GetType() ArtifactTaskType {
+func (x *ListArtifactTasksRequest) GetType() IOType {
 	if x != nil {
 		return x.Type
 	}
-	return ArtifactTaskType_INPUT
+	return IOType_UNSPECIFIED
 }
 
 func (x *ListArtifactTasksRequest) GetPageToken() string {
@@ -736,11 +744,11 @@ func (x *CreateArtifactTasksBulkResponse) GetArtifactTasks() []*ArtifactTask {
 type ArtifactTask struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Output only. The unique server generated id of the ArtifactTask.
-	Id         string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ArtifactId string           `protobuf:"bytes,2,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
-	RunId      string           `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	TaskId     string           `protobuf:"bytes,4,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Type       ArtifactTaskType `protobuf:"varint,5,opt,name=type,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType" json:"type,omitempty"`
+	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ArtifactId string `protobuf:"bytes,2,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
+	RunId      string `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	TaskId     string `protobuf:"bytes,4,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Type       IOType `protobuf:"varint,5,opt,name=type,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.IOType" json:"type,omitempty"`
 	// The task that produced this artifact
 	// For example in the case of a pipeline channel
 	// that is an output artifact you might have as
@@ -833,11 +841,11 @@ func (x *ArtifactTask) GetTaskId() string {
 	return ""
 }
 
-func (x *ArtifactTask) GetType() ArtifactTaskType {
+func (x *ArtifactTask) GetType() IOType {
 	if x != nil {
 		return x.Type
 	}
-	return ArtifactTaskType_INPUT
+	return IOType_UNSPECIFIED
 }
 
 func (x *ArtifactTask) GetProducerTaskName() string {
@@ -1008,12 +1016,12 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\tartifacts\x18\x01 \x03(\v20.kubeflow.pipelines.backend.api.v2beta1.ArtifactR\tartifacts\x12\x1d\n" +
 	"\n" +
 	"total_size\x18\x02 \x01(\x05R\ttotalSize\x12&\n" +
-	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"\xac\x02\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"\xa2\x02\n" +
 	"\x18ListArtifactTasksRequest\x12\x19\n" +
 	"\btask_ids\x18\x01 \x03(\tR\ataskIds\x12\x17\n" +
 	"\arun_ids\x18\x02 \x03(\tR\x06runIds\x12!\n" +
-	"\fartifact_ids\x18\x03 \x03(\tR\vartifactIds\x12L\n" +
-	"\x04type\x18\x04 \x01(\x0e28.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskTypeR\x04type\x12\x1d\n" +
+	"\fartifact_ids\x18\x03 \x03(\tR\vartifactIds\x12B\n" +
+	"\x04type\x18\x04 \x01(\x0e2..kubeflow.pipelines.backend.api.v2beta1.IOTypeR\x04type\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x05 \x01(\tR\tpageToken\x12\x1b\n" +
 	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\x17\n" +
@@ -1029,14 +1037,14 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x1eCreateArtifactTasksBulkRequest\x12[\n" +
 	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"~\n" +
 	"\x1fCreateArtifactTasksBulkResponse\x12[\n" +
-	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"\xb1\x02\n" +
+	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"\xa7\x02\n" +
 	"\fArtifactTask\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vartifact_id\x18\x02 \x01(\tR\n" +
 	"artifactId\x12\x15\n" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12\x17\n" +
-	"\atask_id\x18\x04 \x01(\tR\x06taskId\x12L\n" +
-	"\x04type\x18\x05 \x01(\x0e28.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskTypeR\x04type\x12,\n" +
+	"\atask_id\x18\x04 \x01(\tR\x06taskId\x12B\n" +
+	"\x04type\x18\x05 \x01(\x0e2..kubeflow.pipelines.backend.api.v2beta1.IOTypeR\x04type\x12,\n" +
 	"\x12producer_task_name\x18\x06 \x01(\tR\x10producerTaskName\x12!\n" +
 	"\fproducer_key\x18\a \x01(\tR\vproducerKey\x12!\n" +
 	"\fartifact_key\x18\b \x01(\tR\vartifactKey\"\xc1\x05\n" +
@@ -1067,11 +1075,13 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x14ClassificationMetric\x10\a\x12\x1e\n" +
 	"\x1aSlicedClassificationMetric\x10\bB\x06\n" +
 	"\x04_uriB\x0f\n" +
-	"\r_number_value*)\n" +
-	"\x10ArtifactTaskType\x12\t\n" +
-	"\x05INPUT\x10\x00\x12\n" +
+	"\r_number_value*D\n" +
+	"\x06IOType\x12\x0f\n" +
+	"\vUNSPECIFIED\x10\x00\x12\t\n" +
+	"\x05INPUT\x10\x01\x12\n" +
 	"\n" +
-	"\x06OUTPUT\x10\x012\xd3\f\n" +
+	"\x06OUTPUT\x10\x02\x12\x12\n" +
+	"\x0eITERATOR_INPUT\x10\x032\xd3\f\n" +
 	"\x0fArtifactService\x12\x84\x02\n" +
 	"\rListArtifacts\x12;.kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse\"x\x92AV\n" +
 	"\x0fArtifactService\x123Finds all artifacts within the specified namespace.*\x0elist_artifacts\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/artifacts\x12\xee\x01\n" +
@@ -1105,7 +1115,7 @@ func file_backend_api_v2beta1_artifact_proto_rawDescGZIP() []byte {
 var file_backend_api_v2beta1_artifact_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_backend_api_v2beta1_artifact_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_backend_api_v2beta1_artifact_proto_goTypes = []any{
-	(ArtifactTaskType)(0),                   // 0: kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
+	(IOType)(0),                             // 0: kubeflow.pipelines.backend.api.v2beta1.IOType
 	(Artifact_ArtifactType)(0),              // 1: kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
 	(*CreateArtifactRequest)(nil),           // 2: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest
 	(*GetArtifactRequest)(nil),              // 3: kubeflow.pipelines.backend.api.v2beta1.GetArtifactRequest
@@ -1125,12 +1135,12 @@ var file_backend_api_v2beta1_artifact_proto_goTypes = []any{
 var file_backend_api_v2beta1_artifact_proto_depIdxs = []int32{
 	12, // 0: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactRequest.artifact:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
 	12, // 1: kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse.artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact
-	0,  // 2: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
+	0,  // 2: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksRequest.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.IOType
 	11, // 3: kubeflow.pipelines.backend.api.v2beta1.ListArtifactTasksResponse.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
 	11, // 4: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTaskRequest.artifact_task:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
 	11, // 5: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkRequest.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
 	11, // 6: kubeflow.pipelines.backend.api.v2beta1.CreateArtifactTasksBulkResponse.artifact_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTask
-	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskType
+	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.ArtifactTask.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.IOType
 	1,  // 8: kubeflow.pipelines.backend.api.v2beta1.Artifact.type:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.ArtifactType
 	13, // 9: kubeflow.pipelines.backend.api.v2beta1.Artifact.metadata:type_name -> kubeflow.pipelines.backend.api.v2beta1.Artifact.MetadataEntry
 	14, // 10: kubeflow.pipelines.backend.api.v2beta1.Artifact.created_at:type_name -> google.protobuf.Timestamp

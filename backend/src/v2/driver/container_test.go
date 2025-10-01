@@ -115,6 +115,9 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	processInputsTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
 	require.NoError(t, err)
 	require.NotNil(t, processInputsTask)
+	for _, param := range processInputsTask.Inputs.GetParameters() {
+		require.Equal(t, apiv2beta1.IOType_INPUT, param.Type)
+	}
 	require.Equal(t, execution.TaskID, processInputsTask.TaskId)
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
@@ -145,7 +148,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 			RunId:            run.GetRunId(),
 			ProducerKey:      "output_text",
 			ProducerTaskName: "process-inputs",
-			Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+			Type:             apiv2beta1.IOType_OUTPUT,
 		},
 	})
 	require.NoError(t, err)
@@ -169,7 +172,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, execution.TaskID, analyzeTaskResp.TaskId)
 	require.Equal(t, 1, len(execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
 
-	// Verify Executor output has the correct artifact
+	// Verify Executor Input has the correct artifact
 	artifact := execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
 	require.NotNil(t, artifact.Metadata)
 	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])

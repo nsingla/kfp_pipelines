@@ -74,15 +74,17 @@
           },
           {
             "name": "type",
-            "description": "Optional. Only list artifact tasks that have artifacts of this type.",
+            "description": "Optional. Only list artifact tasks that have artifacts of this type.\n\n - UNSPECIFIED: For validation\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.",
             "in": "query",
             "required": false,
             "type": "string",
             "enum": [
+              "UNSPECIFIED",
               "INPUT",
-              "OUTPUT"
+              "OUTPUT",
+              "ITERATOR_INPUT"
             ],
-            "default": "INPUT"
+            "default": "UNSPECIFIED"
           },
           {
             "name": "page_token",
@@ -426,7 +428,7 @@
           "type": "string"
         },
         "type": {
-          "$ref": "#/definitions/v2beta1ArtifactTaskType"
+          "$ref": "#/definitions/v2beta1IOType"
         },
         "producer_task_name": {
           "type": "string",
@@ -442,15 +444,6 @@
           "description": "The parameter name for the input/output artifact\nThis maybe the same as the Artifact name if the\nartifact name is not specified. It is used to\nresolve artifact pipeline channels."
         }
       }
-    },
-    "v2beta1ArtifactTaskType": {
-      "type": "string",
-      "enum": [
-        "INPUT",
-        "OUTPUT"
-      ],
-      "default": "INPUT",
-      "title": "Describes the I/O relationship between\nthis Artifact and Task"
     },
     "v2beta1CreateArtifactRequest": {
       "type": "object",
@@ -508,6 +501,17 @@
           "description": "The list of created artifact-task relationships."
         }
       }
+    },
+    "v2beta1IOType": {
+      "type": "string",
+      "enum": [
+        "UNSPECIFIED",
+        "INPUT",
+        "OUTPUT",
+        "ITERATOR_INPUT"
+      ],
+      "default": "UNSPECIFIED",
+      "description": " - UNSPECIFIED: For validation\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator."
     },
     "v2beta1ListArtifactResponse": {
       "type": "object",

@@ -25,6 +25,9 @@ type InputOutputsParameter struct {
 	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
 
 	// Required
+	Type *V2beta1IOType `json:"type,omitempty"`
+
+	// Required
 	Value interface{} `json:"value,omitempty"`
 }
 
@@ -33,6 +36,10 @@ func (m *InputOutputsParameter) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateProducer(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -61,11 +68,34 @@ func (m *InputOutputsParameter) validateProducer(formats strfmt.Registry) error 
 	return nil
 }
 
+func (m *InputOutputsParameter) validateType(formats strfmt.Registry) error {
+	if swag.IsZero(m.Type) { // not required
+		return nil
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this input outputs parameter based on the context it is used
 func (m *InputOutputsParameter) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateProducer(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -88,6 +118,27 @@ func (m *InputOutputsParameter) contextValidateProducer(ctx context.Context, for
 				return ve.ValidateName("producer")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("producer")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *InputOutputsParameter) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+
+		if swag.IsZero(m.Type) { // not required
+			return nil
+		}
+
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
 			}
 			return err
 		}

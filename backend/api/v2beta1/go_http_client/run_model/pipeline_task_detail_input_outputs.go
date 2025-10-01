@@ -21,9 +21,12 @@ type PipelineTaskDetailInputOutputs struct {
 
 	// Output Only. To create Artifacts for a task are created
 	// via ArtifactTasks.
+	// For Loops parameters are filled with resolved
+	// artifactIterator.items
 	Artifacts []*InputOutputsIOArtifact `json:"artifacts"`
 
-	// parameters
+	// For Loops parameters are filled with resolved
+	// parameterIterator.items
 	Parameters []*InputOutputsParameter `json:"parameters"`
 }
 

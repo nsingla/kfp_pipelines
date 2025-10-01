@@ -155,6 +155,7 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 			if artifact, exists := m.artifacts[artifactTask.ArtifactId]; exists {
 				ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
 					Artifacts: []*apiv2beta1.Artifact{artifact},
+					Type:      artifactTask.Type,
 				}
 
 				// Set the source based on producer information
@@ -174,9 +175,9 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 
 				// Determine if this is an input or output artifact based on ArtifactTaskType
 				switch artifactTask.Type {
-				case apiv2beta1.ArtifactTaskType_INPUT:
+				case apiv2beta1.IOType_INPUT, apiv2beta1.IOType_ITERATOR_INPUT:
 					inputArtifacts = append(inputArtifacts, ioArtifact)
-				case apiv2beta1.ArtifactTaskType_OUTPUT:
+				case apiv2beta1.IOType_OUTPUT:
 					outputArtifacts = append(outputArtifacts, ioArtifact)
 				}
 			}
@@ -442,7 +443,7 @@ func (ts *TestSetup) CreateTestArtifact(t *testing.T, name, artifactType string)
 }
 
 // CreateTestArtifactTask creates an artifact-task relationship
-func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, runID, producerTaskName, producerKey string, artifactType apiv2beta1.ArtifactTaskType) *apiv2beta1.ArtifactTask {
+func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, runID, producerTaskName, producerKey string, artifactType apiv2beta1.IOType) *apiv2beta1.ArtifactTask {
 	t.Helper()
 
 	artifactTask := &apiv2beta1.ArtifactTask{
@@ -624,11 +625,11 @@ func TestSetupTestSetup(t *testing.T) {
 
 	// Create artifact-task relationships
 	// task1 produces artifact1 (output)
-	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task1.TaskId, run.RunId, task1.Name, "output", apiv2beta1.ArtifactTaskType_OUTPUT)
+	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task1.TaskId, run.RunId, task1.Name, "output", apiv2beta1.IOType_OUTPUT)
 	// task2 consumes artifact1 (input)
-	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task2.TaskId, run.RunId, task1.Name, "output", apiv2beta1.ArtifactTaskType_INPUT)
+	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task2.TaskId, run.RunId, task1.Name, "output", apiv2beta1.IOType_INPUT)
 	// task2 produces artifact2 (output)
-	testSetup.CreateTestArtifactTask(t, artifact2.ArtifactId, task2.TaskId, run.RunId, task2.Name, "model", apiv2beta1.ArtifactTaskType_OUTPUT)
+	testSetup.CreateTestArtifactTask(t, artifact2.ArtifactId, task2.TaskId, run.RunId, task2.Name, "model", apiv2beta1.IOType_OUTPUT)
 
 	// Test getting run with populated tasks and artifacts
 	populatedRun, err := testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.RunId})

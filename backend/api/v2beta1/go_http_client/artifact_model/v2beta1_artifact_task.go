@@ -64,7 +64,7 @@ type V2beta1ArtifactTask struct {
 	TaskID string `json:"task_id,omitempty"`
 
 	// type
-	Type *V2beta1ArtifactTaskType `json:"type,omitempty"`
+	Type *V2beta1IOType `json:"type,omitempty"`
 }
 
 // Validate validates this v2beta1 artifact task

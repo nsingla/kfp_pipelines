@@ -55,6 +55,8 @@ func setupDagOptions(
 		Task:                     taskSpec,
 		Container:                nil,
 		KubernetesExecutorConfig: KubernetesExecutorConfig,
+		RunName:                  "",
+		RunDisplayName:           "",
 		PipelineLogLevel:         "1",
 		PublishLogs:              "false",
 		CacheDisabled:            false,
@@ -109,8 +111,11 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, "secondary-pipeline", secondaryPipelineTask.GetName())
 	require.Equal(t, apiv2beta1.PipelineTaskDetail_RUNNING, secondaryPipelineTask.Status)
 
-	// Refresh Run so it has the new tasks
+	// Refresh Run
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+	// Refresh Parent Task - The parent task should be the secondary pipeline task for "create-dataset"
+	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
 	require.NoError(t, err)
 
 	// In this section we'll run the subtasks in the secondary pipeline, one of which is a loop of 3 iterations
@@ -144,7 +149,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 			RunId:            run.GetRunId(),
 			ProducerKey:      "output_dataset",
 			ProducerTaskName: "create-dataset",
-			Type:             apiv2beta1.ArtifactTaskType_OUTPUT,
+			Type:             apiv2beta1.IOType_OUTPUT,
 		},
 	})
 	require.NoError(t, err)
@@ -154,13 +159,45 @@ func TestLoopArtifactPassing(t *testing.T) {
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
 	require.NoError(t, err)
 
-	// Run the Loop Task
+	// Run the Loop Task - note that parentTask for for-loop-2 remains as secondary-pipeline
 	loopTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["for-loop-2"]
 	opts = setupDagOptions(t, testSetup, run, parentTask, loopTaskSpec, pipelineSpec, nil)
 	loopExecution, err := DAG(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, loopExecution)
 	require.Nil(t, loopExecution.ExecutorInput.Outputs)
+
+	// ---------------------
+	// Run the first iteration
+	// Refresh Run so it has the new tasks
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+
+	// Refresh Parent Task - The parent task should be "for-loop-2" for "process-dataset"
+	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+	require.NoError(t, err)
+
+	// Run the Loop Iteration Task
+	processTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["process-dataset"]
+	opts = setupDagOptions(t, testSetup, run, parentTask, processTaskSpec, pipelineSpec, nil)
+	opts.IterationIndex = 0
+	processExecution, err := DAG(context.Background(), opts, testSetup.DriverAPI)
+	require.NoError(t, err)
+	require.NotNil(t, processExecution)
+	require.Nil(t, processExecution.ExecutorInput.Outputs)
+	// Run the Runtime Task
+
+	// Mock the Launcher run
+
+	// ---------------------
+
+	// Run the second iteration
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+
+	// Run the third iteration
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
 
 	// TODO:
 	//analyzeArtifactListTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["analyze-artifact-list"]

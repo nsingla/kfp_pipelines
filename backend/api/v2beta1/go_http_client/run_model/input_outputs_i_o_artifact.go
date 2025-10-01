@@ -23,7 +23,7 @@ type InputOutputsIOArtifact struct {
 	// TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
 	// When reading artifacts for a task, we need to collect all artifacts that share the same producer key
 	// and include it in one artifacts list. So if you may have:
-	// []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer.key": "input_a" }, { "artifacts": [...], "producer.key": "input_b"} }
+	// []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer": {"key": "input_a"} }, { "artifacts": [...], "producer": {"key": "input_b"} } }
 	Artifacts []*V2beta1Artifact `json:"artifacts"`
 
 	// This is included on Runtime Tasks when the parameter name is known.
@@ -31,6 +31,9 @@ type InputOutputsIOArtifact struct {
 
 	// Handle Pipeline Channel case.
 	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
+
+	// TODO(HumairAK) add this to ArtifactTask column
+	Type *V2beta1IOType `json:"type,omitempty"`
 }
 
 // Validate validates this input outputs i o artifact
@@ -42,6 +45,10 @@ func (m *InputOutputsIOArtifact) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateProducer(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -96,6 +103,25 @@ func (m *InputOutputsIOArtifact) validateProducer(formats strfmt.Registry) error
 	return nil
 }
 
+func (m *InputOutputsIOArtifact) validateType(formats strfmt.Registry) error {
+	if swag.IsZero(m.Type) { // not required
+		return nil
+	}
+
+	if m.Type != nil {
+		if err := m.Type.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ContextValidate validate this input outputs i o artifact based on the context it is used
 func (m *InputOutputsIOArtifact) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -105,6 +131,10 @@ func (m *InputOutputsIOArtifact) ContextValidate(ctx context.Context, formats st
 	}
 
 	if err := m.contextValidateProducer(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateType(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -152,6 +182,27 @@ func (m *InputOutputsIOArtifact) contextValidateProducer(ctx context.Context, fo
 				return ve.ValidateName("producer")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("producer")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *InputOutputsIOArtifact) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Type != nil {
+
+		if swag.IsZero(m.Type) { // not required
+			return nil
+		}
+
+		if err := m.Type.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("type")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("type")
 			}
 			return err
 		}
