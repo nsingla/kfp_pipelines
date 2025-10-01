@@ -168,110 +168,105 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Nil(t, loopExecution.ExecutorInput.Outputs)
 
 	// ---------------------
-	// Run the first iteration
-	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
+	for index, paramID := range []string{"1", "2", "3"} {
+		// Run the first iteration
+		// Refresh Run so it has the new tasks
+		run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+		require.NoError(t, err)
 
-	// Refresh Parent Task - The parent task should be "for-loop-2" for "process-dataset"
-	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
-	require.NoError(t, err)
+		// Refresh Parent Task - The parent task should be "for-loop-2" for "process-dataset"
+		parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+		require.NoError(t, err)
 
-	// Run the "process-dataset" Container Task with iteration index
-	processTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["process-dataset"]
-	opts = setupContainerOptions(t, testSetup, run, parentTask, processTaskSpec, pipelineSpec, nil)
-	opts.IterationIndex = 0
-	processExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
-	require.NoError(t, err)
-	require.NotNil(t, processExecution)
-	require.Nil(t, processExecution.ExecutorInput.Outputs)
-	require.NotNil(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"])
-	require.Equal(t, 1, len(processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()))
-	require.Equal(t,
-		processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()[0].ArtifactId,
-		"some-artifact-id-1",
-	)
-	require.NotNil(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"])
-	require.Equal(t,
-		processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"].GetStringValue(),
-		"1",
-	)
+		// Run the "process-dataset" Container Task with iteration index
+		processTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["process-dataset"]
+		opts = setupContainerOptions(t, testSetup, run, parentTask, processTaskSpec, pipelineSpec, nil)
+		opts.IterationIndex = index
+		processExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
+		require.NoError(t, err)
+		require.NotNil(t, processExecution)
+		require.Nil(t, processExecution.ExecutorInput.Outputs)
+		require.NotNil(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"])
+		require.Equal(t, 1, len(processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()))
+		require.Equal(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()[0].ArtifactId, "some-artifact-id-1")
+		require.NotNil(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"])
+		require.Equal(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"].GetStringValue(), paramID)
 
-	// Mock the Launcher run
-	outputArtifact = &apiv2beta1.Artifact{
-		ArtifactId: "some-artifact-id-2",
-		Name:       "output_artifact",
-		Type:       apiv2beta1.Artifact_Artifact,
-		Uri:        util.StringPointer("s3://some.location/output_artifact"),
-		Namespace:  testNamespace,
-		Metadata: map[string]*structpb.Value{
-			"display_name": structpb.NewStringValue("output_artifact"),
-		},
+		// Mock the Launcher run
+		outputArtifact = &apiv2beta1.Artifact{
+			ArtifactId: "some-artifact-id-2",
+			Name:       "output_artifact",
+			Type:       apiv2beta1.Artifact_Artifact,
+			Uri:        util.StringPointer("s3://some.location/output_artifact"),
+			Namespace:  testNamespace,
+			Metadata: map[string]*structpb.Value{
+				"display_name": structpb.NewStringValue("output_artifact"),
+			},
+		}
+		createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
+		require.NoError(t, err)
+		require.NotNil(t, createArtifact)
+		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+			ArtifactTask: &apiv2beta1.ArtifactTask{
+				ArtifactId:       createArtifact.ArtifactId,
+				TaskId:           processExecution.TaskID,
+				RunId:            run.GetRunId(),
+				ProducerKey:      "output_artifact",
+				ProducerTaskName: "process-dataset",
+				Type:             apiv2beta1.IOType_OUTPUT,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, at)
+
+		// Refresh Run so it has the new tasks
+		run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+		require.NoError(t, err)
+
+		// Run next iteration component
+		analyzeTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["analyze-artifact"]
+		opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeTaskSpec, pipelineSpec, nil)
+		opts.IterationIndex = index
+		analyzeExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
+		require.NoError(t, err)
+		require.NotNil(t, analyzeExecution)
+		require.Nil(t, analyzeExecution.ExecutorInput.Outputs)
+		require.NotNil(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"])
+		require.Equal(t, 1, len(analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()))
+		require.Equal(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()[0].ArtifactId, "some-artifact-id-2")
+
+		outputArtifact = &apiv2beta1.Artifact{
+			ArtifactId: "some-artifact-id-3",
+			Name:       "analyze_output_artifact",
+			Type:       apiv2beta1.Artifact_Artifact,
+			Uri:        util.StringPointer("s3://some.location/analyze_output_artifact"),
+			Namespace:  testNamespace,
+			Metadata: map[string]*structpb.Value{
+				"display_name": structpb.NewStringValue("analyze_output_artifact"),
+			},
+		}
+		createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
+		require.NoError(t, err)
+		require.NotNil(t, createArtifact)
+		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+			ArtifactTask: &apiv2beta1.ArtifactTask{
+				ArtifactId:       createArtifact.ArtifactId,
+				TaskId:           analyzeExecution.TaskID,
+				RunId:            run.GetRunId(),
+				ProducerKey:      "analyze_output_artifact",
+				ProducerTaskName: "analyze-artifact",
+				Type:             apiv2beta1.IOType_OUTPUT,
+			},
+		})
 	}
-	createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
-	require.NoError(t, err)
-	require.NotNil(t, createArtifact)
-	at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
-		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId:       createArtifact.ArtifactId,
-			TaskId:           processExecution.TaskID,
-			RunId:            run.GetRunId(),
-			ProducerKey:      "output_artifact",
-			ProducerTaskName: "process-dataset",
-			Type:             apiv2beta1.IOType_OUTPUT,
-		},
+
+	tasks, err := testSetup.DriverAPI.ListTasks(context.Background(), &apiv2beta1.ListTasksRequest{
+		ParentFilter: &apiv2beta1.ListTasksRequest_ParentId{ParentId: loopExecution.TaskID},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, at)
-
-	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
-
-	// Run next iteration component
-	analyzeTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["analyze-artifact"]
-	opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeTaskSpec, pipelineSpec, nil)
-	opts.IterationIndex = 0
-	analyzeExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
-	require.NoError(t, err)
-	require.NotNil(t, analyzeExecution)
-	require.Nil(t, analyzeExecution.ExecutorInput.Outputs)
-	require.NotNil(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"])
-	require.Equal(t, 1, len(analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()))
-	require.Equal(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()[0].ArtifactId, "some-artifact-id-2")
-
-	outputArtifact = &apiv2beta1.Artifact{
-		ArtifactId: "some-artifact-id-3",
-		Name:       "analyze_output_artifact",
-		Type:       apiv2beta1.Artifact_Artifact,
-		Uri:        util.StringPointer("s3://some.location/analyze_output_artifact"),
-		Namespace:  testNamespace,
-		Metadata: map[string]*structpb.Value{
-			"display_name": structpb.NewStringValue("analyze_output_artifact"),
-		},
-	}
-	createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
-	require.NoError(t, err)
-	require.NotNil(t, createArtifact)
-	at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
-		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId:       createArtifact.ArtifactId,
-			TaskId:           analyzeExecution.TaskID,
-			RunId:            run.GetRunId(),
-			ProducerKey:      "analyze_output_artifact",
-			ProducerTaskName: "analyze-artifact",
-			Type:             apiv2beta1.IOType_OUTPUT,
-		},
-	})
-	// ---------------------
-
-	// Run the second iteration
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
-
-	// Run the third iteration
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
+	require.NotNil(t, tasks)
+	// Expect 3 tasks for analyze-artifact, and 3 tasks for process-dataset
+	require.Equal(t, 6, len(tasks.Tasks))
 
 	// TODO:
 	//analyzeArtifactListTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["analyze-artifact-list"]

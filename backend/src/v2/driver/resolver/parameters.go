@@ -95,7 +95,7 @@ func resolveParameterComponentInputParameter(opts common.Options, paramSpec *pip
 				if len(listValues) == 0 {
 					return nil, fmt.Errorf("loop argument %s must have at least one value", paramName)
 				}
-				if len(listValues) <= opts.IterationIndex+1 {
+				if opts.IterationIndex+1 > len(listValues) {
 					return nil, fmt.Errorf(
 						"loop argument %s has only %d values,"+
 							" but index %d is requested, which is out "+
