@@ -177,11 +177,11 @@ func TestLoopArtifactPassing(t *testing.T) {
 	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
 	require.NoError(t, err)
 
-	// Run the Loop Iteration Task
+	// Run the Container Task with iteration index
 	processTaskSpec := pipelineSpec.Components["comp-for-loop-2"].GetDag().Tasks["process-dataset"]
 	opts = setupDagOptions(t, testSetup, run, parentTask, processTaskSpec, pipelineSpec, nil)
 	opts.IterationIndex = 0
-	processExecution, err := DAG(context.Background(), opts, testSetup.DriverAPI)
+	processExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, processExecution)
 	require.Nil(t, processExecution.ExecutorInput.Outputs)

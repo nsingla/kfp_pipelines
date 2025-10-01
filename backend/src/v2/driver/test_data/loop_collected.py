@@ -55,7 +55,6 @@ def analyze_artifact_list(artifact_list_input: List[Artifact]):
     assert actual_values == expected_values
     assert actual_metadata == expected_metadata
 
-
 @dsl.pipeline
 def secondary_pipeline() -> List[Artifact]:
     create_dataset_task = create_dataset()
