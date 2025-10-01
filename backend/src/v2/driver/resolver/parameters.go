@@ -24,8 +24,7 @@ func resolveInputParameter(
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_ComponentInputParameter:
 		glog.V(4).Infof("resolving component input parameter %s", paramSpec.GetComponentInputParameter())
 		return resolveParameterComponentInputParameter(opts, paramSpec, inputParams)
-	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
-		// TODO(HumairAK)
+	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter: // TODO(HumairAK)
 		glog.V(4).Infof("resolving task output parameter %s", paramSpec.GetTaskOutputParameter().String())
 		return nil, paramError(paramSpec, fmt.Errorf("task output parameter not supported yet"))
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_RuntimeValue:
@@ -62,8 +61,7 @@ func resolveInputParameter(
 		default:
 			return nil, paramError(paramSpec, fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}
-	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_:
-		// TODO(HumairAK)
+	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_: // TODO(HumairAK)
 		glog.V(4).Infof("resolving Task Final Statu %s", paramSpec.GetTaskFinalStatus().String())
 		return nil, paramError(paramSpec, fmt.Errorf("task output parameter not supported yet"))
 	default:
@@ -76,18 +74,18 @@ func resolveParameterComponentInputParameter(opts common.Options, paramSpec *pip
 	if paramName == "" {
 		return nil, paramError(paramSpec, fmt.Errorf("empty component input"))
 	}
-	isPipelineChanel := common.IsPipelineChannel(paramName)
+	isPipelineChannel := common.IsPipelineChannel(paramName)
 	for _, param := range inputParams {
-		generateName, err := common.IOFieldsToPipelineChannelName(param.GetParameterName(), param.GetProducer(), isPipelineChanel)
+		generateName, err := common.IOFieldsToPipelineChannelName(param.GetParameterName(), param.GetProducer(), isPipelineChannel)
 		if err != nil {
 			return nil, err
 		}
 		if paramName == generateName {
 			value := param.GetValue()
 			if _, isNullValue := value.GetKind().(*structpb.Value_NullValue); isNullValue {
-				// Null values are only allowed for optional pipeline input parameters with no values. The caller has this
+				// Null values are only allowed for optional pipeline inputs with no values. The caller has this
 				// context to know if this is allowed.
-				return nil, fmt.Errorf("%w: %s", ErrResolvedParameterNull, paramName)
+				return nil, fmt.Errorf("%w: %s", ErrResolvedInputNull, paramName)
 			}
 			if common.IsLoopArgument(paramName) {
 				if _, ok := value.GetKind().(*structpb.Value_ListValue); !ok {

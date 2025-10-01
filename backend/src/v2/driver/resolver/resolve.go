@@ -14,7 +14,8 @@ import (
 var paramError = func(paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec, err error) error {
 	return fmt.Errorf("resolving input parameter with spec %s: %w", paramSpec, err)
 }
-var ErrResolvedParameterNull = errors.New("the resolved input parameter is null")
+
+var ErrResolvedInputNull = errors.New("the resolved input is null")
 
 func ResolveInputs(
 	ctx context.Context,
@@ -38,7 +39,7 @@ func ResolveInputs(
 
 		v, err := resolveInputParameter(ctx, opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
 		if err != nil {
-			if !errors.Is(err, ErrResolvedParameterNull) {
+			if !errors.Is(err, ErrResolvedInputNull) {
 				return nil, err
 			}
 			componentParam, ok := opts.Component.GetInputDefinitions().GetParameters()[name]
@@ -57,7 +58,7 @@ func ResolveInputs(
 
 	// Handle artifacts.
 	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec)
+		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
 		if err != nil {
 			return nil, err
 		}
