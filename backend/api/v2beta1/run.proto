@@ -446,7 +446,6 @@ message PipelineTaskDetail {
   repeated ChildTask child_tasks = 17;
 
   message InputOutputs {
-
     message IOProducer {
       string task_name = 1;
       // This would be the equivalent of output_parameter_key from the upstream task
@@ -487,9 +486,6 @@ message PipelineTaskDetail {
       // TODO(HumairAK) add this to ArtifactTask column
       IOType type = 2;
 
-      // TODO(HumairAK): An artifact actually always has a producer task and output parameter key
-      // So this shouldn't really be a oneOf? Need to revisit this.
-      // But in input case, there can be a parameter_name, and a producer
       oneof source {
         // This is included on Runtime Tasks when the parameter name is known.
         string parameter_name = 3;
@@ -504,15 +500,11 @@ message PipelineTaskDetail {
 
     // Output Only. To create Artifacts for a task are created
     // via ArtifactTasks.
-    // For parallelFor & dsl.Collected case, each IO Artifact
-    // represents one dsl.Collected set of artifacts.
-    // This is because each dsl.Collected has one source task.
-    // TODO(Humair): Actually no it doesn't, each iteration
-    // has a container task, and we should store the
-    // "iteration" count for that specific task, and then
-    // as part of "Source" we can include the iteration for
-    // that specific task. This will allow us to support a
-    // collection of "Lists" in the future as well.
+    // Note that this is a list to align with ExecutorInput.artifacts
+    // Having a list allows for support for multiple scenarios:
+    // * list artifacts as inputs/outputs for Runtime Tasks
+    // * list artifacts as iterator_inputs/iterator_outputs
+    //   for Loop Tasks
     repeated IOArtifact artifacts = 2;
   }
 

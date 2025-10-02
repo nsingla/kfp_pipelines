@@ -153,11 +153,6 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: &iterationCount}
 		taskToCreate.Type = gc.PipelineTaskDetail_LOOP
 		taskToCreate.DisplayName = "Loop"
-	} else if iterationIndex != nil {
-		iterationCount := int64(*iterationCount)
-		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationIndex: &iterationCount}
-		taskToCreate.Type = gc.PipelineTaskDetail_LOOP_ITERATION
-		taskToCreate.DisplayName = fmt.Sprintf("Loop Iteration %d", *iterationIndex)
 	} else if condition != "" {
 		taskToCreate.Type = gc.PipelineTaskDetail_CONDITION_BRANCH
 		taskToCreate.DisplayName = "Condition Branch"

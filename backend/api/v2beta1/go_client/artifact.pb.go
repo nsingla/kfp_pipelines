@@ -787,11 +787,13 @@ type ArtifactTask struct {
 	// in the component spec (found in OutputDefinitions)
 	// used to output the artifact.
 	ProducerKey string `protobuf:"bytes,7,opt,name=producer_key,json=producerKey,proto3" json:"producer_key,omitempty"`
+	// When a source is from an iteration Runtime task type inside a ParallelFor
+	Iteration *int32 `protobuf:"varint,8,opt,name=iteration,proto3,oneof" json:"iteration,omitempty"`
 	// The parameter name for the input/output artifact
 	// This maybe the same as the Artifact name if the
 	// artifact name is not specified. It is used to
 	// resolve artifact pipeline channels.
-	ArtifactKey   string `protobuf:"bytes,8,opt,name=artifact_key,json=artifactKey,proto3" json:"artifact_key,omitempty"`
+	ArtifactKey   string `protobuf:"bytes,9,opt,name=artifact_key,json=artifactKey,proto3" json:"artifact_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -873,6 +875,13 @@ func (x *ArtifactTask) GetProducerKey() string {
 		return x.ProducerKey
 	}
 	return ""
+}
+
+func (x *ArtifactTask) GetIteration() int32 {
+	if x != nil && x.Iteration != nil {
+		return *x.Iteration
+	}
+	return 0
 }
 
 func (x *ArtifactTask) GetArtifactKey() string {
@@ -1050,7 +1059,7 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x1eCreateArtifactTasksBulkRequest\x12[\n" +
 	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"~\n" +
 	"\x1fCreateArtifactTasksBulkResponse\x12[\n" +
-	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"\xa7\x02\n" +
+	"\x0eartifact_tasks\x18\x01 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.ArtifactTaskR\rartifactTasks\"\xd8\x02\n" +
 	"\fArtifactTask\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vartifact_id\x18\x02 \x01(\tR\n" +
@@ -1060,7 +1069,10 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x04type\x18\x05 \x01(\x0e2..kubeflow.pipelines.backend.api.v2beta1.IOTypeR\x04type\x12,\n" +
 	"\x12producer_task_name\x18\x06 \x01(\tR\x10producerTaskName\x12!\n" +
 	"\fproducer_key\x18\a \x01(\tR\vproducerKey\x12!\n" +
-	"\fartifact_key\x18\b \x01(\tR\vartifactKey\"\xc1\x05\n" +
+	"\titeration\x18\b \x01(\x05H\x00R\titeration\x88\x01\x01\x12!\n" +
+	"\fartifact_key\x18\t \x01(\tR\vartifactKeyB\f\n" +
+	"\n" +
+	"_iteration\"\xc1\x05\n" +
 	"\bArtifact\x12\x1f\n" +
 	"\vartifact_id\x18\x01 \x01(\tR\n" +
 	"artifactId\x12\x12\n" +
@@ -1183,6 +1195,7 @@ func file_backend_api_v2beta1_artifact_proto_init() {
 	if File_backend_api_v2beta1_artifact_proto != nil {
 		return
 	}
+	file_backend_api_v2beta1_artifact_proto_msgTypes[9].OneofWrappers = []any{}
 	file_backend_api_v2beta1_artifact_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -440,6 +440,11 @@
           "description": "For outputs, the key is the name of the parameter\nin the component spec (found in OutputDefinitions)\nused to output the artifact.",
           "title": "The key is often the parameter name used\nas input/output on the component, but\ncan also take on the value of of other values.\nFor example:\n * \"param-#\" when using parameters in a ParallelFor\n * \"Output\" when using Pythonic Artifacts"
         },
+        "iteration": {
+          "type": "integer",
+          "format": "int32",
+          "title": "When a source is from an iteration Runtime task type inside a ParallelFor"
+        },
         "artifact_key": {
           "type": "string",
           "description": "The parameter name for the input/output artifact\nThis maybe the same as the Artifact name if the\nartifact name is not specified. It is used to\nresolve artifact pipeline channels."

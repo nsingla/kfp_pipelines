@@ -172,3 +172,7 @@ func IsLoopArgument(name string) bool {
 	nameWithoutPrefix := strings.TrimPrefix(name, pipelineChannelPrefix)
 	return strings.HasSuffix(nameWithoutPrefix, "loop-item") || strings.HasPrefix(nameWithoutPrefix, "loop-item")
 }
+
+func IsRuntimeIterationTask(task *apiv2beta1.PipelineTaskDetail) bool {
+	return task.Type == apiv2beta1.PipelineTaskDetail_RUNTIME && task.TypeAttributes != nil && task.TypeAttributes.IterationIndex != nil
+}

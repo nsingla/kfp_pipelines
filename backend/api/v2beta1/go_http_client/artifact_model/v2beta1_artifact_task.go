@@ -32,6 +32,9 @@ type V2beta1ArtifactTask struct {
 	// Read Only: true
 	ID string `json:"id,omitempty"`
 
+	// When a source is from an iteration Runtime task type inside a ParallelFor
+	Iteration int32 `json:"iteration,omitempty"`
+
 	// The key is often the parameter name used
 	// as input/output on the component, but
 	// can also take on the value of of other values.

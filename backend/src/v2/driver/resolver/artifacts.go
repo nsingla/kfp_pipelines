@@ -96,7 +96,9 @@ func resolveUpstreamArtifacts(ctx context.Context,
 		return nil, fmt.Errorf("producerTask task cannot be empty")
 	}
 	producerTaskUniqueName := getTaskNameWithTaskID(producerTaskAmbiguousName, opts.ParentTask.GetTaskId())
-	producerTaskUniqueName = InferIndexedTaskName(producerTaskUniqueName, opts.ParentTask)
+	if opts.IterationIndex >= 0 {
+		producerTaskUniqueName = getParallelForTaskName(producerTaskUniqueName, int64(opts.IterationIndex))
+	}
 	producerTask := tasks[producerTaskUniqueName]
 	if producerTask == nil {
 		return nil, fmt.Errorf("producerTask task %s not found", producerTaskUniqueName)
@@ -129,12 +131,12 @@ func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (st
 		return "", fmt.Errorf("parenttask and task can't be nil and task name cannot be empty")
 	}
 	taskName := getTaskNameWithTaskID(task.Name, parentTask.TaskId)
-	if task.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+	if common.IsRuntimeIterationTask(task) {
 		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}
 		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
-	} else if parentTask.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+	} else if common.IsRuntimeIterationTask(parentTask) {
 		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}
@@ -198,16 +200,6 @@ func getParallelForTaskName(taskName string, iterationIndex int64) string {
 
 func getTaskNameWithTaskID(taskName, taskID string) string {
 	return fmt.Sprintf("%s_%s", taskName, taskID)
-}
-
-func InferIndexedTaskName(producerTaskName string, task *apiv2beta1.PipelineTaskDetail) string {
-	// Check if the Task in question is a parallelFor iteration Task. If it is, we need to
-	// update the producerTaskName so the downstream task resolves the appropriate index.
-	if task.GetType() == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
-		taskIterationIndex := task.GetTypeAttributes().GetIterationIndex()
-		producerTaskName = getParallelForTaskName(producerTaskName, taskIterationIndex)
-	}
-	return producerTaskName
 }
 
 func findArtifactByProducerKeyInList(

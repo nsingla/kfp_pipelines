@@ -297,13 +297,12 @@ const (
 	PipelineTaskDetail_CONDITION PipelineTaskDetail_TaskType = 3
 	// Task Group for Condition Branches
 	// Task Group for Loop Iterations
-	PipelineTaskDetail_LOOP           PipelineTaskDetail_TaskType = 4
-	PipelineTaskDetail_LOOP_ITERATION PipelineTaskDetail_TaskType = 5
-	PipelineTaskDetail_EXIT_HANDLER   PipelineTaskDetail_TaskType = 6
+	PipelineTaskDetail_LOOP         PipelineTaskDetail_TaskType = 4
+	PipelineTaskDetail_EXIT_HANDLER PipelineTaskDetail_TaskType = 5
 	// Generic DAG task type for types like Nested Pipelines
 	// where there is no declarative way to detect this within
 	// a driver.
-	PipelineTaskDetail_DAG PipelineTaskDetail_TaskType = 7
+	PipelineTaskDetail_DAG PipelineTaskDetail_TaskType = 6
 )
 
 // Enum value maps for PipelineTaskDetail_TaskType.
@@ -314,9 +313,8 @@ var (
 		2: "CONDITION_BRANCH",
 		3: "CONDITION",
 		4: "LOOP",
-		5: "LOOP_ITERATION",
-		6: "EXIT_HANDLER",
-		7: "DAG",
+		5: "EXIT_HANDLER",
+		6: "DAG",
 	}
 	PipelineTaskDetail_TaskType_value = map[string]int32{
 		"ROOT":             0,
@@ -324,9 +322,8 @@ var (
 		"CONDITION_BRANCH": 2,
 		"CONDITION":        3,
 		"LOOP":             4,
-		"LOOP_ITERATION":   5,
-		"EXIT_HANDLER":     6,
-		"DAG":              7,
+		"EXIT_HANDLER":     5,
+		"DAG":              6,
 	}
 )
 
@@ -2256,7 +2253,7 @@ func (x *PipelineTaskDetail_StatusMetadata) GetCustomProperties() map[string]*st
 
 type PipelineTaskDetail_TypeAttributes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Optional. Applies to type LOOP_ITERATION
+	// Optional. Applies to type Runtime that is an iteration
 	IterationIndex *int64 `protobuf:"varint,1,opt,name=iteration_index,json=iterationIndex,proto3,oneof" json:"iteration_index,omitempty"`
 	// Optional. Applies to type LOOP
 	IterationCount *int64 `protobuf:"varint,2,opt,name=iteration_count,json=iterationCount,proto3,oneof" json:"iteration_count,omitempty"`
@@ -2370,8 +2367,15 @@ type PipelineTaskDetail_InputOutputs struct {
 	Parameters []*PipelineTaskDetail_InputOutputs_Parameter `protobuf:"bytes,1,rep,name=parameters,proto3" json:"parameters,omitempty"`
 	// Output Only. To create Artifacts for a task are created
 	// via ArtifactTasks.
-	// For Loops parameters are filled with resolved
-	// artifactIterator.items
+	// For parallelFor & dsl.Collected case, each IO Artifact
+	// represents one dsl.Collected set of artifacts.
+	// This is because each dsl.Collected has one source task.
+	// TODO(Humair): Actually no it doesn't, each iteration
+	// has a container task, and we should store the
+	// "iteration" count for that specific task, and then
+	// as part of "Source" we can include the iteration for
+	// that specific task. This will allow us to support a
+	// collection of "Lists" in the future as well.
 	Artifacts     []*PipelineTaskDetail_InputOutputs_IOArtifact `protobuf:"bytes,2,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2426,7 +2430,9 @@ type PipelineTaskDetail_InputOutputs_IOProducer struct {
 	TaskName string                 `protobuf:"bytes,1,opt,name=task_name,json=taskName,proto3" json:"task_name,omitempty"`
 	// This would be the equivalent of output_parameter_key from the upstream task
 	// when it's a parameter input, or output_artifact_key when it is an Artifact.
-	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// When a source is from an iteration Runtime task type inside a ParallelFor
+	Iteration     *int32 `protobuf:"varint,3,opt,name=iteration,proto3,oneof" json:"iteration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2473,6 +2479,13 @@ func (x *PipelineTaskDetail_InputOutputs_IOProducer) GetKey() string {
 		return x.Key
 	}
 	return ""
+}
+
+func (x *PipelineTaskDetail_InputOutputs_IOProducer) GetIteration() int32 {
+	if x != nil && x.Iteration != nil {
+		return *x.Iteration
+	}
+	return 0
 }
 
 type PipelineTaskDetail_InputOutputs_Parameter struct {
@@ -2740,7 +2753,7 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"RunDetails\x12.\n" +
 	"\x13pipeline_context_id\x18\x01 \x01(\x03R\x11pipelineContextId\x125\n" +
 	"\x17pipeline_run_context_id\x18\x02 \x01(\x03R\x14pipelineRunContextId\x12]\n" +
-	"\ftask_details\x18\x03 \x03(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\vtaskDetails\"\xec\x18\n" +
+	"\ftask_details\x18\x03 \x03(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\vtaskDetails\"\x89\x19\n" +
 	"\x12PipelineTaskDetail\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x17\n" +
@@ -2782,16 +2795,19 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\x10_iteration_count\x1a8\n" +
 	"\tChildTask\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x1a\x9d\a\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x1a\xce\a\n" +
 	"\fInputOutputs\x12q\n" +
 	"\n" +
 	"parameters\x18\x01 \x03(\v2Q.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputOutputs.ParameterR\n" +
 	"parameters\x12p\n" +
-	"\tartifacts\x18\x02 \x03(\v2R.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputOutputs.IOArtifactR\tartifacts\x1a;\n" +
+	"\tartifacts\x18\x02 \x03(\v2R.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputOutputs.IOArtifactR\tartifacts\x1al\n" +
 	"\n" +
 	"IOProducer\x12\x1b\n" +
 	"\ttask_name\x18\x01 \x01(\tR\btaskName\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\x1a\xa2\x02\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12!\n" +
+	"\titeration\x18\x03 \x01(\x05H\x00R\titeration\x88\x01\x01B\f\n" +
+	"\n" +
+	"_iteration\x1a\xa2\x02\n" +
 	"\tParameter\x12,\n" +
 	"\x05value\x18\x01 \x01(\v2\x16.google.protobuf.ValueR\x05value\x12B\n" +
 	"\x04type\x18\x02 \x01(\x0e2..kubeflow.pipelines.backend.api.v2beta1.IOTypeR\x04type\x12'\n" +
@@ -2817,16 +2833,15 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\n" +
 	"\x06FAILED\x10\x04\x12\n" +
 	"\n" +
-	"\x06CACHED\x10\x05\"\x7f\n" +
+	"\x06CACHED\x10\x05\"k\n" +
 	"\bTaskType\x12\b\n" +
 	"\x04ROOT\x10\x00\x12\v\n" +
 	"\aRUNTIME\x10\x01\x12\x14\n" +
 	"\x10CONDITION_BRANCH\x10\x02\x12\r\n" +
 	"\tCONDITION\x10\x03\x12\b\n" +
-	"\x04LOOP\x10\x04\x12\x12\n" +
-	"\x0eLOOP_ITERATION\x10\x05\x12\x10\n" +
-	"\fEXIT_HANDLER\x10\x06\x12\a\n" +
-	"\x03DAG\x10\aB\x11\n" +
+	"\x04LOOP\x10\x04\x12\x10\n" +
+	"\fEXIT_HANDLER\x10\x05\x12\a\n" +
+	"\x03DAG\x10\x06B\x11\n" +
 	"\x0f_parent_task_id\"\xd6\x01\n" +
 	"\x1aPipelineTaskExecutorDetail\x12\x19\n" +
 	"\bmain_job\x18\x01 \x01(\tR\amainJob\x121\n" +
@@ -3103,6 +3118,7 @@ func file_backend_api_v2beta1_run_proto_init() {
 		(*ListTasksRequest_RunId)(nil),
 	}
 	file_backend_api_v2beta1_run_proto_msgTypes[25].OneofWrappers = []any{}
+	file_backend_api_v2beta1_run_proto_msgTypes[29].OneofWrappers = []any{}
 	file_backend_api_v2beta1_run_proto_msgTypes[30].OneofWrappers = []any{
 		(*PipelineTaskDetail_InputOutputs_Parameter_ParameterName)(nil),
 		(*PipelineTaskDetail_InputOutputs_Parameter_Producer)(nil),

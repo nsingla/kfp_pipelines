@@ -1005,7 +1005,7 @@ func CollectInputs(
 			}
 		} else {
 			tempSubTaskName := workingSubTaskName
-			if currentTask.GetType() == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+			if common.IsRuntimeIterationTask(currentTask) {
 				// handle for parallel iteration dag, i.e one of the DAG
 				// instances of the loop.
 				iterationIndex := currentTask.GetTypeAttributes().GetIterationIndex()
@@ -1170,7 +1170,7 @@ func getTaskNameWithTaskID(taskName, taskID string) string {
 func InferIndexedTaskName(producerTaskName string, task *apiv2beta1.PipelineTaskDetail) string {
 	// Check if the Task in question is a parallelFor iteration Task. If it is, we need to
 	// update the producerTaskName so the downstream task resolves the appropriate index.
-	if task.GetType() == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+	if common.IsRuntimeIterationTask(task) {
 		taskIterationIndex := task.GetTypeAttributes().GetIterationIndex()
 		producerTaskName = getParallelForTaskName(producerTaskName, taskIterationIndex)
 	}
@@ -1182,12 +1182,12 @@ func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (st
 		return "", fmt.Errorf("task can't be nil or name cannot be empty")
 	}
 	taskName := fmt.Sprintf("%s_%s", task.Name, task.TaskId)
-	if task.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+	if common.IsRuntimeIterationTask(task) {
 		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}
 		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
-	} else if parentTask != nil && parentTask.Type == apiv2beta1.PipelineTaskDetail_LOOP_ITERATION {
+	} else if parentTask != nil && common.IsRuntimeIterationTask(parentTask) {
 		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}

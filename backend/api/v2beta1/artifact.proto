@@ -288,11 +288,14 @@ message ArtifactTask {
   // used to output the artifact.
   string producer_key = 7;
 
+  // When a source is from an iteration Runtime task type inside a ParallelFor
+  optional int32 iteration = 8;
+
   // The parameter name for the input/output artifact
   // This maybe the same as the Artifact name if the
   // artifact name is not specified. It is used to
   // resolve artifact pipeline channels.
-  string artifact_key = 8;
+  string artifact_key = 9;
 }
 
 // Note to be confused with RuntimeArtifact in pipelinespec

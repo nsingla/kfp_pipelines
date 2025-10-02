@@ -2191,6 +2191,11 @@
           "description": "For outputs, the key is the name of the parameter\nin the component spec (found in OutputDefinitions)\nused to output the artifact.",
           "title": "The key is often the parameter name used\nas input/output on the component, but\ncan also take on the value of of other values.\nFor example:\n * \"param-#\" when using parameters in a ParallelFor\n * \"Output\" when using Pythonic Artifacts"
         },
+        "iteration": {
+          "type": "integer",
+          "format": "int32",
+          "title": "When a source is from an iteration Runtime task type inside a ParallelFor"
+        },
         "artifact_key": {
           "type": "string",
           "description": "The parameter name for the input/output artifact\nThis maybe the same as the Artifact name if the\nartifact name is not specified. It is used to\nresolve artifact pipeline channels."
@@ -2904,6 +2909,11 @@
         "key": {
           "type": "string",
           "description": "This would be the equivalent of output_parameter_key from the upstream task\nwhen it's a parameter input, or output_artifact_key when it is an Artifact."
+        },
+        "iteration": {
+          "type": "integer",
+          "format": "int32",
+          "title": "When a source is from an iteration Runtime task type inside a ParallelFor"
         }
       }
     },
@@ -2957,7 +2967,7 @@
             "type": "object",
             "$ref": "#/definitions/InputOutputsIOArtifact"
           },
-          "title": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks.\nFor Loops parameters are filled with resolved\nartifactIterator.items"
+          "description": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks.\nFor parallelFor & dsl.Collected case, each IO Artifact\nrepresents one dsl.Collected set of artifacts.\nThis is because each dsl.Collected has one source task.\nTODO(Humair): Actually no it doesn't, each iteration\nhas a container task, and we should store the\n\"iteration\" count for that specific task, and then\nas part of \"Source\" we can include the iteration for\nthat specific task. This will allow us to support a\ncollection of \"Lists\" in the future as well."
         }
       }
     },
@@ -3019,7 +3029,6 @@
         "CONDITION_BRANCH",
         "CONDITION",
         "LOOP",
-        "LOOP_ITERATION",
         "EXIT_HANDLER",
         "DAG"
       ],
@@ -3032,7 +3041,7 @@
         "iteration_index": {
           "type": "string",
           "format": "int64",
-          "title": "Optional. Applies to type LOOP_ITERATION"
+          "title": "Optional. Applies to type Runtime that is an iteration"
         },
         "iteration_count": {
           "type": "string",

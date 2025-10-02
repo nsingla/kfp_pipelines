@@ -20,7 +20,7 @@ type PipelineTaskDetailTypeAttributes struct {
 	// Optional. Applies to type LOOP
 	IterationCount string `json:"iteration_count,omitempty"`
 
-	// Optional. Applies to type LOOP_ITERATION
+	// Optional. Applies to type Runtime that is an iteration
 	IterationIndex string `json:"iteration_index,omitempty"`
 }
 

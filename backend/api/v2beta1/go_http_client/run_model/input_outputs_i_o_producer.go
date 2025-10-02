@@ -17,6 +17,9 @@ import (
 // swagger:model InputOutputsIOProducer
 type InputOutputsIOProducer struct {
 
+	// When a source is from an iteration Runtime task type inside a ParallelFor
+	Iteration int32 `json:"iteration,omitempty"`
+
 	// This would be the equivalent of output_parameter_key from the upstream task
 	// when it's a parameter input, or output_artifact_key when it is an Artifact.
 	Key string `json:"key,omitempty"`

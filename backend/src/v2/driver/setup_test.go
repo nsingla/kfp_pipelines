@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,19 +124,9 @@ func (m *MockDriverAPI) GetRun(ctx context.Context, req *apiv2beta1.GetRunReques
 
 func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2beta1.PipelineTaskDetail {
 	// Create a copy of the task to populate with artifacts
-	populatedTask := &apiv2beta1.PipelineTaskDetail{
-		TaskId:         task.TaskId,
-		Name:           task.Name,
-		DisplayName:    task.DisplayName,
-		RunId:          task.RunId,
-		Type:           task.Type,
-		Status:         task.Status,
-		ParentTaskId:   task.ParentTaskId,
-		Pods:           task.Pods,
-		StatusMetadata: task.StatusMetadata,
-		Inputs:         &apiv2beta1.PipelineTaskDetail_InputOutputs{},
-		Outputs:        &apiv2beta1.PipelineTaskDetail_InputOutputs{},
-	}
+	populatedTask := proto.Clone(task).(*apiv2beta1.PipelineTaskDetail)
+	populatedTask.Inputs = &apiv2beta1.PipelineTaskDetail_InputOutputs{}
+	populatedTask.Outputs = &apiv2beta1.PipelineTaskDetail_InputOutputs{}
 
 	// Copy existing parameters if they exist
 	if task.Inputs != nil {
@@ -153,60 +144,34 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 		if artifactTask.TaskId == task.TaskId {
 			// Get the associated artifact
 			if artifact, exists := m.artifacts[artifactTask.ArtifactId]; exists {
-				// Find existing IOArtifact with matching source
-				var targetIOArtifact *apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
-				var targetList *[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+				ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+					Artifacts: []*apiv2beta1.Artifact{artifact},
+					Type:      artifactTask.Type,
+				}
 
-				if artifactTask.Type == apiv2beta1.IOType_INPUT || artifactTask.Type == apiv2beta1.IOType_ITERATOR_INPUT {
-					targetList = &inputArtifacts
+				// Set the source based on producer information
+				if artifactTask.ProducerTaskName != "" && artifactTask.ProducerKey != "" {
+					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
+						Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
+							TaskName:  artifactTask.ProducerTaskName,
+							Key:       artifactTask.ProducerKey,
+							Iteration: artifactTask.Iteration,
+						},
+					}
 				} else {
-					targetList = &outputArtifacts
-				}
-
-				// Create source to match against
-				producerTaskName := artifactTask.ProducerTaskName
-				producerKey := artifactTask.ProducerKey
-				parameterName := artifact.Name
-
-				// Find matching IOArtifact
-				for _, existing := range *targetList {
-					if existing.Type == artifactTask.Type {
-						if existing.GetProducer() != nil && existing.GetProducer().GetTaskName() == producerTaskName &&
-							existing.GetProducer().GetKey() == producerKey {
-							targetIOArtifact = existing
-							break
-						} else if existing.GetParameterName() == parameterName {
-							targetIOArtifact = existing
-							break
-						}
+					// Use parameter name if no producer specified
+					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
+						ParameterName: artifact.Name,
 					}
 				}
 
-				// Create new IOArtifact if no match found
-				if targetIOArtifact == nil {
-					targetIOArtifact = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-						Artifacts: []*apiv2beta1.Artifact{},
-						Type:      artifactTask.Type,
-					}
-					if producerKey != "" && producerTaskName != "" {
-						targetIOArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
-							Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-								TaskName: producerTaskName,
-								Key:      producerKey,
-							},
-						}
-					} else if parameterName != "" {
-						targetIOArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
-							ParameterName: parameterName,
-						}
-					} else {
-						panic("invalid producer key or task name")
-					}
-					*targetList = append(*targetList, targetIOArtifact)
+				// Determine if this is an input or output artifact based on ArtifactTaskType
+				switch artifactTask.Type {
+				case apiv2beta1.IOType_INPUT, apiv2beta1.IOType_ITERATOR_INPUT:
+					inputArtifacts = append(inputArtifacts, ioArtifact)
+				case apiv2beta1.IOType_OUTPUT, apiv2beta1.IOType_ITERATOR_OUTPUT:
+					outputArtifacts = append(outputArtifacts, ioArtifact)
 				}
-
-				// Append artifact to the target IOArtifact
-				targetIOArtifact.Artifacts = append(targetIOArtifact.Artifacts, artifact)
 			}
 		}
 	}
