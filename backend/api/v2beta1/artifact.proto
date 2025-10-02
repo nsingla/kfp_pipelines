@@ -69,7 +69,10 @@ enum IOType {
   // to a parameterIterator or artifactIterator.
   ITERATOR_INPUT = 3;
 
-  // TODO(HumairAK): Add dsl.collected output?
+  // Used for dsl.Collected
+  // when used, all Parameter values, or Artifact list items
+  // are considered the collected values of this loop's output
+  ITERATOR_OUTPUT = 4;
 }
 
 service ArtifactService {

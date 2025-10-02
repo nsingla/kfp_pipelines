@@ -219,6 +219,73 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, at)
 
+		// Mock: Also expect Launcher->API Server to upload the output artifact to the for-loop-2 task's outputs (by first checking if this artifact is an output artifact)
+		//   comp-for-loop-2:
+		//    dag:
+		//      outputs:
+		//        artifacts:
+		//          pipelinechannel--process-dataset-output_artifact:
+		//            artifactSelectors:
+		//            - outputArtifactKey: output_artifact
+		//              producerSubtask: process-dataset
+
+		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+			ArtifactTask: &apiv2beta1.ArtifactTask{
+				ArtifactId:       createArtifact.ArtifactId,
+				TaskId:           loopExecution.TaskID,
+				RunId:            run.GetRunId(),
+				ProducerKey:      "output_artifact",
+				ProducerTaskName: "process-dataset",
+				Type:             apiv2beta1.IOType_ITERATOR_OUTPUT,
+			},
+		})
+		require.NoError(t, err)
+		task, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+		require.NoError(t, err)
+		require.NotNil(t, task)
+
+		//outputArtifactExists := false
+		//for _, output := range task.Outputs.Artifacts {
+		//	if output.Type == apiv2beta1.IOType_ITERATOR_OUTPUT &&
+		//		output.GetProducer() != nil &&
+		//		output.GetProducer().TaskName == "process-dataset" &&
+		//		output.GetProducer().GetKey() == "output_artifact" {
+		//
+		//		// Create a new artifact-task for the output artifact
+		//		at.TaskId =
+		//
+		//		outputArtifactExists = true
+		//		break
+		//	}
+		//}
+
+		createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
+		require.NoError(t, err)
+		require.NotNil(t, createArtifact)
+		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+			ArtifactTask: &apiv2beta1.ArtifactTask{
+				ArtifactId:       createArtifact.ArtifactId,
+				TaskId:           processExecution.TaskID,
+				RunId:            run.GetRunId(),
+				ProducerKey:      "output_artifact",
+				ProducerTaskName: "process-dataset",
+				Type:             apiv2beta1.IOType_ITERATOR_OUTPUT,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, at)
+
+		// Mock: Launcher should also traverse the dag up, to log any output artifacts that are being sourced from the current loop task
+		// In this case, secondary-pipeline requires dsl.Collected() sourced from "process-dataset" outputs that are output from for-loop-2
+		//   comp-secondary-pipeline:
+		//    dag:
+		//      outputs:
+		//        artifacts:
+		//          Output:
+		//            artifactSelectors:
+		//            - outputArtifactKey: pipelinechannel--process-dataset-output_artifact
+		//              producerSubtask: for-loop-2
+
 		// Refresh Run so it has the new tasks
 		run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
 		require.NoError(t, err)
@@ -265,15 +332,34 @@ func TestLoopArtifactPassing(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, tasks)
-	// Expect 3 tasks for analyze-artifact, and 3 tasks for process-dataset
+	// Expect 3 tasks for analyze-artifact + 3 tasks for process-dataset
 	require.Equal(t, 6, len(tasks.Tasks))
 
-	// TODO:
-	//analyzeArtifactListTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["analyze-artifact-list"]
-	//opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeArtifactListTaskSpec, pipelineSpec, nil)
-	//analyzeArtifactListExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
+	// Expect the 3 artifacts from process-task to have been collected by the for-loop-2 task
+	forLoopTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+	require.NoError(t, err)
+	require.Equal(t, 3, len(forLoopTask.Outputs.Artifacts))
+
+	// TODO: Question:
+	// "analyze-artifact-list" requires the collected inputs from dsl.ParallelFor, which collects process_dataset_task
+	// outputs. This should be surfaced as a list of artifact outputs for the for-loop-2 task.
+	// How should it be surfaced?
+	// - We know from the for-loop-2 task that it has a dag.outputs.artifacts
+	// - When a Runtime task that is a child of a for-loop-2 task is finishing, it should evaluate whether it should
+	//   also be logged to the dag.outputs.artifacts list.
+
+	// Refresh Run so it has the new tasks
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+
+	//// Execute the "analyze-artifact-list" Container Task
+	//analyzeListTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["analyze-artifact-list"]
+	//opts = setupDagOptions(t, testSetup, run, parentTask, analyzeListTaskSpec, pipelineSpec, nil)
+	//// Parent is once again secondary-pipeline
+	//opts.ParentTask = secondaryPipelineTask
+	//analyzeListExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
 	//require.NoError(t, err)
-	//require.NotNil(t, analyzeArtifactListExecution)
-	//require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
-	//// Assert that "artifact_list_input"'s executor input contains the artifact "artifact_list_input" and it is a list of artifacts
+	//require.NotNil(t, analyzeListExecution)
+	//require.Nil(t, analyzeListExecution.ExecutorInput.Outputs)
+
 }

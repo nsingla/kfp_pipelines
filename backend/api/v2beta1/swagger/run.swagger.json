@@ -863,10 +863,11 @@
         "UNSPECIFIED",
         "INPUT",
         "OUTPUT",
-        "ITERATOR_INPUT"
+        "ITERATOR_INPUT",
+        "ITERATOR_OUTPUT"
       ],
       "default": "UNSPECIFIED",
-      "description": " - UNSPECIFIED: For validation\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator."
+      "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - INPUT: Standard Input/Output types\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
     },
     "v2beta1ListRunsResponse": {
       "type": "object",

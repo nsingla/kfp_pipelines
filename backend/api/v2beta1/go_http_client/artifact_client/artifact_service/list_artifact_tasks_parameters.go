@@ -101,9 +101,13 @@ type ListArtifactTasksParams struct {
 	     Optional. Only list artifact tasks that have artifacts of this type.
 
 	 - UNSPECIFIED: For validation
+	 - INPUT: Standard Input/Output types
 	 - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type
 	is used to indicate whether this resolved input belongs
 	to a parameterIterator or artifactIterator.
+	 - ITERATOR_OUTPUT: Used for dsl.Collected
+	when used, all Parameter values, or Artifact list items
+	are considered the collected values of this loop's output
 
 	     Default: "UNSPECIFIED"
 	*/

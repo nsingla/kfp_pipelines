@@ -14,11 +14,23 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// V2beta1IOType  - UNSPECIFIED: For validation
+// V2beta1IOType Describes the I/O relationship between
+// this Artifacts & Parameters and Task
+// There are a couple of instances where
+// input/outputs have special types such
+// as in the case of LoopArguments or
+// dsl.Collected outputs.
+//
+//   - UNSPECIFIED: For validation
+//   - INPUT: Standard Input/Output types
 //   - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type
 //
 // is used to indicate whether this resolved input belongs
 // to a parameterIterator or artifactIterator.
+//   - ITERATOR_OUTPUT: Used for dsl.Collected
+//
+// when used, all Parameter values, or Artifact list items
+// are considered the collected values of this loop's output
 //
 // swagger:model v2beta1IOType
 type V2beta1IOType string
@@ -45,6 +57,9 @@ const (
 
 	// V2beta1IOTypeITERATORINPUT captures enum value "ITERATOR_INPUT"
 	V2beta1IOTypeITERATORINPUT V2beta1IOType = "ITERATOR_INPUT"
+
+	// V2beta1IOTypeITERATOROUTPUT captures enum value "ITERATOR_OUTPUT"
+	V2beta1IOTypeITERATOROUTPUT V2beta1IOType = "ITERATOR_OUTPUT"
 )
 
 // for schema
@@ -52,7 +67,7 @@ var v2beta1IOTypeEnum []interface{}
 
 func init() {
 	var res []V2beta1IOType
-	if err := json.Unmarshal([]byte(`["UNSPECIFIED","INPUT","OUTPUT","ITERATOR_INPUT"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["UNSPECIFIED","INPUT","OUTPUT","ITERATOR_INPUT","ITERATOR_OUTPUT"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

@@ -409,17 +409,16 @@ message PipelineTaskDetail {
     // Task Group for Condition Branches
     // Task Group for Loop Iterations
     LOOP = 4;
-    LOOP_ITERATION = 5;
-    EXIT_HANDLER = 6;
+    EXIT_HANDLER = 5;
     // Generic DAG task type for types like Nested Pipelines
     // where there is no declarative way to detect this within
     // a driver.
-    DAG = 7;
+    DAG = 6;
   }
   TaskType type = 13;
 
   message TypeAttributes {
-    // Optional. Applies to type LOOP_ITERATION
+    // Optional. Applies to type Runtime that is an iteration
     optional int64 iteration_index = 1;
     // Optional. Applies to type LOOP
     optional int64 iteration_count = 2;
@@ -453,6 +452,9 @@ message PipelineTaskDetail {
       // This would be the equivalent of output_parameter_key from the upstream task
       // when it's a parameter input, or output_artifact_key when it is an Artifact.
       string key = 2;
+
+      // When a source is from an iteration Runtime task type inside a ParallelFor
+      optional int32 iteration = 3;
     }
 
     // In the case of non-Runtime tasks, in particular Loop tasks,
@@ -502,8 +504,15 @@ message PipelineTaskDetail {
 
     // Output Only. To create Artifacts for a task are created
     // via ArtifactTasks.
-    // For Loops parameters are filled with resolved
-    // artifactIterator.items
+    // For parallelFor & dsl.Collected case, each IO Artifact
+    // represents one dsl.Collected set of artifacts.
+    // This is because each dsl.Collected has one source task.
+    // TODO(Humair): Actually no it doesn't, each iteration
+    // has a container task, and we should store the
+    // "iteration" count for that specific task, and then
+    // as part of "Source" we can include the iteration for
+    // that specific task. This will allow us to support a
+    // collection of "Lists" in the future as well.
     repeated IOArtifact artifacts = 2;
   }
 

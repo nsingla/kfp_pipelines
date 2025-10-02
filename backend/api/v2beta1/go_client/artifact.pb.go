@@ -39,17 +39,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Describes the I/O relationship between
+// this Artifacts & Parameters and Task
+// There are a couple of instances where
+// input/outputs have special types such
+// as in the case of LoopArguments or
+// dsl.Collected outputs.
 type IOType int32
 
 const (
 	// For validation
 	IOType_UNSPECIFIED IOType = 0
-	IOType_INPUT       IOType = 1
-	IOType_OUTPUT      IOType = 2
+	// Standard Input/Output types
+	IOType_INPUT  IOType = 1
+	IOType_OUTPUT IOType = 2
 	// In a for loop task, introduced via ParallelFor, this type
 	// is used to indicate whether this resolved input belongs
 	// to a parameterIterator or artifactIterator.
 	IOType_ITERATOR_INPUT IOType = 3
+	// Used for dsl.Collected
+	// when used, all Parameter values, or Artifact list items
+	// are considered the collected values of this loop's output
+	IOType_ITERATOR_OUTPUT IOType = 4
 )
 
 // Enum value maps for IOType.
@@ -59,12 +70,14 @@ var (
 		1: "INPUT",
 		2: "OUTPUT",
 		3: "ITERATOR_INPUT",
+		4: "ITERATOR_OUTPUT",
 	}
 	IOType_value = map[string]int32{
-		"UNSPECIFIED":    0,
-		"INPUT":          1,
-		"OUTPUT":         2,
-		"ITERATOR_INPUT": 3,
+		"UNSPECIFIED":     0,
+		"INPUT":           1,
+		"OUTPUT":          2,
+		"ITERATOR_INPUT":  3,
+		"ITERATOR_OUTPUT": 4,
 	}
 )
 
@@ -1075,13 +1088,14 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x14ClassificationMetric\x10\a\x12\x1e\n" +
 	"\x1aSlicedClassificationMetric\x10\bB\x06\n" +
 	"\x04_uriB\x0f\n" +
-	"\r_number_value*D\n" +
+	"\r_number_value*Y\n" +
 	"\x06IOType\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05INPUT\x10\x01\x12\n" +
 	"\n" +
 	"\x06OUTPUT\x10\x02\x12\x12\n" +
-	"\x0eITERATOR_INPUT\x10\x032\xd3\f\n" +
+	"\x0eITERATOR_INPUT\x10\x03\x12\x13\n" +
+	"\x0fITERATOR_OUTPUT\x10\x042\xd3\f\n" +
 	"\x0fArtifactService\x12\x84\x02\n" +
 	"\rListArtifacts\x12;.kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse\"x\x92AV\n" +
 	"\x0fArtifactService\x123Finds all artifacts within the specified namespace.*\x0elist_artifacts\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/artifacts\x12\xee\x01\n" +

@@ -153,33 +153,60 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 		if artifactTask.TaskId == task.TaskId {
 			// Get the associated artifact
 			if artifact, exists := m.artifacts[artifactTask.ArtifactId]; exists {
-				ioArtifact := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-					Artifacts: []*apiv2beta1.Artifact{artifact},
-					Type:      artifactTask.Type,
-				}
+				// Find existing IOArtifact with matching source
+				var targetIOArtifact *apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+				var targetList *[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 
-				// Set the source based on producer information
-				if artifactTask.ProducerTaskName != "" && artifactTask.ProducerKey != "" {
-					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
-						Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-							TaskName: artifactTask.ProducerTaskName,
-							Key:      artifactTask.ProducerKey,
-						},
-					}
+				if artifactTask.Type == apiv2beta1.IOType_INPUT || artifactTask.Type == apiv2beta1.IOType_ITERATOR_INPUT {
+					targetList = &inputArtifacts
 				} else {
-					// Use parameter name if no producer specified
-					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
-						ParameterName: artifact.Name,
+					targetList = &outputArtifacts
+				}
+
+				// Create source to match against
+				producerTaskName := artifactTask.ProducerTaskName
+				producerKey := artifactTask.ProducerKey
+				parameterName := artifact.Name
+
+				// Find matching IOArtifact
+				for _, existing := range *targetList {
+					if existing.Type == artifactTask.Type {
+						if existing.GetProducer() != nil && existing.GetProducer().GetTaskName() == producerTaskName &&
+							existing.GetProducer().GetKey() == producerKey {
+							targetIOArtifact = existing
+							break
+						} else if existing.GetParameterName() == parameterName {
+							targetIOArtifact = existing
+							break
+						}
 					}
 				}
 
-				// Determine if this is an input or output artifact based on ArtifactTaskType
-				switch artifactTask.Type {
-				case apiv2beta1.IOType_INPUT, apiv2beta1.IOType_ITERATOR_INPUT:
-					inputArtifacts = append(inputArtifacts, ioArtifact)
-				case apiv2beta1.IOType_OUTPUT:
-					outputArtifacts = append(outputArtifacts, ioArtifact)
+				// Create new IOArtifact if no match found
+				if targetIOArtifact == nil {
+					targetIOArtifact = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+						Artifacts: []*apiv2beta1.Artifact{},
+						Type:      artifactTask.Type,
+					}
+					if producerKey != "" && producerTaskName != "" {
+						targetIOArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
+							Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
+								TaskName: producerTaskName,
+								Key:      producerKey,
+							},
+						}
+					} else if parameterName != "" {
+						targetIOArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
+							ParameterName: parameterName,
+						}
+					} else {
+						panic("invalid producer key or task name")
+					}
+					*targetList = append(*targetList, targetIOArtifact)
 				}
+
+				// Append artifact to the target IOArtifact
+				targetIOArtifact.Artifacts = append(targetIOArtifact.Artifacts, artifact)
 			}
 		}
 	}
