@@ -327,6 +327,23 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, len(forLoopTask.Outputs.Artifacts))
 
+	// Run "analyze_artifact_list" in "secondary_pipeline"
+	// Refresh Run so it has the new tasks
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+
+	parentTask = secondaryPipelineTask
+	analyzeArtifactListTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["analyze-artifact-list"]
+	opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeArtifactListTaskSpec, pipelineSpec, nil)
+	analyzeArtifactListExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
+	require.NoError(t, err)
+	require.NotNil(t, analyzeArtifactListExecution)
+	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
+	require.NotNil(t, analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
+	require.Equal(t, 3, len(analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
+
+	// Primary Pipeline tests
+
 	// Expect the 3 artifacts from process-task to have been collected by the secondary-pipeline task
 	secondaryPipelineTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
 	require.NoError(t, err)
@@ -336,15 +353,21 @@ func TestLoopArtifactPassing(t *testing.T) {
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
 	require.NoError(t, err)
 
-	// Run Dag on the First Task
+	// TODO:
+	// This seems to be failing, note that "analyze-artifact-list"
+	// producer is set to secondary-pipeline "output", but the artifact
+	// in the secondary-pipeline outputs, this key is not present for us to deduce it
+	// so thinking about it, we should maybe have both the key & the producer ?
+	// and it shouldn't be a oneOF? so it goes:
+	// Secondary-pipeline.outputs -> artifacts here have producer task that generated it
+	// but also the key in the secondary-pipeline that it was output on?
 	parentTask = rootTask
-	analyzeArtifactListTaskSpec := pipelineSpec.Root.GetDag().Tasks["analyze-artifact-list"]
-	opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeArtifactListTaskSpec, pipelineSpec, nil)
-	analyzeArtifactListExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
+	analyzeArtifactListOuterTaskSpec := pipelineSpec.Root.GetDag().Tasks["analyze-artifact-list"]
+	opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeArtifactListOuterTaskSpec, pipelineSpec, nil)
+	analyzeArtifactListOuterExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
-	require.NotNil(t, analyzeArtifactListExecution)
-	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
-	require.NotNil(t, analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
-	require.Equal(t, 3, len(analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
-
+	require.NotNil(t, analyzeArtifactListOuterExecution)
+	require.Nil(t, analyzeArtifactListOuterExecution.ExecutorInput.Outputs)
+	require.NotNil(t, analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
+	require.Equal(t, 3, len(analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
 }

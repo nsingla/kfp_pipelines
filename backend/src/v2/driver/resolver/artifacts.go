@@ -107,7 +107,8 @@ func resolveUpstreamArtifacts(ctx context.Context,
 	currentTask := producerTask
 	outputArtifactKey := artifactSpec.GetTaskOutputArtifact().GetOutputArtifactKey()
 
-	if producerTask.GetType() == apiv2beta1.PipelineTaskDetail_RUNTIME {
+	switch producerTask.GetType() {
+	case apiv2beta1.PipelineTaskDetail_RUNTIME:
 		outputArtifacts := currentTask.GetOutputs().GetArtifacts()
 		artifacts, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
 		if err != nil {
@@ -121,8 +122,50 @@ func resolveUpstreamArtifacts(ctx context.Context,
 			return nil, err
 		}
 		return artifactList, nil
+	case apiv2beta1.PipelineTaskDetail_LOOP:
+		if !common.IsPipelineChannel(outputArtifactKey) {
+			return nil, fmt.Errorf("loop output artifact %s must be a pipeline channel", outputArtifactKey)
+		}
+
+		key, taskName, producerKey, err := common.ParameterNameToIOFields(outputArtifactKey)
+		if err != nil {
+			return nil, err
+		}
+		if key != "" && (taskName == "" || producerKey == "") {
+			return nil, fmt.Errorf("invalid pipeline channel name %s", outputArtifactKey)
+		}
+
+		var artifactRuntimeList []*pipelinespec.RuntimeArtifact
+		for _, ioArtifact := range currentTask.GetOutputs().GetArtifacts() {
+			if ioArtifact.GetType() == apiv2beta1.IOType_ITERATOR_OUTPUT &&
+				ioArtifact.GetProducer().Key == producerKey &&
+				ioArtifact.GetProducer().TaskName == taskName {
+
+				// Currently ArtifactList only supports a list of singular RuntimeArtifacts
+				// therefore, we only take the first artifact in the list.
+				// This disallows collecting "list" of artifacts from a loop. To support this
+				// we would need to change ArtifactList to support a *repeated* *list* of RuntimeArtifacts
+				// Similar to "repeated ArtifactsIO" in the backend API.
+				runtimeArtifact, err := convertArtifactToRuntimeArtifact(ioArtifact.GetArtifacts()[0])
+				if err != nil {
+					return nil, err
+				}
+				artifactRuntimeList = append(artifactRuntimeList, runtimeArtifact)
+			}
+		}
+		if len(artifactRuntimeList) == 0 {
+			return nil, fmt.Errorf("loop output artifacts for key %s not found", outputArtifactKey)
+		}
+		artifactList := &pipelinespec.ArtifactList{
+			Artifacts: artifactRuntimeList,
+		}
+		return artifactList, nil
+	case apiv2beta1.PipelineTaskDetail_DAG:
+		return nil, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
+
+	default:
+		return &pipelinespec.ArtifactList{}, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
 	}
-	return &pipelinespec.ArtifactList{}, nil
 }
 
 // generateUniqueTaskName generates a unique task name for a given task.
