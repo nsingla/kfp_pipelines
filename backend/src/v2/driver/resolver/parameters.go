@@ -102,7 +102,7 @@ func resolveParameterComponentInputParameter(
 }
 
 func ResolvePodSpecInputRuntimeParameter(n string, input *pipelinespec.ExecutorInput) (string, error) {
-	return "", fmt.Errorf("not implemented")
+	return "", nil
 }
 
 func ResolveK8sJsonParameter[k8sResource any](
@@ -111,7 +111,7 @@ func ResolveK8sJsonParameter[k8sResource any](
 	selectorJson *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, res *k8sResource) error {
 
-	return fmt.Errorf("not implemented")
+	return nil
 }
 
 func ResolveInputParameterStr(
@@ -120,7 +120,7 @@ func ResolveInputParameterStr(
 	parameter *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) (*structpb.Value, error) {
 
-	return nil, fmt.Errorf("not implemented")
+	return nil, nil
 }
 func ResolveInputParameter(
 	ctx context.Context,
@@ -128,5 +128,5 @@ func ResolveInputParameter(
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 ) (*structpb.Value, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, nil
 }

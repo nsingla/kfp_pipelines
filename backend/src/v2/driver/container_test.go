@@ -65,6 +65,15 @@ func setupContainerOptions(
 	}
 }
 
+func fetchParameter(key string, params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
+	for _, p := range params {
+		if key == p.ParameterKey {
+			return p
+		}
+	}
+	panic("parameter not found")
+}
+
 // This test creates a DAG with a single task that uses a component with inputs
 // and runtime constants. The test verifies that the inputs are correctly passed
 // to the Runtime Task.
@@ -115,9 +124,15 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	processInputsTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
 	require.NoError(t, err)
 	require.NotNil(t, processInputsTask)
-	for _, param := range processInputsTask.Inputs.GetParameters() {
-		require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, param.Type)
-	}
+	params := processInputsTask.Inputs.GetParameters()
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("name", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("number", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("active", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("threshold", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_string", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_number", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_bool", params).GetType())
+
 	require.Equal(t, execution.TaskID, processInputsTask.TaskId)
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
