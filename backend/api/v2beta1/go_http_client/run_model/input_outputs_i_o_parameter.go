@@ -13,26 +13,26 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// InputOutputsParameter input outputs parameter
+// InputOutputsIOParameter input outputs i o parameter
 //
-// swagger:model InputOutputsParameter
-type InputOutputsParameter struct {
+// swagger:model InputOutputsIOParameter
+type InputOutputsIOParameter struct {
 
-	// Optional, this is only included on Runtime Tasks when the parameter name is known.
-	ParameterName string `json:"parameter_name,omitempty"`
+	// parameter key
+	ParameterKey string `json:"parameter_key,omitempty"`
 
-	// Handle Pipeline Channel case.
-	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
+	// Optional because in the case of RuntimeValues there is no producer
+	Producer *V2beta1IOProducer `json:"producer,omitempty"`
 
-	// Required
+	// type
 	Type *V2beta1IOType `json:"type,omitempty"`
 
-	// Required
+	// value
 	Value interface{} `json:"value,omitempty"`
 }
 
-// Validate validates this input outputs parameter
-func (m *InputOutputsParameter) Validate(formats strfmt.Registry) error {
+// Validate validates this input outputs i o parameter
+func (m *InputOutputsIOParameter) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateProducer(formats); err != nil {
@@ -49,7 +49,7 @@ func (m *InputOutputsParameter) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *InputOutputsParameter) validateProducer(formats strfmt.Registry) error {
+func (m *InputOutputsIOParameter) validateProducer(formats strfmt.Registry) error {
 	if swag.IsZero(m.Producer) { // not required
 		return nil
 	}
@@ -68,7 +68,7 @@ func (m *InputOutputsParameter) validateProducer(formats strfmt.Registry) error 
 	return nil
 }
 
-func (m *InputOutputsParameter) validateType(formats strfmt.Registry) error {
+func (m *InputOutputsIOParameter) validateType(formats strfmt.Registry) error {
 	if swag.IsZero(m.Type) { // not required
 		return nil
 	}
@@ -87,8 +87,8 @@ func (m *InputOutputsParameter) validateType(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validate this input outputs parameter based on the context it is used
-func (m *InputOutputsParameter) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this input outputs i o parameter based on the context it is used
+func (m *InputOutputsIOParameter) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateProducer(ctx, formats); err != nil {
@@ -105,7 +105,7 @@ func (m *InputOutputsParameter) ContextValidate(ctx context.Context, formats str
 	return nil
 }
 
-func (m *InputOutputsParameter) contextValidateProducer(ctx context.Context, formats strfmt.Registry) error {
+func (m *InputOutputsIOParameter) contextValidateProducer(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Producer != nil {
 
@@ -126,7 +126,7 @@ func (m *InputOutputsParameter) contextValidateProducer(ctx context.Context, for
 	return nil
 }
 
-func (m *InputOutputsParameter) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
+func (m *InputOutputsIOParameter) contextValidateType(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Type != nil {
 
@@ -148,7 +148,7 @@ func (m *InputOutputsParameter) contextValidateType(ctx context.Context, formats
 }
 
 // MarshalBinary interface implementation
-func (m *InputOutputsParameter) MarshalBinary() ([]byte, error) {
+func (m *InputOutputsIOParameter) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -156,8 +156,8 @@ func (m *InputOutputsParameter) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *InputOutputsParameter) UnmarshalBinary(b []byte) error {
-	var res InputOutputsParameter
+func (m *InputOutputsIOParameter) UnmarshalBinary(b []byte) error {
+	var res InputOutputsIOParameter
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

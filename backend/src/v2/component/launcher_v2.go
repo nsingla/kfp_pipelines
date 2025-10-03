@@ -235,12 +235,12 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 	}
 	// 2) Update task outputs for parameters
 	if executorOutput != nil && len(executorOutput.GetParameterValues()) > 0 {
-		params := make([]*gc.PipelineTaskDetail_InputOutputs_Parameter, 0, len(executorOutput.GetParameterValues()))
+		params := make([]*gc.PipelineTaskDetail_InputOutputs_IOParameter, 0, len(executorOutput.GetParameterValues()))
 		for name, val := range executorOutput.GetParameterValues() {
 			n := name
-			params = append(params, &gc.PipelineTaskDetail_InputOutputs_Parameter{
-				Source: &gc.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
-				Value:  val,
+			params = append(params, &gc.PipelineTaskDetail_InputOutputs_IOParameter{
+				ParameterKey: n,
+				Value:        val,
 			})
 		}
 		_, uerr := kfpAPIClient.Run.UpdateTask(ctx, &gc.UpdateTaskRequest{Task: &gc.PipelineTaskDetail{

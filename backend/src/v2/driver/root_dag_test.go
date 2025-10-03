@@ -74,7 +74,7 @@ func TestRootDagComponentInputs(t *testing.T) {
 	// Verify parameter values
 	paramMap := make(map[string]*structpb.Value)
 	for _, param := range task.Inputs.Parameters {
-		paramMap[param.GetParameterName()] = param.Value
+		paramMap[param.GetParameterKey()] = param.Value
 	}
 
 	assert.Equal(t, "test-input1", paramMap["string_input"].GetStringValue())

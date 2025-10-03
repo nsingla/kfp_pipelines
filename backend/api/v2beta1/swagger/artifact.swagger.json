@@ -74,16 +74,18 @@
           },
           {
             "name": "type",
-            "description": "Optional. Only list artifact tasks that have artifacts of this type.\n\n - UNSPECIFIED: For validation\n - INPUT: Standard Input/Output types\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output",
+            "description": "Optional. Only list artifact tasks that have artifacts of this type.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output",
             "in": "query",
             "required": false,
             "type": "string",
             "enum": [
               "UNSPECIFIED",
-              "INPUT",
-              "OUTPUT",
+              "TASK_OUTPUT_INPUT",
+              "COMPONENT_INPUT",
+              "RUNTIME_VALUE_INPUT",
               "ITERATOR_INPUT",
-              "ITERATOR_OUTPUT"
+              "ITERATOR_OUTPUT",
+              "OUTPUT"
             ],
             "default": "UNSPECIFIED"
           },
@@ -431,23 +433,11 @@
         "type": {
           "$ref": "#/definitions/v2beta1IOType"
         },
-        "producer_task_name": {
-          "type": "string",
-          "description": "The task that produced this artifact\nFor example in the case of a pipeline channel\nthat is an output artifact you might have as\ninput something like the following in the IR:\n  taskOutputArtifact:\n    outputArtifactKey: output_dataset\n    producerTask: create-dataset\nThese fields are used to track this lineage.\n\nFor outputs, the producer task is the component name\nof the task that produced the artifact."
+        "producer": {
+          "$ref": "#/definitions/v2beta1IOProducer"
         },
-        "producer_key": {
-          "type": "string",
-          "description": "For outputs, the key is the name of the parameter\nin the component spec (found in OutputDefinitions)\nused to output the artifact.",
-          "title": "The key is often the parameter name used\nas input/output on the component, but\ncan also take on the value of of other values.\nFor example:\n * \"param-#\" when using parameters in a ParallelFor\n * \"Output\" when using Pythonic Artifacts"
-        },
-        "iteration": {
-          "type": "integer",
-          "format": "int32",
-          "title": "When a source is from an iteration Runtime task type inside a ParallelFor"
-        },
-        "artifact_key": {
-          "type": "string",
-          "description": "The parameter name for the input/output artifact\nThis maybe the same as the Artifact name if the\nartifact name is not specified. It is used to\nresolve artifact pipeline channels."
+        "key": {
+          "type": "string"
         }
       }
     },
@@ -508,17 +498,32 @@
         }
       }
     },
+    "v2beta1IOProducer": {
+      "type": "object",
+      "properties": {
+        "task_name": {
+          "type": "string"
+        },
+        "iteration": {
+          "type": "string",
+          "format": "int64",
+          "title": "When a source is from an iteration Runtime\ntask type inside a ParallelFor"
+        }
+      }
+    },
     "v2beta1IOType": {
       "type": "string",
       "enum": [
         "UNSPECIFIED",
-        "INPUT",
-        "OUTPUT",
+        "TASK_OUTPUT_INPUT",
+        "COMPONENT_INPUT",
+        "RUNTIME_VALUE_INPUT",
         "ITERATOR_INPUT",
-        "ITERATOR_OUTPUT"
+        "ITERATOR_OUTPUT",
+        "OUTPUT"
       ],
       "default": "UNSPECIFIED",
-      "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - INPUT: Standard Input/Output types\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
+      "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
     },
     "v2beta1ListArtifactResponse": {
       "type": "object",

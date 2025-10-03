@@ -19,20 +19,16 @@ import (
 // swagger:model InputOutputsIOArtifact
 type InputOutputsIOArtifact struct {
 
-	// An artifact input can be a list of artifacts??
-	// TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
-	// When reading artifacts for a task, we need to collect all artifacts that share the same producer key
-	// and include it in one artifacts list. So if you may have:
-	// []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer": {"key": "input_a"} }, { "artifacts": [...], "producer": {"key": "input_b"} } }
+	// artifact key
+	ArtifactKey string `json:"artifact_key,omitempty"`
+
+	// artifacts
 	Artifacts []*V2beta1Artifact `json:"artifacts"`
 
-	// This is included on Runtime Tasks when the parameter name is known.
-	ParameterName string `json:"parameter_name,omitempty"`
+	// producer
+	Producer *V2beta1IOProducer `json:"producer,omitempty"`
 
-	// Handle Pipeline Channel case.
-	Producer *InputOutputsIOProducer `json:"producer,omitempty"`
-
-	// TODO(HumairAK) add this to ArtifactTask column
+	// type
 	Type *V2beta1IOType `json:"type,omitempty"`
 }
 

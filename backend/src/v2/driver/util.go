@@ -22,6 +22,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -182,91 +183,59 @@ func validateNonRoot(opts common.Options) error {
 	return nil
 }
 
-// handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_Parameter
+// handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_IOParameter
 // for each parameter in the executor input.
-func handleTaskParametersCreation(
-	executorInput *pipelinespec.ExecutorInput,
-	task *apiV2beta1.PipelineTaskDetail,
-) (*apiV2beta1.PipelineTaskDetail, error) {
-
+func handleTaskParametersCreation(parameterMetadata []resolver.ParameterMetadata, task *apiV2beta1.PipelineTaskDetail) (*apiV2beta1.PipelineTaskDetail, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task is nil")
 	}
 	if task.Inputs == nil {
 		task.Inputs = &apiV2beta1.PipelineTaskDetail_InputOutputs{
-			Parameters: []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{},
+			Parameters: []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{},
 		}
 	} else if task.Inputs.Parameters == nil {
-		task.Inputs.Parameters = []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{}
+		task.Inputs.Parameters = []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{}
 	}
-
-	for parameterName, parameter := range executorInput.Inputs.ParameterValues {
-		// We expect that a parameter is either a pipelinechannel parameter or a regular parameter.
-		// in the latter case we expect that the parameter name is the key.
-		key, producerTaskName, producerKey, err := common.ParameterNameToIOFields(parameterName)
-		if err != nil {
-			return nil, err
+	for _, pm := range parameterMetadata {
+		parameterNew := &apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			Value:        pm.ParameterIO.Value,
+			ParameterKey: pm.Key,
+			Producer:     pm.ParameterIO.Producer,
 		}
-		if (producerTaskName == "" && producerKey != "") || (producerTaskName != "" && producerKey == "") {
-			return nil, fmt.Errorf("either both producerTaskName and producerKey must be specified, or both must be empty")
-		}
-		parameterNew := &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			Value: parameter,
-		}
-
-		// Key is only included on Runtime Tasks when the parameter name is known.
-		if key != "" {
-			if producerTaskName != "" {
-				return nil, fmt.Errorf("producer and key cannot be specified at the same time")
-			}
-			parameterNew.Source = &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
-				ParameterName: key,
-			}
-		} else {
-			// Pipeline Channel case
-			parameterNew.Source = &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_Producer{
-				Producer: &apiV2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-					TaskName: producerTaskName,
-					Key:      producerKey,
-				},
-			}
-		}
-		if common.IsPipelineChannel(parameterName) && task.Type == apiV2beta1.PipelineTaskDetail_LOOP {
-			parameterNew.Type = apiV2beta1.IOType_ITERATOR_INPUT
-		} else {
-			parameterNew.Type = apiV2beta1.IOType_INPUT
+		switch pm.InputParameterSpec.GetKind().(type) {
+		case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
+			parameterNew.Type = apiV2beta1.IOType_TASK_OUTPUT_INPUT
+		case *pipelinespec.TaskInputsSpec_InputParameterSpec_RuntimeValue:
+			parameterNew.Type = apiV2beta1.IOType_RUNTIME_VALUE_INPUT
+		case *pipelinespec.TaskInputsSpec_InputParameterSpec_ComponentInputParameter:
+			parameterNew.Type = apiV2beta1.IOType_COMPONENT_INPUT
+		case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_: // TODO(HumairAK)
+			return nil, fmt.Errorf("task final status is not implemented yet")
+		default:
+			return nil, fmt.Errorf("unknown input parameter type")
 		}
 		task.Inputs.Parameters = append(task.Inputs.Parameters, parameterNew)
 	}
 	return task, nil
 }
-func handleTaskArtifactsCreation(
-	ctx context.Context,
-	executorInput *pipelinespec.ExecutorInput,
-	opts common.Options,
-	task *apiV2beta1.PipelineTaskDetail,
-	driverAPI common.DriverAPI,
-) error {
+func handleTaskArtifactsCreation(ctx context.Context, artifactMetadata []resolver.ArtifactMetadata, opts common.Options, task *apiV2beta1.PipelineTaskDetail, driverAPI common.DriverAPI) error {
 	var artifactTasks []*apiV2beta1.ArtifactTask
-	for parameterName, artifactList := range executorInput.Inputs.Artifacts {
-		for _, artifact := range artifactList.Artifacts {
-			if artifact.ArtifactId == "" {
-				return fmt.Errorf("artifact id is required")
+	for _, am := range artifactMetadata {
+		for _, artifactIO := range am.ArtifactIOList {
+			for _, artifact := range artifactIO.Artifacts {
+				if artifact.ArtifactId == "" {
+					return fmt.Errorf("artifact id is required")
+				}
+				at := &apiV2beta1.ArtifactTask{
+					ArtifactId: artifact.ArtifactId,
+					RunId:      opts.Run.GetRunId(),
+					TaskId:     task.TaskId,
+					Type:       artifactIO.Type,
+					Producer:   artifactIO.Producer,
+					Key:        artifactIO.ArtifactKey,
+				}
+				artifactTasks = append(artifactTasks, at)
 			}
-			key, producerTaskName, producerKey, err := common.ParameterNameToIOFields(parameterName)
-			if err != nil {
-				return err
-			}
-			at := &apiV2beta1.ArtifactTask{
-				ArtifactId:       artifact.ArtifactId,
-				RunId:            opts.Run.GetRunId(),
-				TaskId:           task.TaskId,
-				Type:             apiV2beta1.IOType_INPUT,
-				ArtifactKey:      key,
-				ProducerTaskName: producerTaskName,
-				ProducerKey:      producerKey,
-			}
-			artifactTasks = append(artifactTasks, at)
 		}
 	}
 	if len(artifactTasks) > 0 {
@@ -277,19 +246,4 @@ func handleTaskArtifactsCreation(
 		}
 	}
 	return nil
-}
-
-func parseIONameOrPipelineChannel(name string, producer *apiV2beta1.PipelineTaskDetail_InputOutputs_IOProducer) (string, error) {
-	var result string
-	if producer != nil {
-		if producer.GetTaskName() == "" || producer.Key == "" {
-			return "", fmt.Errorf("producer task name or key is empty")
-		}
-		result = fmt.Sprintf("pipelinechannel--%s-%s", producer.GetTaskName(), producer.Key)
-	} else if name != "" {
-		result = name
-	} else {
-		return "", fmt.Errorf("producer task name or key is empty")
-	}
-	return result, nil
 }

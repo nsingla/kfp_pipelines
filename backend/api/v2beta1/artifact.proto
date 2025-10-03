@@ -51,30 +51,6 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   }
 };
 
-// Describes the I/O relationship between
-// this Artifacts & Parameters and Task
-// There are a couple of instances where
-// input/outputs have special types such
-// as in the case of LoopArguments or
-// dsl.Collected outputs.
-enum IOType {
-  // For validation
-  UNSPECIFIED = 0;
-
-  // Standard Input/Output types
-  INPUT = 1;
-  OUTPUT = 2;
-  // In a for loop task, introduced via ParallelFor, this type
-  // is used to indicate whether this resolved input belongs
-  // to a parameterIterator or artifactIterator.
-  ITERATOR_INPUT = 3;
-
-  // Used for dsl.Collected
-  // when used, all Parameter values, or Artifact list items
-  // are considered the collected values of this loop's output
-  ITERATOR_OUTPUT = 4;
-}
-
 service ArtifactService {
   // Finds all artifacts within the specified namespace.
   rpc ListArtifacts(ListArtifactRequest) returns (ListArtifactResponse) {
@@ -256,6 +232,43 @@ message CreateArtifactTasksBulkResponse {
   repeated ArtifactTask artifact_tasks = 1;
 }
 
+
+// Describes the I/O relationship between
+// this Artifacts & Parameters and Task
+// There are a couple of instances where
+// input/outputs have special types such
+// as in the case of LoopArguments or
+// dsl.Collected outputs.
+enum IOType {
+  // For validation
+  UNSPECIFIED = 0;
+
+  // The name seems convoluted, but this aligns with the
+  // sdk naming in TaskInputsSpec.kind.task_output_parameter
+  // and TaskInputsSpec.kind.task_output_artifact
+  TASK_OUTPUT_INPUT = 1;
+  COMPONENT_INPUT = 2;
+  RUNTIME_VALUE_INPUT = 3;
+  // In a for loop task, introduced via ParallelFor, this type
+  // is used to indicate whether this resolved input belongs
+  // to a parameterIterator or artifactIterator.
+  ITERATOR_INPUT = 5;
+  // Used for dsl.Collected
+  // when used, all Parameter values, or Artifact list items
+  // are considered the collected values of this loop's output
+  ITERATOR_OUTPUT = 6;
+
+  OUTPUT = 4;
+}
+
+message IOProducer {
+  string task_name = 1;
+  // When a source is from an iteration Runtime
+  // task type inside a ParallelFor
+  optional int64 iteration = 2;
+}
+
+
 message ArtifactTask {
   // Output only. The unique server generated id of the ArtifactTask.
   string id = 1;
@@ -263,39 +276,8 @@ message ArtifactTask {
   string run_id = 3;
   string task_id = 4;
   IOType type = 5;
-
-  // The task that produced this artifact
-  // For example in the case of a pipeline channel
-  // that is an output artifact you might have as
-  // input something like the following in the IR:
-  //   taskOutputArtifact:
-  //     outputArtifactKey: output_dataset
-  //     producerTask: create-dataset
-  // These fields are used to track this lineage.
-  //
-  // For outputs, the producer task is the component name
-  // of the task that produced the artifact.
-  string producer_task_name = 6;
-  // The key is often the parameter name used
-  // as input/output on the component, but
-  // can also take on the value of of other values.
-  // For example:
-  //  * "param-#" when using parameters in a ParallelFor
-  //  * "Output" when using Pythonic Artifacts
-  //
-  // For outputs, the key is the name of the parameter
-  // in the component spec (found in OutputDefinitions)
-  // used to output the artifact.
-  string producer_key = 7;
-
-  // When a source is from an iteration Runtime task type inside a ParallelFor
-  optional int32 iteration = 8;
-
-  // The parameter name for the input/output artifact
-  // This maybe the same as the Artifact name if the
-  // artifact name is not specified. It is used to
-  // resolve artifact pipeline channels.
-  string artifact_key = 9;
+  IOProducer producer = 6;
+  string key = 7;;
 }
 
 // Note to be confused with RuntimeArtifact in pipelinespec

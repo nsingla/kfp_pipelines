@@ -7,6 +7,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Options contain driver options
@@ -139,30 +140,6 @@ func ParameterNameToIOFields(name string,
 	return key, producerTaskName, producerKey, nil
 }
 
-// IOFieldsToPipelineChannelName parses the name of an IO producer or a pipeline channel.
-// It is the reverse of ParameterNameToIOFields.
-func IOFieldsToPipelineChannelName(
-	name string,
-	producer *apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer,
-	isPipelineChannel bool) (string, error) {
-	var result string
-	if producer != nil {
-		if producer.GetTaskName() == "" || producer.Key == "" {
-			return "", fmt.Errorf("producer task name or key is empty")
-		}
-		result = fmt.Sprintf("%s-%s", producer.GetTaskName(), producer.Key)
-	} else if name != "" {
-		result = name
-	} else {
-		return "", fmt.Errorf("producer task name or key is empty")
-	}
-
-	if isPipelineChannel {
-		result = fmt.Sprintf("pipelinechannel--%s", result)
-	}
-	return result, nil
-}
-
 func IsPipelineChannel(name string) bool {
 	return strings.HasPrefix(name, "pipelinechannel--")
 }
@@ -175,4 +152,44 @@ func IsLoopArgument(name string) bool {
 
 func IsRuntimeIterationTask(task *apiv2beta1.PipelineTaskDetail) bool {
 	return task.Type == apiv2beta1.PipelineTaskDetail_RUNTIME && task.TypeAttributes != nil && task.TypeAttributes.IterationIndex != nil
+}
+
+func ConvertArtifactsToArtifactList(artifacts []*apiv2beta1.Artifact) (*pipelinespec.ArtifactList, error) {
+	var runtimeArtifacts []*pipelinespec.RuntimeArtifact
+	for _, artifact := range artifacts {
+		runtimeArtifact, err := ConvertArtifactToRuntimeArtifact(artifact)
+		if err != nil {
+			return nil, err
+		}
+		runtimeArtifacts = append(runtimeArtifacts, runtimeArtifact)
+	}
+	return &pipelinespec.ArtifactList{
+		Artifacts: runtimeArtifacts,
+	}, nil
+}
+
+func ConvertArtifactToRuntimeArtifact(
+	artifact *apiv2beta1.Artifact,
+) (*pipelinespec.RuntimeArtifact, error) {
+	if artifact.GetName() == "" && artifact.GetUri() == "" {
+		return nil, fmt.Errorf("artifact name or uri cannot be empty")
+	}
+	runtimeArtifact := &pipelinespec.RuntimeArtifact{
+		Name:       artifact.GetName(),
+		ArtifactId: artifact.GetArtifactId(),
+		Type: &pipelinespec.ArtifactTypeSchema{
+			Kind: &pipelinespec.ArtifactTypeSchema_SchemaTitle{
+				SchemaTitle: artifact.Type.String(),
+			},
+		},
+	}
+	if artifact.GetUri() != "" {
+		runtimeArtifact.Uri = artifact.GetUri()
+	}
+	if artifact.GetMetadata() != nil {
+		runtimeArtifact.Metadata = &structpb.Struct{
+			Fields: artifact.GetMetadata(),
+		}
+	}
+	return runtimeArtifact, nil
 }

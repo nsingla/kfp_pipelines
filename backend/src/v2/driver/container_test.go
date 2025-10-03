@@ -116,7 +116,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, processInputsTask)
 	for _, param := range processInputsTask.Inputs.GetParameters() {
-		require.Equal(t, apiv2beta1.IOType_INPUT, param.Type)
+		require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, param.Type)
 	}
 	require.Equal(t, execution.TaskID, processInputsTask.TaskId)
 	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
@@ -143,12 +143,12 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.NotNil(t, createArtifact)
 	at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId:       createArtifact.ArtifactId,
-			TaskId:           processInputsTask.TaskId,
-			RunId:            run.GetRunId(),
-			ProducerKey:      "output_text",
-			ProducerTaskName: "process-inputs",
-			Type:             apiv2beta1.IOType_OUTPUT,
+			ArtifactId: createArtifact.ArtifactId,
+			TaskId:     processInputsTask.TaskId,
+			RunId:      run.GetRunId(),
+			Key:        "output_text",
+			Producer:   &apiv2beta1.IOProducer{TaskName: "process-inputs"},
+			Type:       apiv2beta1.IOType_OUTPUT,
 		},
 	})
 	require.NoError(t, err)

@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/stretchr/testify/assert"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
@@ -148,7 +149,7 @@ func Test_resolvePodSpecRuntimeParameter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := resolvePodSpecInputRuntimeParameter(test.input, test.executorInput)
+			actual, err := resolver.ResolvePodSpecInputRuntimeParameter(test.input, test.executorInput)
 			if test.wantErr {
 				assert.NotNil(t, err)
 			} else {

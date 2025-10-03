@@ -14,11 +14,10 @@ import (
 )
 
 func resolveInputParameter(
-	ctx context.Context,
 	opts common.Options,
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
-	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
-) (*structpb.Value, error) {
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, error) {
 
 	switch t := paramSpec.Kind.(type) {
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_ComponentInputParameter:
@@ -37,7 +36,11 @@ func resolveInputParameter(
 			var v *structpb.Value
 			if strings.Contains(valStr, "{{$.workspace_path}}") {
 				v = structpb.NewStringValue(strings.ReplaceAll(valStr, "{{$.workspace_path}}", component.WorkspaceMountPath))
-				return v, nil
+				ioParameter := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+					ParameterKey: "",
+					Value:        v,
+				}
+				return ioParameter, nil
 			}
 			switch valStr {
 			case "{{$.pipeline_job_name}}":
@@ -57,7 +60,11 @@ func resolveInputParameter(
 			default:
 				v = val
 			}
-			return v, nil
+			ioParameter := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+				ParameterKey: "",
+				Value:        v,
+			}
+			return ioParameter, nil
 		default:
 			return nil, paramError(paramSpec, fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}
@@ -69,42 +76,57 @@ func resolveInputParameter(
 	}
 }
 
-func resolveParameterComponentInputParameter(opts common.Options, paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec, inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter) (*structpb.Value, error) {
+func resolveParameterComponentInputParameter(
+	opts common.Options,
+	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, error) {
 	paramName := paramSpec.GetComponentInputParameter()
 	if paramName == "" {
 		return nil, paramError(paramSpec, fmt.Errorf("empty component input"))
 	}
-	isPipelineChannel := common.IsPipelineChannel(paramName)
+
 	for _, param := range inputParams {
-		generateName, err := common.IOFieldsToPipelineChannelName(param.GetParameterName(), param.GetProducer(), isPipelineChannel)
-		if err != nil {
-			return nil, err
-		}
+		generateName := param.ParameterKey
 		if paramName == generateName {
-			value := param.GetValue()
-			if _, isNullValue := value.GetKind().(*structpb.Value_NullValue); isNullValue {
-				// Null values are only allowed for optional pipeline inputs with no values. The caller has this
-				// context to know if this is allowed.
-				return nil, fmt.Errorf("%w: %s", ErrResolvedInputNull, paramName)
+			if !common.IsLoopArgument(paramName) {
+				return param, nil
 			}
-			if common.IsLoopArgument(paramName) {
-				if _, ok := value.GetKind().(*structpb.Value_ListValue); !ok {
-					return nil, fmt.Errorf("loop argument %s must be a list value", paramName)
-				}
-				listValues := value.GetListValue().GetValues()
-				if len(listValues) == 0 {
-					return nil, fmt.Errorf("loop argument %s must have at least one value", paramName)
-				}
-				if opts.IterationIndex+1 > len(listValues) {
-					return nil, fmt.Errorf(
-						"loop argument %s has only %d values,"+
-							" but index %d is requested, which is out "+
-							"of bounds", paramName, len(listValues), opts.IterationIndex)
-				}
-				return listValues[opts.IterationIndex], nil
+			// If the input is a loop argument, we need to check if the iteration index matches the current iteration.
+			if param.Producer != nil && param.Producer.Iteration != nil && *param.Producer.Iteration == int64(opts.IterationIndex) {
+				return param, nil
 			}
-			return value, nil
 		}
 	}
 	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+func ResolvePodSpecInputRuntimeParameter(n string, input *pipelinespec.ExecutorInput) (string, error) {
+	return "", fmt.Errorf("not implemented")
+}
+
+func ResolveK8sJsonParameter[k8sResource any](
+	ctx context.Context,
+	opts common.Options,
+	selectorJson *pipelinespec.TaskInputsSpec_InputParameterSpec,
+	params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, res *k8sResource) error {
+
+	return fmt.Errorf("not implemented")
+}
+
+func ResolveInputParameterStr(
+	ctx context.Context,
+	opts common.Options,
+	parameter *pipelinespec.TaskInputsSpec_InputParameterSpec,
+	params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) (*structpb.Value, error) {
+
+	return nil, fmt.Errorf("not implemented")
+}
+func ResolveInputParameter(
+	ctx context.Context,
+	opts common.Options,
+	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
+	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
+) (*structpb.Value, error) {
+	return nil, fmt.Errorf("not implemented")
 }

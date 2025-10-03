@@ -27,6 +27,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"google.golang.org/protobuf/types/known/structpb"
 	k8score "k8s.io/api/core/v1"
@@ -87,7 +88,7 @@ func extendPodSpecPatch(
 	opts common.Options,
 	parentTask *apiV2beta1.PipelineTaskDetail,
 	apiDriver common.DriverAPI,
-	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
+	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 	taskConfig *TaskConfig,
 ) error {
 	kubernetesExecutorConfig := opts.KubernetesExecutorConfig
@@ -145,7 +146,7 @@ func extendPodSpecPatch(
 	if kubernetesExecutorConfig.GetNodeSelector() != nil {
 		var nodeSelector map[string]string
 		if kubernetesExecutorConfig.GetNodeSelector().GetNodeSelectorJson() != nil {
-			err := resolveK8sJsonParameter(
+			err := resolver.ResolveK8sJsonParameter(
 				ctx, opts, kubernetesExecutorConfig.GetNodeSelector().GetNodeSelectorJson(),
 				inputParams, &nodeSelector)
 			if err != nil {
@@ -173,7 +174,7 @@ func extendPodSpecPatch(
 			if toleration != nil {
 				k8sToleration := &k8score.Toleration{}
 				if toleration.TolerationJson != nil {
-					resolvedParam, err := resolveInputParameter(ctx, opts, toleration.GetTolerationJson(), inputParams)
+					resolvedParam, err := resolver.ResolveInputParameter(ctx, opts, toleration.GetTolerationJson(), inputParams)
 					if err != nil {
 						return fmt.Errorf("failed to resolve toleration: %w", err)
 					}
@@ -241,7 +242,7 @@ func extendPodSpecPatch(
 	for _, secretAsVolume := range kubernetesExecutorConfig.GetSecretAsVolume() {
 		var secretName string
 		if secretAsVolume.SecretNameParameter != nil {
-			resolvedSecretName, err := resolveInputParameterStr(ctx, opts, secretAsVolume.SecretNameParameter, inputParams)
+			resolvedSecretName, err := resolver.ResolveInputParameterStr(ctx, opts, secretAsVolume.SecretNameParameter, inputParams)
 			if err != nil {
 				return fmt.Errorf("failed to resolve secret name: %w", err)
 			}
@@ -299,7 +300,7 @@ func extendPodSpecPatch(
 
 			var secretName string
 			if secretAsEnv.SecretNameParameter != nil {
-				resolvedSecretName, err := resolveInputParameterStr(ctx, opts, secretAsEnv.SecretNameParameter, inputParams)
+				resolvedSecretName, err := resolver.ResolveInputParameterStr(ctx, opts, secretAsEnv.SecretNameParameter, inputParams)
 				if err != nil {
 					return fmt.Errorf("failed to resolve secret name: %w", err)
 				}
@@ -327,7 +328,7 @@ func extendPodSpecPatch(
 	for _, configMapAsVolume := range kubernetesExecutorConfig.GetConfigMapAsVolume() {
 		var configMapName string
 		if configMapAsVolume.ConfigMapNameParameter != nil {
-			resolvedSecretName, err := resolveInputParameterStr(ctx, opts,
+			resolvedSecretName, err := resolver.ResolveInputParameterStr(ctx, opts,
 				configMapAsVolume.ConfigMapNameParameter, inputParams)
 			if err != nil {
 				return fmt.Errorf("failed to resolve configmap name: %w", err)
@@ -388,7 +389,7 @@ func extendPodSpecPatch(
 
 			var configMapName string
 			if configMapAsEnv.ConfigMapNameParameter != nil {
-				resolvedSecretName, err := resolveInputParameterStr(ctx, opts,
+				resolvedSecretName, err := resolver.ResolveInputParameterStr(ctx, opts,
 					configMapAsEnv.ConfigMapNameParameter, inputParams)
 				if err != nil {
 					return fmt.Errorf("failed to resolve configmap name: %w", err)
@@ -417,7 +418,7 @@ func extendPodSpecPatch(
 	for _, imagePullSecret := range kubernetesExecutorConfig.GetImagePullSecret() {
 		var secretName string
 		if imagePullSecret.SecretNameParameter != nil {
-			resolvedSecretName, err := resolveInputParameterStr(ctx, opts,
+			resolvedSecretName, err := resolver.ResolveInputParameterStr(ctx, opts,
 				imagePullSecret.SecretNameParameter, inputParams)
 			if err != nil {
 				return fmt.Errorf("failed to resolve image pull secret name: %w", err)
@@ -549,7 +550,7 @@ func extendPodSpecPatch(
 			}
 			if nodeAffinityTerm.GetNodeAffinityJson() != nil {
 				var k8sNodeAffinity json.RawMessage
-				err := resolveK8sJsonParameter(ctx, opts,
+				err := resolver.ResolveK8sJsonParameter(ctx, opts,
 					nodeAffinityTerm.GetNodeAffinityJson(), inputParams, &k8sNodeAffinity)
 				if err != nil {
 					return fmt.Errorf("failed to resolve node affinity json: %w", err)
@@ -874,7 +875,7 @@ func makeVolumeMountPatch(
 	ctx context.Context,
 	opts common.Options,
 	pvcMounts []*kubernetesplatform.PvcMount,
-	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter,
+	inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 ) ([]k8score.VolumeMount, []k8score.Volume, error) {
 	if pvcMounts == nil {
 		return nil, nil, nil
@@ -900,7 +901,7 @@ func makeVolumeMountPatch(
 			}
 		}
 
-		resolvedPvcName, err := resolveInputParameterStr(ctx, opts, pvcNameParameter, inputParams)
+		resolvedPvcName, err := resolver.ResolveInputParameterStr(ctx, opts, pvcNameParameter, inputParams)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to resolve pvc name: %w", err)
 		}

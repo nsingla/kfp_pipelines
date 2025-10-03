@@ -6,9 +6,8 @@ import (
 	"fmt"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
-	"github.com/kubeflow/pipelines/backend/src/v2/expression"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var paramError = func(paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec, err error) error {
@@ -17,15 +16,27 @@ var paramError = func(paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 
 var ErrResolvedInputNull = errors.New("the resolved input is null")
 
-func ResolveInputs(
-	ctx context.Context,
-	iterationIndex *int,
-	opts common.Options,
-	expr *expression.Expr,
-) (*pipelinespec.ExecutorInput_Inputs, error) {
-	inputs := &pipelinespec.ExecutorInput_Inputs{
-		ParameterValues: make(map[string]*structpb.Value),
-		Artifacts:       make(map[string]*pipelinespec.ArtifactList),
+type ParameterMetadata struct {
+	Key                string
+	ParameterIO        *apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter
+	InputParameterSpec *pipelinespec.TaskInputsSpec_InputParameterSpec
+}
+
+type ArtifactMetadata struct {
+	Key               string
+	ArtifactIOList    []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+	InputArtifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec
+}
+
+type InputMetadata struct {
+	Parameters []ParameterMetadata
+	Artifacts  []ArtifactMetadata
+}
+
+func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, error) {
+	inputMetadata := &InputMetadata{
+		Parameters: []ParameterMetadata{},
+		Artifacts:  []ArtifactMetadata{},
 	}
 	// Handle parameters
 	for name, paramSpec := range opts.Task.GetInputs().GetParameters() {
@@ -37,7 +48,7 @@ func ResolveInputs(
 			}
 		}
 
-		v, err := resolveInputParameter(ctx, opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
+		v, err := resolveInputParameter(opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
 		if err != nil {
 			if !errors.Is(err, ErrResolvedInputNull) {
 				return nil, err
@@ -53,7 +64,11 @@ func ResolveInputs(
 			}
 			return nil, err
 		}
-		inputs.ParameterValues[name] = v
+		inputMetadata.Parameters = append(inputMetadata.Parameters, ParameterMetadata{
+			Key:                name,
+			ParameterIO:        v,
+			InputParameterSpec: paramSpec,
+		})
 	}
 
 	// Handle artifacts.
@@ -62,8 +77,12 @@ func ResolveInputs(
 		if err != nil {
 			return nil, err
 		}
-		inputs.Artifacts[name] = v
+		inputMetadata.Artifacts = append(inputMetadata.Artifacts, ArtifactMetadata{
+			Key:               name,
+			ArtifactIOList:    v,
+			InputArtifactSpec: artifactSpec,
+		})
 	}
 
-	return inputs, nil
+	return inputMetadata, nil
 }

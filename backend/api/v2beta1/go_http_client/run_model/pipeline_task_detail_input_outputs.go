@@ -21,20 +21,11 @@ type PipelineTaskDetailInputOutputs struct {
 
 	// Output Only. To create Artifacts for a task are created
 	// via ArtifactTasks.
-	// For parallelFor & dsl.Collected case, each IO Artifact
-	// represents one dsl.Collected set of artifacts.
-	// This is because each dsl.Collected has one source task.
-	// TODO(Humair): Actually no it doesn't, each iteration
-	// has a container task, and we should store the
-	// "iteration" count for that specific task, and then
-	// as part of "Source" we can include the iteration for
-	// that specific task. This will allow us to support a
-	// collection of "Lists" in the future as well.
 	Artifacts []*InputOutputsIOArtifact `json:"artifacts"`
 
 	// For Loops parameters are filled with resolved
 	// parameterIterator.items
-	Parameters []*InputOutputsParameter `json:"parameters"`
+	Parameters []*InputOutputsIOParameter `json:"parameters"`
 }
 
 // Validate validates this pipeline task detail input outputs

@@ -22,43 +22,15 @@ type V2beta1ArtifactTask struct {
 	// artifact id
 	ArtifactID string `json:"artifact_id,omitempty"`
 
-	// The parameter name for the input/output artifact
-	// This maybe the same as the Artifact name if the
-	// artifact name is not specified. It is used to
-	// resolve artifact pipeline channels.
-	ArtifactKey string `json:"artifact_key,omitempty"`
-
 	// Output only. The unique server generated id of the ArtifactTask.
 	// Read Only: true
 	ID string `json:"id,omitempty"`
 
-	// When a source is from an iteration Runtime task type inside a ParallelFor
-	Iteration int32 `json:"iteration,omitempty"`
+	// key
+	Key string `json:"key,omitempty"`
 
-	// The key is often the parameter name used
-	// as input/output on the component, but
-	// can also take on the value of of other values.
-	// For example:
-	//  * "param-#" when using parameters in a ParallelFor
-	//  * "Output" when using Pythonic Artifacts
-	//
-	// For outputs, the key is the name of the parameter
-	// in the component spec (found in OutputDefinitions)
-	// used to output the artifact.
-	ProducerKey string `json:"producer_key,omitempty"`
-
-	// The task that produced this artifact
-	// For example in the case of a pipeline channel
-	// that is an output artifact you might have as
-	// input something like the following in the IR:
-	//   taskOutputArtifact:
-	//     outputArtifactKey: output_dataset
-	//     producerTask: create-dataset
-	// These fields are used to track this lineage.
-	//
-	// For outputs, the producer task is the component name
-	// of the task that produced the artifact.
-	ProducerTaskName string `json:"producer_task_name,omitempty"`
+	// producer
+	Producer *V2beta1IOProducer `json:"producer,omitempty"`
 
 	// run id
 	RunID string `json:"run_id,omitempty"`
@@ -74,6 +46,10 @@ type V2beta1ArtifactTask struct {
 func (m *V2beta1ArtifactTask) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateProducer(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
@@ -81,6 +57,25 @@ func (m *V2beta1ArtifactTask) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *V2beta1ArtifactTask) validateProducer(formats strfmt.Registry) error {
+	if swag.IsZero(m.Producer) { // not required
+		return nil
+	}
+
+	if m.Producer != nil {
+		if err := m.Producer.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("producer")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("producer")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -111,6 +106,10 @@ func (m *V2beta1ArtifactTask) ContextValidate(ctx context.Context, formats strfm
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateProducer(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateType(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -125,6 +124,27 @@ func (m *V2beta1ArtifactTask) contextValidateID(ctx context.Context, formats str
 
 	if err := validate.ReadOnly(ctx, "id", "body", string(m.ID)); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *V2beta1ArtifactTask) contextValidateProducer(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Producer != nil {
+
+		if swag.IsZero(m.Producer) { // not required
+			return nil
+		}
+
+		if err := m.Producer.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("producer")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("producer")
+			}
+			return err
+		}
 	}
 
 	return nil

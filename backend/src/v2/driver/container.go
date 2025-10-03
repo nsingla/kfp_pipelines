@@ -63,14 +63,19 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	// ######################################
 	// ### RESOLVE INPUTS ###
 	// ######################################
-	inputs, err := resolver.ResolveInputs(ctx, iterationIndex, opts, expr)
+	inputs, err := resolver.ResolveInputs(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	executorInput := &pipelinespec.ExecutorInput{
-		Inputs: inputs,
+	executorInput, err := pipelineTaskInputsToExecutorInputs(inputs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert inputs to executor inputs: %w", err)
 	}
+
+	//executorInput := &pipelinespec.ExecutorInput{
+	//	Inputs: inputs,
+	//}
 	execution = &Execution{ExecutorInput: executorInput}
 	condition := opts.Task.GetTriggerPolicy().GetCondition()
 	if condition != "" {
@@ -148,7 +153,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 		return execution, kubernetesPlatformOps(ctx, driverAPI, execution, taskToCreate, &opts)
 	}
 
-	var inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter
+	var inputParams []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter
 	if opts.KubernetesExecutorConfig != nil {
 		inputParams = parentTask.GetInputs().GetParameters()
 		if err != nil {
@@ -201,7 +206,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	// ### CREATE TASK ###
 	// ######################################
 
-	taskToCreate, err = handleTaskParametersCreation(executorInput, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
@@ -211,7 +216,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	}
 	execution.TaskID = createdTask.TaskId
 
-	err = handleTaskArtifactsCreation(ctx, executorInput, opts, createdTask, driverAPI)
+	err = handleTaskArtifactsCreation(ctx, inputs.Artifacts, opts, createdTask, driverAPI)
 	if err != nil {
 		return execution, err
 	}
@@ -326,4 +331,36 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	}
 	execution.PodSpecPatch = string(podSpecPatchBytes)
 	return execution, nil
+}
+
+func pipelineTaskInputsToExecutorInputs(inputMetadata *resolver.InputMetadata) (*pipelinespec.ExecutorInput, error) {
+
+	parameters := make(map[string]*structpb.Value)
+	artifacts := make(map[string]*pipelinespec.ArtifactList)
+
+	for _, p := range inputMetadata.Parameters {
+		if p.ParameterIO.GetValue() == nil {
+			return nil, fmt.Errorf("parameter %s has no value", p.Key)
+		}
+		parameters[p.Key] = p.ParameterIO.GetValue()
+	}
+	for _, a := range inputMetadata.Artifacts {
+		// Currently ArtifactList only supports a list of singular RuntimeArtifacts
+		// therefore, we only take the first artifact in the list.
+		// This disallows collecting "list" of artifacts from a loop. To support this
+		// we would need to change ArtifactList to support a *repeated* *list* of RuntimeArtifacts
+		// Similar to "repeated ArtifactsIO" in the backend API.
+		artifactsList, err := common.ConvertArtifactsToArtifactList(a.ArtifactIOList[0].Artifacts)
+		if err != nil {
+			return nil, err
+		}
+		artifacts[a.Key] = artifactsList
+	}
+	executorInput := &pipelinespec.ExecutorInput{
+		Inputs: &pipelinespec.ExecutorInput_Inputs{
+			ParameterValues: parameters,
+			Artifacts:       artifacts,
+		},
+	}
+	return executorInput, nil
 }

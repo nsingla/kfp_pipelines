@@ -14,6 +14,7 @@ import (
 
 // PipelineTaskDetailChildTask A dependent task that requires this one to succeed.
 // Represented by either task_id or pod_name.
+// TODO(HumairAK): Do we need this if we have parent_task_id?
 //
 // swagger:model PipelineTaskDetailChildTask
 type PipelineTaskDetailChildTask struct {

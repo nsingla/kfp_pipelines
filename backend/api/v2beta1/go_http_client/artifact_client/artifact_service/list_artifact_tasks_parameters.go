@@ -101,7 +101,9 @@ type ListArtifactTasksParams struct {
 	     Optional. Only list artifact tasks that have artifacts of this type.
 
 	 - UNSPECIFIED: For validation
-	 - INPUT: Standard Input/Output types
+	 - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the
+	sdk naming in TaskInputsSpec.kind.task_output_parameter
+	and TaskInputsSpec.kind.task_output_artifact
 	 - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type
 	is used to indicate whether this resolved input belongs
 	to a parameterIterator or artifactIterator.

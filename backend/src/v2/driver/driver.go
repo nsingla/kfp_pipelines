@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
+	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
@@ -71,7 +72,7 @@ func getPodResource(
 	if new != "" {
 		var err error
 
-		resolved, err = resolvePodSpecInputRuntimeParameter(new, executorInput)
+		resolved, err = resolver.ResolvePodSpecInputRuntimeParameter(new, executorInput)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve executor input when retrieving pod resource: %w", err)
 		}
@@ -267,7 +268,7 @@ func initPodSpecPatch(
 	if accelerator != nil {
 		var acceleratorType string
 		if accelerator.GetResourceType() != "" {
-			acceleratorType, err = resolvePodSpecInputRuntimeParameter(accelerator.GetResourceType(), executorInput)
+			acceleratorType, err = resolver.ResolvePodSpecInputRuntimeParameter(accelerator.GetResourceType(), executorInput)
 			if err != nil {
 				return nil, fmt.Errorf("failed to init podSpecPatch: %w", err)
 			}
@@ -280,7 +281,7 @@ func initPodSpecPatch(
 		if accelerator.GetResourceCount() != "" {
 			var err error
 
-			acceleratorCount, err = resolvePodSpecInputRuntimeParameter(accelerator.GetResourceCount(), executorInput)
+			acceleratorCount, err = resolver.ResolvePodSpecInputRuntimeParameter(accelerator.GetResourceCount(), executorInput)
 			if err != nil {
 				return nil, fmt.Errorf("failed to init podSpecPatch: %w", err)
 			}
@@ -297,7 +298,7 @@ func initPodSpecPatch(
 		}
 	}
 
-	containerImage, err := resolvePodSpecInputRuntimeParameter(container.Image, executorInput)
+	containerImage, err := resolver.ResolvePodSpecInputRuntimeParameter(container.Image, executorInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init podSpecPatch: %w", err)
 	}

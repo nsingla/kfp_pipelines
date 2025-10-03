@@ -7,7 +7,6 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func resolveInputArtifact(
@@ -16,13 +15,17 @@ func resolveInputArtifact(
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 	inputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
-) (*pipelinespec.ArtifactList, error) {
+) ([]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	artifactError := func(err error) error {
 		return fmt.Errorf("failed to resolve input artifact %s with spec %s: %w", name, artifactSpec, err)
 	}
 	switch t := artifactSpec.Kind.(type) {
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_ComponentInputArtifact:
-		return resolveArtifactComponentInputParameter(opts, artifactSpec, inputArtifacts)
+		artifactIO, err := resolveArtifactComponentInputParameter(opts, artifactSpec, inputArtifacts)
+		if err != nil {
+			return nil, artifactError(err)
+		}
+		return []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{artifactIO}, nil
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_TaskOutputArtifact:
 		artifacts, err := resolveUpstreamArtifacts(ctx, opts, artifactSpec)
 		if err != nil {
@@ -37,52 +40,33 @@ func resolveInputArtifact(
 func resolveArtifactComponentInputParameter(
 	opts common.Options,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
-	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact) (*pipelinespec.ArtifactList, error) {
-	paramName := artifactSpec.GetComponentInputArtifact()
-	if paramName == "" {
+	inputArtifactsIO []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
+	key := artifactSpec.GetComponentInputArtifact()
+	if key == "" {
 		return nil, fmt.Errorf("empty component input")
 	}
-	isPipelineChannel := common.IsPipelineChannel(paramName)
 
-	for _, param := range inputParams {
-		generateName, err := common.IOFieldsToPipelineChannelName(param.GetParameterName(), param.GetProducer(), isPipelineChannel)
-		if err != nil {
-			return nil, err
-		}
-		if paramName == generateName {
-			artifacts := param.GetArtifacts()
-			if common.IsLoopArgument(paramName) {
-				if len(artifacts) == 0 {
-					return nil, fmt.Errorf("loop argument %s must have at least one value", paramName)
-				}
-				if len(artifacts) <= opts.IterationIndex+1 {
-					return nil, fmt.Errorf(
-						"loop argument %s has only %d values,"+
-							" but index %d is requested, which is out "+
-							"of bounds", paramName, len(artifacts), opts.IterationIndex)
-				}
-				runtimeArtifact, err := convertArtifactToRuntimeArtifact(artifacts[opts.IterationIndex])
-				if err != nil {
-					return nil, err
-				}
-				return &pipelinespec.ArtifactList{
-					Artifacts: []*pipelinespec.RuntimeArtifact{runtimeArtifact},
-				}, nil
+	for _, artifactIO := range inputArtifactsIO {
+		ioKey := artifactIO.GetArtifactKey()
+		if key == ioKey {
+			if !common.IsLoopArgument(key) {
+				return artifactIO, nil
 			}
-			artifactList, err := convertArtifactsToArtifactList(artifacts)
-			if err != nil {
-				return nil, err
+			if artifactIO.Producer != nil && artifactIO.Producer.Iteration != nil && *artifactIO.Producer.Iteration == int64(opts.IterationIndex) {
+				return artifactIO, nil
 			}
-			return artifactList, nil
+			return artifactIO, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to find input param %s", paramName)
+	return nil, fmt.Errorf("failed to find input param %s", key)
 
 }
 
 func resolveUpstreamArtifacts(ctx context.Context,
 	opts common.Options,
-	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec) (*pipelinespec.ArtifactList, error) {
+	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
+) ([]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 
 	tasks, err := getSubTasks(opts.ParentTask, opts.Run.Tasks, nil)
 	if err != nil {
@@ -107,64 +91,40 @@ func resolveUpstreamArtifacts(ctx context.Context,
 	currentTask := producerTask
 	outputArtifactKey := artifactSpec.GetTaskOutputArtifact().GetOutputArtifactKey()
 
+	var collectArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 	switch producerTask.GetType() {
 	case apiv2beta1.PipelineTaskDetail_RUNTIME:
 		outputArtifacts := currentTask.GetOutputs().GetArtifacts()
-		artifacts, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
+		artifactIO, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
 		if err != nil {
 			return nil, err
 		}
-		if artifacts == nil {
+		if artifactIO == nil {
 			return nil, fmt.Errorf("output artifact %s not found", outputArtifactKey)
 		}
-		artifactList, err := convertArtifactsToArtifactList(artifacts)
-		if err != nil {
-			return nil, err
-		}
-		return artifactList, nil
+		collectArtifacts = append(collectArtifacts, artifactIO)
+		return collectArtifacts, nil
 	case apiv2beta1.PipelineTaskDetail_LOOP:
 		if !common.IsPipelineChannel(outputArtifactKey) {
 			return nil, fmt.Errorf("loop output artifact %s must be a pipeline channel", outputArtifactKey)
 		}
 
-		key, taskName, producerKey, err := common.ParameterNameToIOFields(outputArtifactKey)
-		if err != nil {
-			return nil, err
-		}
-		if key != "" && (taskName == "" || producerKey == "") {
-			return nil, fmt.Errorf("invalid pipeline channel name %s", outputArtifactKey)
-		}
-
-		var artifactRuntimeList []*pipelinespec.RuntimeArtifact
 		for _, ioArtifact := range currentTask.GetOutputs().GetArtifacts() {
 			if ioArtifact.GetType() == apiv2beta1.IOType_ITERATOR_OUTPUT &&
-				ioArtifact.GetProducer().Key == producerKey &&
-				ioArtifact.GetProducer().TaskName == taskName {
-
-				// Currently ArtifactList only supports a list of singular RuntimeArtifacts
-				// therefore, we only take the first artifact in the list.
-				// This disallows collecting "list" of artifacts from a loop. To support this
-				// we would need to change ArtifactList to support a *repeated* *list* of RuntimeArtifacts
-				// Similar to "repeated ArtifactsIO" in the backend API.
-				runtimeArtifact, err := convertArtifactToRuntimeArtifact(ioArtifact.GetArtifacts()[0])
-				if err != nil {
-					return nil, err
-				}
-				artifactRuntimeList = append(artifactRuntimeList, runtimeArtifact)
+				ioArtifact.GetArtifactKey() == outputArtifactKey &&
+				ioArtifact.GetProducer().TaskName == currentTask.Name {
+				collectArtifacts = append(collectArtifacts, ioArtifact)
 			}
 		}
-		if len(artifactRuntimeList) == 0 {
+		if len(collectArtifacts) == 0 {
 			return nil, fmt.Errorf("loop output artifacts for key %s not found", outputArtifactKey)
 		}
-		artifactList := &pipelinespec.ArtifactList{
-			Artifacts: artifactRuntimeList,
-		}
-		return artifactList, nil
+		return collectArtifacts, nil
 	case apiv2beta1.PipelineTaskDetail_DAG:
 		return nil, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
 
 	default:
-		return &pipelinespec.ArtifactList{}, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
+		return nil, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
 	}
 }
 
@@ -248,51 +208,11 @@ func getTaskNameWithTaskID(taskName, taskID string) string {
 func findArtifactByProducerKeyInList(
 	producerKey string,
 	artifactsIO []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
-) ([]*apiv2beta1.Artifact, error) {
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	for _, artifactIO := range artifactsIO {
-		if artifactIO.GetProducer().Key == producerKey {
-			return artifactIO.Artifacts, nil
+		if artifactIO.GetArtifactKey() == producerKey {
+			return artifactIO, nil
 		}
 	}
 	return nil, fmt.Errorf("artifact with producer key %s not found", producerKey)
-}
-
-func convertArtifactsToArtifactList(artifacts []*apiv2beta1.Artifact) (*pipelinespec.ArtifactList, error) {
-	var runtimeArtifacts []*pipelinespec.RuntimeArtifact
-	for _, artifact := range artifacts {
-		runtimeArtifact, err := convertArtifactToRuntimeArtifact(artifact)
-		if err != nil {
-			return nil, err
-		}
-		runtimeArtifacts = append(runtimeArtifacts, runtimeArtifact)
-	}
-	return &pipelinespec.ArtifactList{
-		Artifacts: runtimeArtifacts,
-	}, nil
-}
-
-func convertArtifactToRuntimeArtifact(
-	artifact *apiv2beta1.Artifact,
-) (*pipelinespec.RuntimeArtifact, error) {
-	if artifact.GetName() == "" && artifact.GetUri() == "" {
-		return nil, fmt.Errorf("artifact name or uri cannot be empty")
-	}
-	runtimeArtifact := &pipelinespec.RuntimeArtifact{
-		Name:       artifact.GetName(),
-		ArtifactId: artifact.GetArtifactId(),
-		Type: &pipelinespec.ArtifactTypeSchema{
-			Kind: &pipelinespec.ArtifactTypeSchema_SchemaTitle{
-				SchemaTitle: artifact.Type.String(),
-			},
-		},
-	}
-	if artifact.GetUri() != "" {
-		runtimeArtifact.Uri = artifact.GetUri()
-	}
-	if artifact.GetMetadata() != nil {
-		runtimeArtifact.Metadata = &structpb.Struct{
-			Fields: artifact.GetMetadata(),
-		}
-	}
-	return runtimeArtifact, nil
 }

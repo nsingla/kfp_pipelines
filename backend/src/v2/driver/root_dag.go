@@ -35,12 +35,12 @@ func RootDAG(ctx context.Context, opts common.Options, api common.DriverAPI) (ex
 	// Inputs: pass runtime parameters into task inputs for record.
 	var inputs *apiV2beta1.PipelineTaskDetail_InputOutputs
 	if opts.RuntimeConfig != nil && opts.RuntimeConfig.GetParameterValues() != nil {
-		params := make([]*apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter, 0, len(opts.RuntimeConfig.GetParameterValues()))
+		params := make([]*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter, 0, len(opts.RuntimeConfig.GetParameterValues()))
 		for name, val := range opts.RuntimeConfig.GetParameterValues() {
 			n := name
-			params = append(params, &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-				Source: &apiV2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{ParameterName: n},
-				Value:  val,
+			params = append(params, &apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+				ParameterKey: n,
+				Value:        val,
 			})
 		}
 		inputs = &apiV2beta1.PipelineTaskDetail_InputOutputs{Parameters: params}

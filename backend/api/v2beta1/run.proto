@@ -436,6 +436,7 @@ message PipelineTaskDetail {
 
   // A dependent task that requires this one to succeed.
   // Represented by either task_id or pod_name.
+  // TODO(HumairAK): Do we need this if we have parent_task_id?
   message ChildTask {
     // System-generated ID of a task.
     string task_id = 1;
@@ -446,68 +447,29 @@ message PipelineTaskDetail {
   repeated ChildTask child_tasks = 17;
 
   message InputOutputs {
-    message IOProducer {
-      string task_name = 1;
-      // This would be the equivalent of output_parameter_key from the upstream task
-      // when it's a parameter input, or output_artifact_key when it is an Artifact.
-      string key = 2;
-
-      // When a source is from an iteration Runtime task type inside a ParallelFor
-      optional int32 iteration = 3;
-    }
-
-    // In the case of non-Runtime tasks, in particular Loop tasks,
-    // there are two types of Inputs.
-
-    message Parameter {
-      // Required
+    message IOParameter {
       google.protobuf.Value value = 1;
-
-      // Required
       IOType type = 2;
-
-      oneof source {
-        // Optional, this is only included on Runtime Tasks when the parameter name is known.
-        string parameter_name = 3;
-        // Handle Pipeline Channel case.
-        IOProducer producer = 4;
-      }
+      string parameter_key = 3;
+      // Optional because in the case of Input RuntimeValues there is no producer
+      optional IOProducer producer = 4;
     }
 
     // Align structure with Executor Input
     message IOArtifact {
-      // An artifact input can be a list of artifacts??
-      // TODO(HumairAK): In DB we need to create an artifact-task for each artifact for a given producer id/key
-      // When reading artifacts for a task, we need to collect all artifacts that share the same producer key
-      // and include it in one artifacts list. So if you may have:
-      // []IOArtifact{ { "artifacts": [ {artifact_a}, {artifact_b} ], "producer": {"key": "input_a"} }, { "artifacts": [...], "producer": {"key": "input_b"} } }
       repeated Artifact artifacts = 1;
-
-      // TODO(HumairAK) add this to ArtifactTask column
       IOType type = 2;
-
-      oneof source {
-        // This is included on Runtime Tasks when the parameter name is known.
-        string parameter_name = 3;
-        // Handle Pipeline Channel case.
-        IOProducer producer = 4;
-      }
+      string artifact_key = 3;
+      IOProducer producer = 4;
     }
-
     // For Loops parameters are filled with resolved
     // parameterIterator.items
-    repeated Parameter parameters = 1;
+    repeated IOParameter parameters = 1;
 
     // Output Only. To create Artifacts for a task are created
     // via ArtifactTasks.
-    // Note that this is a list to align with ExecutorInput.artifacts
-    // Having a list allows for support for multiple scenarios:
-    // * list artifacts as inputs/outputs for Runtime Tasks
-    // * list artifacts as iterator_inputs/iterator_outputs
-    //   for Loop Tasks
     repeated IOArtifact artifacts = 2;
   }
-
   InputOutputs inputs = 18;
   InputOutputs outputs = 19;
 }

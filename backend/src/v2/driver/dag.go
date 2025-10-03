@@ -40,23 +40,21 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		return nil, fmt.Errorf("driverAPI client is nil")
 	}
 
-	var iterationIndex *int
-	if opts.IterationIndex >= 0 {
-		idx := opts.IterationIndex
-		iterationIndex = &idx
-	}
-
 	expr, err := expression.New()
 	if err != nil {
 		return nil, err
 	}
 
-	inputs, err := resolver.ResolveInputs(ctx, iterationIndex, opts, expr)
+	inputs, err := resolver.ResolveInputs(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	executorInput := &pipelinespec.ExecutorInput{Inputs: inputs}
+	executorInput, err := pipelineTaskInputsToExecutorInputs(inputs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert inputs to executor inputs: %w", err)
+	}
+
 	glog.Infof("executorInput value: %+v", executorInput)
 	execution = &Execution{ExecutorInput: executorInput}
 
@@ -164,7 +162,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	if opts.ParentTask.GetTaskId() != "" {
 		taskToCreate.ParentTaskId = util.StringPointer(opts.ParentTask.GetTaskId())
 	}
-	taskToCreate, err = handleTaskParametersCreation(executorInput, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
@@ -176,7 +174,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	glog.Infof("Created task: %+v", createdTask)
 	execution.TaskID = createdTask.TaskId
 
-	err = handleTaskArtifactsCreation(ctx, executorInput, opts, createdTask, driverAPI)
+	err = handleTaskArtifactsCreation(ctx, inputs.Artifacts, opts, createdTask, driverAPI)
 	if err != nil {
 		return execution, err
 	}

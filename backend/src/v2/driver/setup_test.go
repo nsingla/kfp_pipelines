@@ -149,25 +149,12 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 					Type:      artifactTask.Type,
 				}
 
-				// Set the source based on producer information
-				if artifactTask.ProducerTaskName != "" && artifactTask.ProducerKey != "" {
-					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_Producer{
-						Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-							TaskName:  artifactTask.ProducerTaskName,
-							Key:       artifactTask.ProducerKey,
-							Iteration: artifactTask.Iteration,
-						},
-					}
-				} else {
-					// Use parameter name if no producer specified
-					ioArtifact.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact_ParameterName{
-						ParameterName: artifact.Name,
-					}
-				}
+				ioArtifact.ArtifactKey = artifactTask.Key
+				ioArtifact.Producer = artifactTask.Producer
 
 				// Determine if this is an input or output artifact based on ArtifactTaskType
 				switch artifactTask.Type {
-				case apiv2beta1.IOType_INPUT, apiv2beta1.IOType_ITERATOR_INPUT:
+				case apiv2beta1.IOType_COMPONENT_INPUT, apiv2beta1.IOType_ITERATOR_INPUT, apiv2beta1.IOType_RUNTIME_VALUE_INPUT:
 					inputArtifacts = append(inputArtifacts, ioArtifact)
 				case apiv2beta1.IOType_OUTPUT, apiv2beta1.IOType_ITERATOR_OUTPUT:
 					outputArtifacts = append(outputArtifacts, ioArtifact)
@@ -377,7 +364,7 @@ func (ts *TestSetup) CreateTestTask(
 	runID,
 	taskName string,
 	taskType apiv2beta1.PipelineTaskDetail_TaskType,
-	inputParams, outputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter,
+	inputParams, outputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 ) *apiv2beta1.PipelineTaskDetail {
 	t.Helper()
 
@@ -435,16 +422,17 @@ func (ts *TestSetup) CreateTestArtifact(t *testing.T, name, artifactType string)
 }
 
 // CreateTestArtifactTask creates an artifact-task relationship
-func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, runID, producerTaskName, producerKey string, artifactType apiv2beta1.IOType) *apiv2beta1.ArtifactTask {
+func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, runID, key string,
+	producer *apiv2beta1.IOProducer, artifactType apiv2beta1.IOType) *apiv2beta1.ArtifactTask {
 	t.Helper()
 
 	artifactTask := &apiv2beta1.ArtifactTask{
-		ArtifactId:       artifactID,
-		TaskId:           taskID,
-		RunId:            runID,
-		Type:             artifactType,
-		ProducerTaskName: producerTaskName,
-		ProducerKey:      producerKey,
+		ArtifactId: artifactID,
+		TaskId:     taskID,
+		RunId:      runID,
+		Type:       artifactType,
+		Producer:   producer,
+		Key:        key,
 	}
 
 	createdArtifactTask, err := ts.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
@@ -532,39 +520,15 @@ func AssertTaskType(t *testing.T, driverAPI common.DriverAPI, taskID string, exp
 }
 
 // CreateParameter creates a test parameter with the given name and value
-func CreateParameter(name, value string, producer *apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer) *apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter {
-	if name != "" && producer != nil {
-		panic("Cannot specify both name and producer")
-	}
+func CreateParameter(value, key string,
+	producer *apiv2beta1.IOProducer) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
 	val, _ := structpb.NewValue(value)
-	param := &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-		Value: val,
+	param := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+		Value:        val,
+		ParameterKey: key,
+		Producer:     producer,
 	}
-	if name != "" {
-		param.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_ParameterName{
-			ParameterName: name,
-		}
-	} else {
-		param.Source = &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_Producer{
-			Producer: producer,
-		}
-	}
-
 	return param
-}
-
-// CreateParameterWithProducer creates a parameter with a producer reference
-func CreateParameterWithProducer(value, taskName, key string) *apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter {
-	val, _ := structpb.NewValue(value)
-	return &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-		Value: val,
-		Source: &apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter_Producer{
-			Producer: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{
-				TaskName: taskName,
-				Key:      key,
-			},
-		},
-	}
 }
 
 // CreateStatusMetadata creates test status metadata
@@ -593,22 +557,43 @@ func TestSetupTestSetup(t *testing.T) {
 	assert.Equal(t, "test-pipeline", run.GetPipelineSpec().Fields["pipelineInfo"].GetStructValue().Fields["name"].GetStringValue())
 
 	// Create test tasks
-	task1 := testSetup.CreateTestTask(t, run.RunId, "producer-task", apiv2beta1.PipelineTaskDetail_RUNTIME,
-		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			CreateParameter("input1", "test-input1", nil),
-			CreateParameter("", "test-input2", &apiv2beta1.PipelineTaskDetail_InputOutputs_IOProducer{TaskName: "some-task", Key: "some-key"}),
+	task1 := testSetup.CreateTestTask(t,
+		run.RunId,
+		"producer-task",
+		apiv2beta1.PipelineTaskDetail_RUNTIME,
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			CreateParameter(
+				"input1",
+				"pipelinechannel--args-generator-op-Output",
+				&apiv2beta1.IOProducer{TaskName: "some-task"},
+			),
 		},
-		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			CreateParameter("output1", "test-output1", nil),
-			CreateParameter("output2", "test-output2", nil),
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			CreateParameter(
+				"output1",
+				"msg",
+				nil,
+			),
+			CreateParameter(
+				"output2",
+				"",
+				nil,
+			),
 		})
 	task2 := testSetup.CreateTestTask(t, run.RunId, "consumer-task", apiv2beta1.PipelineTaskDetail_RUNTIME,
-		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			CreateParameterWithProducer("test-input3", "producer-task", "output1"),
-			CreateParameter("input4", "test-input4", nil),
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			CreateParameter(
+				"input4",
+				"input4key",
+				nil,
+			),
 		},
-		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_Parameter{
-			CreateParameter("output3", "test-output3", nil),
+		[]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			CreateParameter(
+				"output3",
+				"pipelinechannel--split-ids-Output",
+				nil,
+			),
 		})
 
 	// Create test artifacts
@@ -617,11 +602,30 @@ func TestSetupTestSetup(t *testing.T) {
 
 	// Create artifact-task relationships
 	// task1 produces artifact1 (output)
-	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task1.TaskId, run.RunId, task1.Name, "output", apiv2beta1.IOType_OUTPUT)
+	testSetup.CreateTestArtifactTask(t,
+		artifact1.ArtifactId, task1.TaskId, run.RunId, "pipelinechannel--loop_parameter-loop-item-1",
+		&apiv2beta1.IOProducer{
+			TaskName: task1.Name,
+		},
+		apiv2beta1.IOType_OUTPUT,
+	)
+
 	// task2 consumes artifact1 (input)
-	testSetup.CreateTestArtifactTask(t, artifact1.ArtifactId, task2.TaskId, run.RunId, task1.Name, "output", apiv2beta1.IOType_INPUT)
+	testSetup.CreateTestArtifactTask(t,
+		artifact1.ArtifactId, task2.TaskId, run.RunId, "pipelinechannel--loop_parameter-loop-item-2",
+		&apiv2beta1.IOProducer{
+			TaskName: task1.Name,
+		},
+		apiv2beta1.IOType_COMPONENT_INPUT,
+	)
 	// task2 produces artifact2 (output)
-	testSetup.CreateTestArtifactTask(t, artifact2.ArtifactId, task2.TaskId, run.RunId, task2.Name, "model", apiv2beta1.IOType_OUTPUT)
+	testSetup.CreateTestArtifactTask(t,
+		artifact2.ArtifactId, task2.TaskId, run.RunId, "pipelinechannel--loop_parameter-loop-item",
+		&apiv2beta1.IOProducer{
+			TaskName: task2.Name,
+		},
+		apiv2beta1.IOType_OUTPUT,
+	)
 
 	// Test getting run with populated tasks and artifacts
 	populatedRun, err := testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.RunId})
@@ -656,5 +660,5 @@ func TestSetupTestSetup(t *testing.T) {
 	// Verify producer information is correctly set
 	inputArtifact := consumerTask.Inputs.Artifacts[0]
 	assert.Equal(t, "producer-task", inputArtifact.GetProducer().TaskName)
-	assert.Equal(t, "output", inputArtifact.GetProducer().Key)
+	assert.Equal(t, "pipelinechannel--loop_parameter-loop-item-2", inputArtifact.GetArtifactKey())
 }

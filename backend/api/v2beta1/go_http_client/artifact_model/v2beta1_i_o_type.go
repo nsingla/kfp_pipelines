@@ -22,7 +22,10 @@ import (
 // dsl.Collected outputs.
 //
 //   - UNSPECIFIED: For validation
-//   - INPUT: Standard Input/Output types
+//   - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the
+//
+// sdk naming in TaskInputsSpec.kind.task_output_parameter
+// and TaskInputsSpec.kind.task_output_artifact
 //   - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type
 //
 // is used to indicate whether this resolved input belongs
@@ -49,17 +52,23 @@ const (
 	// V2beta1IOTypeUNSPECIFIED captures enum value "UNSPECIFIED"
 	V2beta1IOTypeUNSPECIFIED V2beta1IOType = "UNSPECIFIED"
 
-	// V2beta1IOTypeINPUT captures enum value "INPUT"
-	V2beta1IOTypeINPUT V2beta1IOType = "INPUT"
+	// V2beta1IOTypeTASKOUTPUTINPUT captures enum value "TASK_OUTPUT_INPUT"
+	V2beta1IOTypeTASKOUTPUTINPUT V2beta1IOType = "TASK_OUTPUT_INPUT"
 
-	// V2beta1IOTypeOUTPUT captures enum value "OUTPUT"
-	V2beta1IOTypeOUTPUT V2beta1IOType = "OUTPUT"
+	// V2beta1IOTypeCOMPONENTINPUT captures enum value "COMPONENT_INPUT"
+	V2beta1IOTypeCOMPONENTINPUT V2beta1IOType = "COMPONENT_INPUT"
+
+	// V2beta1IOTypeRUNTIMEVALUEINPUT captures enum value "RUNTIME_VALUE_INPUT"
+	V2beta1IOTypeRUNTIMEVALUEINPUT V2beta1IOType = "RUNTIME_VALUE_INPUT"
 
 	// V2beta1IOTypeITERATORINPUT captures enum value "ITERATOR_INPUT"
 	V2beta1IOTypeITERATORINPUT V2beta1IOType = "ITERATOR_INPUT"
 
 	// V2beta1IOTypeITERATOROUTPUT captures enum value "ITERATOR_OUTPUT"
 	V2beta1IOTypeITERATOROUTPUT V2beta1IOType = "ITERATOR_OUTPUT"
+
+	// V2beta1IOTypeOUTPUT captures enum value "OUTPUT"
+	V2beta1IOTypeOUTPUT V2beta1IOType = "OUTPUT"
 )
 
 // for schema
@@ -67,7 +76,7 @@ var v2beta1IOTypeEnum []interface{}
 
 func init() {
 	var res []V2beta1IOType
-	if err := json.Unmarshal([]byte(`["UNSPECIFIED","INPUT","OUTPUT","ITERATOR_INPUT","ITERATOR_OUTPUT"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["UNSPECIFIED","TASK_OUTPUT_INPUT","COMPONENT_INPUT","RUNTIME_VALUE_INPUT","ITERATOR_INPUT","ITERATOR_OUTPUT","OUTPUT"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

@@ -129,6 +129,8 @@ components:
             artifacts:
               artifact_list_input:
                 taskOutputArtifact:
+                  # This has the producer task for which we search "outputs" field for
+                  # And we match against the "producer/key" field to find a match.
                   outputArtifactKey: pipelinechannel--process-dataset-output_artifact
                   producerTask: for-loop-2
           taskInfo:
@@ -344,6 +346,9 @@ root:
         inputs:
           artifacts:
             artifact_list_input:
+              # For this case since it's not a pipeline channel, we search
+              # for the producer task, and in its outputs section we search
+              # for the parameter_key/artifact_key
               taskOutputArtifact:
                 outputArtifactKey: Output
                 producerTask: secondary-pipeline

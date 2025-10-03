@@ -145,12 +145,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NotNil(t, createArtifact)
 	at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId:       createArtifact.ArtifactId,
-			TaskId:           createDataSetExecution.TaskID,
-			RunId:            run.GetRunId(),
-			ProducerKey:      "output_dataset",
-			ProducerTaskName: "create-dataset",
-			Type:             apiv2beta1.IOType_OUTPUT,
+			ArtifactId: createArtifact.ArtifactId,
+			TaskId:     createDataSetExecution.TaskID,
+			RunId:      run.GetRunId(),
+			Key:        "output_dataset",
+			Producer:   &apiv2beta1.IOProducer{TaskName: "create-dataset"},
+			Type:       apiv2beta1.IOType_OUTPUT,
 		},
 	})
 	require.NoError(t, err)
@@ -209,12 +209,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.NotNil(t, createArtifact)
 		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 			ArtifactTask: &apiv2beta1.ArtifactTask{
-				ArtifactId:       createArtifact.ArtifactId,
-				TaskId:           processExecution.TaskID,
-				RunId:            run.GetRunId(),
-				ProducerKey:      "output_artifact",
-				ProducerTaskName: "process-dataset",
-				Type:             apiv2beta1.IOType_OUTPUT,
+				ArtifactId: createArtifact.ArtifactId,
+				TaskId:     processExecution.TaskID,
+				RunId:      run.GetRunId(),
+				Key:        "output_artifact",
+				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset"},
+				Type:       apiv2beta1.IOType_OUTPUT,
 			},
 		})
 		require.NoError(t, err)
@@ -231,13 +231,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 		//              producerSubtask: process-dataset
 		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 			ArtifactTask: &apiv2beta1.ArtifactTask{
-				ArtifactId:       createArtifact.ArtifactId,
-				TaskId:           loopExecution.TaskID,
-				RunId:            run.GetRunId(),
-				ProducerKey:      "output_artifact",
-				ProducerTaskName: "process-dataset",
-				Iteration:        util.Int32Pointer(int32(index)),
-				Type:             apiv2beta1.IOType_ITERATOR_OUTPUT,
+				ArtifactId: createArtifact.ArtifactId,
+				TaskId:     loopExecution.TaskID,
+				RunId:      run.GetRunId(),
+				Key:        "output_artifact",
+				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset", Iteration: util.Int64Pointer(int64(index))},
+				Type:       apiv2beta1.IOType_ITERATOR_OUTPUT,
 			},
 		})
 		require.NoError(t, err)
@@ -258,13 +257,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 		//              producerSubtask: for-loop-2
 		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 			ArtifactTask: &apiv2beta1.ArtifactTask{
-				ArtifactId:       createArtifact.ArtifactId,
-				TaskId:           secondaryPipelineExecution.TaskID,
-				RunId:            run.GetRunId(),
-				ProducerKey:      "output_artifact",
-				ProducerTaskName: "process-dataset",
-				Iteration:        util.Int32Pointer(int32(index)),
-				Type:             apiv2beta1.IOType_ITERATOR_OUTPUT,
+				ArtifactId: createArtifact.ArtifactId,
+				TaskId:     secondaryPipelineExecution.TaskID,
+				RunId:      run.GetRunId(),
+				Key:        "output_artifact",
+				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset", Iteration: util.Int64Pointer(int64(index))},
+				Type:       apiv2beta1.IOType_ITERATOR_OUTPUT,
 			},
 		})
 		require.NoError(t, err)
@@ -304,12 +302,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.NotNil(t, createArtifact)
 		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 			ArtifactTask: &apiv2beta1.ArtifactTask{
-				ArtifactId:       createArtifact.ArtifactId,
-				TaskId:           analyzeExecution.TaskID,
-				RunId:            run.GetRunId(),
-				ProducerKey:      "analyze_output_artifact",
-				ProducerTaskName: "analyze-artifact",
-				Type:             apiv2beta1.IOType_OUTPUT,
+				ArtifactId: createArtifact.ArtifactId,
+				TaskId:     analyzeExecution.TaskID,
+				RunId:      run.GetRunId(),
+				Key:        "analyze_output_artifact",
+				Producer:   &apiv2beta1.IOProducer{TaskName: "analyze-artifact", Iteration: util.Int64Pointer(int64(index))},
+				Type:       apiv2beta1.IOType_OUTPUT,
 			},
 		})
 	}
