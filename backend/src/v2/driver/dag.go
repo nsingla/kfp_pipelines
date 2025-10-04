@@ -54,6 +54,8 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		return nil, fmt.Errorf("failed to convert inputs to executor inputs: %w", err)
 	}
 
+	// TODO(HumairAK) this doesn't seem used in dag case (or root)
+	// consider removing it. ExecutorInput is only required by Runtimes.
 	glog.Infof("executorInput value: %+v", executorInput)
 	execution = &Execution{ExecutorInput: executorInput}
 
@@ -93,15 +95,11 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 			},
 		},
 	}
-	// TODO(HumairAK): Add conversion from executor input to dag task inputs
-
-	// TODO(HumairAK): Create artifact_tasks for resolved artifacts
 
 	// Determine type of DAG task.
 	// In the future the KFP Sdk should add a Task Type enum to the task Info proto
-	// to assist with inferring type. For now we infer the type based on attribute
+	// to assist with inferring type. For now, we infer the type based on attribute
 	// heuristics.
-
 	if iterationCount != nil {
 		iterationCount := int64(*iterationCount)
 		taskToCreate.TypeAttributes = &gc.PipelineTaskDetail_TypeAttributes{IterationCount: &iterationCount}
@@ -120,7 +118,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	if opts.ParentTask.GetTaskId() != "" {
 		taskToCreate.ParentTaskId = util.StringPointer(opts.ParentTask.GetTaskId())
 	}
-	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(opts, inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
@@ -132,7 +130,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	glog.Infof("Created task: %+v", createdTask)
 	execution.TaskID = createdTask.TaskId
 
-	err = handleTaskArtifactsCreation(ctx, inputs.Artifacts, opts, createdTask, driverAPI)
+	err = handleTaskArtifactsCreation(ctx, opts, inputs.Artifacts, createdTask, driverAPI)
 	if err != nil {
 		return execution, err
 	}

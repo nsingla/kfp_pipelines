@@ -19,7 +19,7 @@ func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetad
 		}
 		artifacts = append(artifacts, ArtifactMetadata{
 			Key:               name,
-			ArtifactIOList:    v,
+			ArtifactIO:        v,
 			InputArtifactSpec: artifactSpec,
 		})
 	}
@@ -27,25 +27,31 @@ func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetad
 	var iterationCount *int
 
 	if opts.Task.GetArtifactIterator() != nil {
-		var items []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 		iterator := opts.Task.GetArtifactIterator()
-
-		artifactIO, err := findArtifactByIOKey(iterator.GetItems().GetInputArtifact(), artifacts)
+		// This should be the key input into the for loop task
+		iteratorInputDefinitionKey := iterator.GetItemInput()
+		// Used to look up the Artifact from the resolved list
+		// The key here should map to a ArtifactMetadata.Key that
+		// was resolved in the prior loop.
+		sourceInputArtifactKey := iterator.GetItems().GetInputArtifact()
+		artifactIO, err := findArtifactByIOKey(sourceInputArtifactKey, artifacts)
 		if err != nil {
 			return nil, nil, err
 		}
-
 		artifacts = append(artifacts, ArtifactMetadata{
-			Key:              iterator.GetItemInput(),
-			ArtifactIOList:   []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{},
+			Key: iteratorInputDefinitionKey,
+			ArtifactIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+				Artifacts: artifactIO.Artifacts,
+				Type:      apiv2beta1.IOType_ITERATOR_INPUT,
+				Producer:  artifactIO.Producer,
+			},
 			ArtifactIterator: iterator,
 		})
-
-		count := len(items)
+		count := len(artifactIO.Artifacts)
 		iterationCount = &count
 	}
 
-	return artifacts, nil, nil
+	return artifacts, iterationCount, nil
 }
 
 func resolveInputArtifact(

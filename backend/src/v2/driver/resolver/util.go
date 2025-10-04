@@ -189,11 +189,11 @@ func findParameterByIOKey(
 func findArtifactByIOKey(
 	key string,
 	ams []ArtifactMetadata,
-) ([]*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
+) (*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	for _, am := range ams {
 		if am.Key == key {
-			return am.ArtifactIOList, nil
+			return am.ArtifactIO, nil
 		}
 	}
-	return nil, fmt.Errorf("parameter not found")
+	return nil, fmt.Errorf("artifact not found")
 }

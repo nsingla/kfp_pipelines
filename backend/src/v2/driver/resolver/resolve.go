@@ -26,20 +26,10 @@ type ParameterMetadata struct {
 
 type ArtifactMetadata struct {
 	Key string
-
 	// InputArtifactSpec is mutually exclusive with ArtifactIterator
 	InputArtifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec
 	ArtifactIterator  *pipelinespec.ArtifactIteratorSpec
-
-	// TODO - When a componentInput needs to be resolved for an iteration Runtime task
-	// it should find the index on the parentTasks.outputs where producer.Iteration maps to
-	// the runtime task's index.
-	ArtifactIO *apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
-
-	// This is for when a key can map to a collection of artifacts
-	// In such a case each artifact has its own IOProducer.
-	// This is only in the case when ArtifactIOs have IOType ITERATOR_OUTPUT
-	ArtifactIOList []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+	ArtifactIO        *apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 }
 
 type InputMetadata struct {

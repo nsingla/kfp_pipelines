@@ -206,7 +206,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	// ### CREATE TASK ###
 	// ######################################
 
-	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(opts, inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
@@ -216,7 +216,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	}
 	execution.TaskID = createdTask.TaskId
 
-	err = handleTaskArtifactsCreation(ctx, inputs.Artifacts, opts, createdTask, driverAPI)
+	err = handleTaskArtifactsCreation(ctx, opts, inputs.Artifacts, createdTask, driverAPI)
 	if err != nil {
 		return execution, err
 	}
@@ -334,10 +334,8 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 }
 
 func pipelineTaskInputsToExecutorInputs(inputMetadata *resolver.InputMetadata) (*pipelinespec.ExecutorInput, error) {
-
 	parameters := make(map[string]*structpb.Value)
 	artifacts := make(map[string]*pipelinespec.ArtifactList)
-
 	for _, p := range inputMetadata.Parameters {
 		if p.ParameterIO.GetValue() == nil {
 			return nil, fmt.Errorf("parameter %s has no value", p.Key)
@@ -345,12 +343,7 @@ func pipelineTaskInputsToExecutorInputs(inputMetadata *resolver.InputMetadata) (
 		parameters[p.Key] = p.ParameterIO.GetValue()
 	}
 	for _, a := range inputMetadata.Artifacts {
-		// Currently ArtifactList only supports a list of singular RuntimeArtifacts
-		// therefore, we only take the first artifact in the list.
-		// This disallows collecting "list" of artifacts from a loop. To support this
-		// we would need to change ArtifactList to support a *repeated* *list* of RuntimeArtifacts
-		// Similar to "repeated ArtifactsIO" in the backend API.
-		artifactsList, err := common.ConvertArtifactsToArtifactList(a.ArtifactIOList[0].Artifacts)
+		artifactsList, err := common.ConvertArtifactsToArtifactList(a.ArtifactIO.GetArtifacts())
 		if err != nil {
 			return nil, err
 		}

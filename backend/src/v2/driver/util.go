@@ -21,6 +21,7 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -166,7 +167,11 @@ func validateNonRoot(opts common.Options) error {
 
 // handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_IOParameter
 // for each parameter in the executor input.
-func handleTaskParametersCreation(parameterMetadata []resolver.ParameterMetadata, task *apiV2beta1.PipelineTaskDetail) (*apiV2beta1.PipelineTaskDetail, error) {
+func handleTaskParametersCreation(
+	opts common.Options,
+	parameterMetadata []resolver.ParameterMetadata,
+	task *apiV2beta1.PipelineTaskDetail,
+) (*apiV2beta1.PipelineTaskDetail, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task is nil")
 	}
@@ -181,7 +186,12 @@ func handleTaskParametersCreation(parameterMetadata []resolver.ParameterMetadata
 		parameterNew := &apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
 			Value:        pm.ParameterIO.Value,
 			ParameterKey: pm.Key,
-			Producer:     pm.ParameterIO.Producer,
+			Producer: &apiV2beta1.IOProducer{
+				TaskName: opts.TaskName,
+			},
+		}
+		if opts.IterationIndex >= 0 {
+			parameterNew.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
 		}
 		switch pm.InputParameterSpec.GetKind().(type) {
 		case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
@@ -199,24 +209,33 @@ func handleTaskParametersCreation(parameterMetadata []resolver.ParameterMetadata
 	}
 	return task, nil
 }
-func handleTaskArtifactsCreation(ctx context.Context, artifactMetadata []resolver.ArtifactMetadata, opts common.Options, task *apiV2beta1.PipelineTaskDetail, driverAPI common.DriverAPI) error {
+func handleTaskArtifactsCreation(
+	ctx context.Context,
+	opts common.Options,
+	artifactMetadata []resolver.ArtifactMetadata,
+	task *apiV2beta1.PipelineTaskDetail,
+	driverAPI common.DriverAPI,
+) error {
 	var artifactTasks []*apiV2beta1.ArtifactTask
 	for _, am := range artifactMetadata {
-		for _, artifactIO := range am.ArtifactIOList {
-			for _, artifact := range artifactIO.Artifacts {
-				if artifact.ArtifactId == "" {
-					return fmt.Errorf("artifact id is required")
-				}
-				at := &apiV2beta1.ArtifactTask{
-					ArtifactId: artifact.ArtifactId,
-					RunId:      opts.Run.GetRunId(),
-					TaskId:     task.TaskId,
-					Type:       artifactIO.Type,
-					Producer:   artifactIO.Producer,
-					Key:        artifactIO.ArtifactKey,
-				}
-				artifactTasks = append(artifactTasks, at)
+		for _, artifact := range am.ArtifactIO.Artifacts {
+			if artifact.ArtifactId == "" {
+				return fmt.Errorf("artifact id is required")
 			}
+			at := &apiV2beta1.ArtifactTask{
+				ArtifactId: artifact.ArtifactId,
+				RunId:      opts.Run.GetRunId(),
+				TaskId:     task.TaskId,
+				Type:       am.ArtifactIO.Type,
+				Producer: &apiV2beta1.IOProducer{
+					TaskName: opts.TaskName,
+				},
+				Key: am.ArtifactIO.ArtifactKey,
+			}
+			if opts.IterationIndex >= 0 {
+				at.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
+			}
+			artifactTasks = append(artifactTasks, at)
 		}
 	}
 	if len(artifactTasks) > 0 {

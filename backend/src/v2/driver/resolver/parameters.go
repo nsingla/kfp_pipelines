@@ -56,14 +56,21 @@ func resolveParameters(opts common.Options) ([]ParameterMetadata, *int, error) {
 		iterator := opts.Task.GetParameterIterator()
 		switch iterator.GetItems().GetKind().(type) {
 		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_InputParameter:
+			// This should be the key input into the for loop task
+			iteratorInputDefinitionKey := iterator.GetItemInput()
+			// Used to look up the Parameter from the resolved list
+			// The key here should map to a ParameterMetadata.Key that
+			// was resolved in the prior loop.
+			sourceInputParameterKey := iterator.GetItems().GetInputParameter()
+
 			var err error
-			parameterIO, err := findParameterByIOKey(iterator.GetItems().GetInputParameter(), parameters)
+			parameterIO, err := findParameterByIOKey(sourceInputParameterKey, parameters)
 			if err != nil {
 				return nil, nil, err
 			}
 			value = parameterIO.GetValue()
 			parameters = append(parameters, ParameterMetadata{
-				Key: iterator.GetItemInput(),
+				Key: iteratorInputDefinitionKey,
 				ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
 					Value:    value,
 					Type:     apiv2beta1.IOType_ITERATOR_INPUT,
