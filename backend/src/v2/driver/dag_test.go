@@ -360,14 +360,6 @@ func TestLoopArtifactPassing(t *testing.T) {
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
 	require.NoError(t, err)
 
-	// TODO:
-	// This seems to be failing, note that "analyze-artifact-list"
-	// producer is set to secondary-pipeline "output", but the artifact
-	// in the secondary-pipeline outputs, this key is not present for us to deduce it
-	// so thinking about it, we should maybe have both the key & the producer ?
-	// and it shouldn't be a oneOF? so it goes:
-	// Secondary-pipeline.outputs -> artifacts here have producer task that generated it
-	// but also the key in the secondary-pipeline that it was output on?
 	parentTask = rootTask
 	analyzeArtifactListOuterTaskSpec := pipelineSpec.Root.GetDag().Tasks["analyze-artifact-list"]
 	opts = setupContainerOptions(t, testSetup, run, parentTask, analyzeArtifactListOuterTaskSpec, pipelineSpec, nil)
@@ -377,6 +369,19 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Nil(t, analyzeArtifactListOuterExecution.ExecutorInput.Outputs)
 	require.NotNil(t, analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
 	require.Equal(t, 3, len(analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
+
+	// Refresh Run so it has the new tasks
+	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
+	require.NoError(t, err)
+	// primary_pipeline()		 x 1  (root)
+	// secondary_pipeline()      x 1  (dag)
+	//   create_dataset()        x 1  (runtime)
+	//   for_loop_1()            x 1  (loop)
+	//     process_dataset()     x 3  (runtime)
+	//	   analyze_artifact()    x 3  (runtime)
+	//   analyze_artifact_list() x 1  (runtime)
+	// analyze_artifact_list()   x 1  (runtime)
+	require.Equal(t, 12, len(run.Tasks))
 }
 
 // TODO:
