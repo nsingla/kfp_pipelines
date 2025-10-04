@@ -384,6 +384,24 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 12, len(run.Tasks))
 }
 
+func runDag(
+	t *testing.T, testSetup *TestSetup,
+	parentTask *apiv2beta1.PipelineTaskDetail,
+	pipelineSpec *pipelinespec.PipelineSpec,
+	runID string,
+) {
+	run, err := testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: runID})
+	require.NoError(t, err)
+
+	secondaryPipelineTaskSpec := pipelineSpec.Root.GetDag().Tasks["secondary-pipeline"]
+	opts := setupDagOptions(t, testSetup, run, parentTask, secondaryPipelineTaskSpec, pipelineSpec, nil)
+	secondaryPipelineExecution, err := DAG(context.Background(), opts, testSetup.DriverAPI)
+	require.NoError(t, err)
+	require.NotNil(t, secondaryPipelineExecution)
+	require.Nil(t, secondaryPipelineExecution.ExecutorInput.Outputs)
+	return
+}
+
 // TODO:
 // * Add test for parameterIterator -> InputParameter (i.e. task output)
 // * Add test for artifactIterator
