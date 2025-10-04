@@ -16,10 +16,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func resolveParameters(opts common.Options) ([]ParameterMetadata, *int, error) {
+func resolveParameters(opts common.Options) ([]ParameterMetadata, error) {
 	var parameters []ParameterMetadata
-	for name, paramSpec := range opts.Task.GetInputs().GetParameters() {
-		if compParam := opts.Component.GetInputDefinitions().GetParameters()[name]; compParam != nil {
+	for key, paramSpec := range opts.Task.GetInputs().GetParameters() {
+		if compParam := opts.Component.GetInputDefinitions().GetParameters()[key]; compParam != nil {
 			// Skip resolving dsl.TaskConfig because that information is only available after initPodSpecPatch and
 			// extendPodSpecPatch are called.
 			if compParam.GetParameterType() == pipelinespec.ParameterType_TASK_CONFIG {
@@ -30,26 +30,27 @@ func resolveParameters(opts common.Options) ([]ParameterMetadata, *int, error) {
 		v, ioType, err := resolveInputParameter(opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
 		if err != nil {
 			if !errors.Is(err, ErrResolvedInputNull) {
-				return nil, nil, err
+				return nil, err
 			}
-			componentParam, ok := opts.Component.GetInputDefinitions().GetParameters()[name]
+			componentParam, ok := opts.Component.GetInputDefinitions().GetParameters()[key]
 			if !ok {
-				return nil, nil, fmt.Errorf("parameter %s not found in component input definitions", name)
+				return nil, fmt.Errorf("parameter %s not found in component input definitions", key)
 			}
 			// If the resolved parameter was null and the component input parameter is optional, just skip setting
 			// it and the launcher will handle defaults.
 			if componentParam != nil && componentParam.IsOptional {
 				continue
 			}
-			return nil, nil, err
+			return nil, err
 		}
 		pm := ParameterMetadata{
-			Key:                name,
+			Key:                key,
 			InputParameterSpec: paramSpec,
 			ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
-				Value:    v.GetValue(),
-				Type:     ioType,
-				Producer: &apiv2beta1.IOProducer{TaskName: opts.TaskName},
+				Value:        v.GetValue(),
+				Type:         ioType,
+				ParameterKey: key,
+				Producer:     &apiv2beta1.IOProducer{TaskName: opts.TaskName},
 			},
 		}
 		if opts.IterationIndex >= 0 {
@@ -58,68 +59,7 @@ func resolveParameters(opts common.Options) ([]ParameterMetadata, *int, error) {
 		parameters = append(parameters, pm)
 	}
 
-	// Handle Parameter Iterator Input
-	var iterationCount *int
-	var value *structpb.Value
-	var iteratorInputDefinitionKey string
-	var iterator *pipelinespec.ParameterIteratorSpec
-
-	if opts.Task.GetParameterIterator() != nil {
-		iterator = opts.Task.GetParameterIterator()
-		switch iterator.GetItems().GetKind().(type) {
-		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_InputParameter:
-			// This should be the key input into the for loop task
-			iteratorInputDefinitionKey = iterator.GetItemInput()
-			// Used to look up the Parameter from the resolved list
-			// The key here should map to a ParameterMetadata.Key that
-			// was resolved in the prior loop.
-			sourceInputParameterKey := iterator.GetItems().GetInputParameter()
-
-			var err error
-			parameterIO, err := findParameterByIOKey(sourceInputParameterKey, parameters)
-			if err != nil {
-				return nil, nil, err
-			}
-			value = parameterIO.GetValue()
-		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_Raw:
-			valueRaw := iterator.GetItems().GetRaw()
-			var unmarshalledRaw interface{}
-			err := json.Unmarshal([]byte(valueRaw), &unmarshalledRaw)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error unmarshall raw string: %q", err)
-			}
-			value, err = structpb.NewValue(unmarshalledRaw)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error converting unmarshalled raw string into protobuf Value type: %q", err)
-			}
-			iteratorInputDefinitionKey = iterator.GetItemInput()
-
-		default:
-			return nil, nil, fmt.Errorf("cannot find parameter iterator")
-		}
-		items, err := getItems(value)
-		if err != nil {
-			return nil, nil, err
-		}
-		count := len(items)
-		iterationCount = &count
-	}
-
-	pm := ParameterMetadata{
-		Key: iteratorInputDefinitionKey,
-		ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
-			Value:    value,
-			Type:     apiv2beta1.IOType_ITERATOR_INPUT,
-			Producer: &apiv2beta1.IOProducer{TaskName: opts.TaskName},
-		},
-		ParameterIterator: iterator,
-	}
-	if opts.IterationIndex >= 0 {
-		pm.ParameterIO.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
-	}
-	parameters = append(parameters, pm)
-
-	return parameters, iterationCount, nil
+	return parameters, nil
 }
 
 func resolveInputParameter(
@@ -211,6 +151,75 @@ func resolveParameterComponentInputParameter(
 		}
 	}
 	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+// resolveParameterIterator handles parameter Iterator Input resolution
+func resolveParameterIterator(
+	opts common.Options,
+	parameters []ParameterMetadata,
+) ([]ParameterMetadata, *int, error) {
+	var value *structpb.Value
+	var iteratorInputDefinitionKey string
+	var iterator *pipelinespec.ParameterIteratorSpec
+	iterator = opts.Task.GetParameterIterator()
+	switch iterator.GetItems().GetKind().(type) {
+	case *pipelinespec.ParameterIteratorSpec_ItemsSpec_InputParameter:
+		// This should be the key input into the for loop task
+		iteratorInputDefinitionKey = iterator.GetItemInput()
+		// Used to look up the Parameter from the resolved list
+		// The key here should map to a ParameterMetadata.Key that
+		// was resolved in the prior loop.
+		sourceInputParameterKey := iterator.GetItems().GetInputParameter()
+
+		// Determine if the parameter is a parameter or an artifact
+
+		var err error
+		parameterIO, err := findParameterByIOKey(sourceInputParameterKey, parameters)
+		if err != nil {
+			return nil, nil, err
+		}
+		value = parameterIO.GetValue()
+	case *pipelinespec.ParameterIteratorSpec_ItemsSpec_Raw:
+		valueRaw := iterator.GetItems().GetRaw()
+		var unmarshalledRaw interface{}
+		err := json.Unmarshal([]byte(valueRaw), &unmarshalledRaw)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error unmarshall raw string: %q", err)
+		}
+		value, err = structpb.NewValue(unmarshalledRaw)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error converting unmarshalled raw string into protobuf Value type: %q", err)
+		}
+		iteratorInputDefinitionKey = iterator.GetItemInput()
+
+	default:
+		return nil, nil, fmt.Errorf("cannot find parameter iterator")
+	}
+
+	items, err := getItems(value)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var parameterMetadataList []ParameterMetadata
+	for i, item := range items {
+		pm := ParameterMetadata{
+			Key: iteratorInputDefinitionKey,
+			ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+				Value:        item,
+				Type:         apiv2beta1.IOType_ITERATOR_INPUT,
+				ParameterKey: iteratorInputDefinitionKey,
+				Producer: &apiv2beta1.IOProducer{
+					TaskName:  opts.TaskName,
+					Iteration: util.Int64Pointer(int64(i)),
+				},
+			},
+			ParameterIterator: iterator,
+		}
+		parameterMetadataList = append(parameterMetadataList, pm)
+	}
+	count := len(items)
+	return parameterMetadataList, &count, nil
 }
 
 // getItems iteration items from a structpb.Value.

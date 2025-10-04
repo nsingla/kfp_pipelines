@@ -10,22 +10,23 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 )
 
-func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetadata, *int, error) {
+func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetadata, error) {
 	var artifacts []ArtifactMetadata
 
-	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-		v, ioType, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
+	for key, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
+		v, ioType, err := resolveInputArtifact(ctx, opts, key, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		am := ArtifactMetadata{
-			Key:               name,
+			Key:               key,
 			InputArtifactSpec: artifactSpec,
 			ArtifactIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-				Artifacts: v.Artifacts,
-				Type:      ioType,
-				Producer:  &apiv2beta1.IOProducer{TaskName: opts.ParentTask.Name},
+				Artifacts:   v.Artifacts,
+				Type:        ioType,
+				ArtifactKey: key,
+				Producer:    &apiv2beta1.IOProducer{TaskName: opts.ParentTask.Name},
 			},
 		}
 		if opts.IterationIndex >= 0 {
@@ -34,34 +35,7 @@ func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetad
 		artifacts = append(artifacts, am)
 	}
 
-	var iterationCount *int
-
-	if opts.Task.GetArtifactIterator() != nil {
-		iterator := opts.Task.GetArtifactIterator()
-		// This should be the key input into the for loop task
-		iteratorInputDefinitionKey := iterator.GetItemInput()
-		// Used to look up the Artifact from the resolved list
-		// The key here should map to a ArtifactMetadata.Key that
-		// was resolved in the prior loop.
-		sourceInputArtifactKey := iterator.GetItems().GetInputArtifact()
-		artifactIO, err := findArtifactByIOKey(sourceInputArtifactKey, artifacts)
-		if err != nil {
-			return nil, nil, err
-		}
-		artifacts = append(artifacts, ArtifactMetadata{
-			Key: iteratorInputDefinitionKey,
-			ArtifactIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
-				Artifacts: artifactIO.Artifacts,
-				Type:      apiv2beta1.IOType_ITERATOR_INPUT,
-				Producer:  artifactIO.Producer,
-			},
-			ArtifactIterator: iterator,
-		})
-		count := len(artifactIO.Artifacts)
-		iterationCount = &count
-	}
-
-	return artifacts, iterationCount, nil
+	return artifacts, nil
 }
 
 func resolveInputArtifact(
@@ -154,6 +128,46 @@ func resolveUpstreamArtifacts(ctx context.Context,
 		return nil, fmt.Errorf("output artifact %s not found", outputArtifactKey)
 	}
 	return artifactIO, nil
+}
+
+// resolveArtifactIterator handles Artifact Iterator Input resolution
+func resolveArtifactIterator(
+	opts common.Options,
+	Artifacts []ArtifactMetadata,
+) ([]ArtifactMetadata, *int, error) {
+	artifactIterator := opts.Task.GetArtifactIterator()
+	// This should be the key input into the for loop task
+	iteratorInputDefinitionKey := artifactIterator.GetItemInput()
+	// Used to look up the Artifact from the resolved list
+	// The key here should map to a ArtifactMetadata.Key that
+	// was resolved in the prior loop.
+	sourceInputArtifactKey := artifactIterator.GetItems().GetInputArtifact()
+	artifactIO, err := findArtifactByIOKey(sourceInputArtifactKey, Artifacts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var artifactMetadataList []ArtifactMetadata
+	for i, artifact := range artifactIO.Artifacts {
+		am := ArtifactMetadata{
+			Key: iteratorInputDefinitionKey,
+			ArtifactIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+				// Iteration over artifact lists is not supported yet.
+				Artifacts:   []*apiv2beta1.Artifact{artifact},
+				Type:        apiv2beta1.IOType_ITERATOR_INPUT,
+				ArtifactKey: iteratorInputDefinitionKey,
+				Producer: &apiv2beta1.IOProducer{
+					TaskName:  opts.ParentTask.Name,
+					Iteration: util.Int64Pointer(int64(i)),
+				},
+			},
+			ArtifactIterator: artifactIterator,
+		}
+		artifactMetadataList = append(artifactMetadataList, am)
+	}
+
+	count := len(artifactIO.Artifacts)
+	return artifactMetadataList, &count, nil
 }
 
 // generateUniqueTaskName generates a unique task name for a given task.

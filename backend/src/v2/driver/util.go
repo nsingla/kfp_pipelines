@@ -180,12 +180,14 @@ func handleTaskParametersCreation(
 	} else if task.Inputs.Parameters == nil {
 		task.Inputs.Parameters = []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{}
 	}
+
 	for _, pm := range parameterMetadata {
 		parameterNew := pm.ParameterIO
 		task.Inputs.Parameters = append(task.Inputs.Parameters, parameterNew)
 	}
 	return task, nil
 }
+
 func handleTaskArtifactsCreation(
 	ctx context.Context,
 	opts common.Options,

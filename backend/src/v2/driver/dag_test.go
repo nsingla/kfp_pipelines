@@ -174,6 +174,10 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, parentTask)
 	require.NotZero(t, len(parentTask.Inputs.Parameters))
+	// Expect loop task to have resolved its input parameter
+	require.Equal(t, "pipelinechannel--loop-item-param-1", parentTask.Inputs.Parameters[0].ParameterKey)
+	// Expect the artifact output of create-dataset as input to for-loop-2
+	require.Equal(t, len(parentTask.Inputs.Artifacts), 1)
 
 	// Perform the iteration calls, mock any launcher calls
 	for index, paramID := range []string{"1", "2", "3"} {

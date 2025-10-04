@@ -43,32 +43,46 @@ func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, *i
 		Artifacts:  []ArtifactMetadata{},
 	}
 
-	var parameterIteratorCount *int
-	var artifactIteratorCount *int
-
 	// Handle parameters
-	resolvedParameters, parameterIteratorCount, err := resolveParameters(opts)
+	resolvedParameters, err := resolveParameters(opts)
 	if err != nil {
 		return nil, nil, err
 	}
 	inputMetadata.Parameters = resolvedParameters
 
 	// Handle Artifacts
-	resolvedArtifacts, artifactIteratorCount, err := resolveArtifacts(ctx, opts)
+	resolvedArtifacts, err := resolveArtifacts(ctx, opts)
 	if err != nil {
 		return nil, nil, err
 	}
 	inputMetadata.Artifacts = resolvedArtifacts
 
-	// Determine iteration count
 	// Note that we can only have one of the two.
 	var iterationCount *int
-	if parameterIteratorCount != nil && artifactIteratorCount != nil {
+	artifactIterator := opts.Task.GetArtifactIterator()
+	parameterIterator := opts.Task.GetParameterIterator()
+	if parameterIterator != nil && artifactIterator != nil {
 		return nil, nil, errors.New("cannot have both parameter and artifact iterators")
-	} else if parameterIteratorCount != nil {
-		iterationCount = parameterIteratorCount
-	} else if artifactIteratorCount != nil {
-		iterationCount = artifactIteratorCount
+	} else if parameterIterator != nil {
+		pm, count, err := resolveParameterIterator(opts, inputMetadata.Parameters)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(pm) == 0 {
+			return nil, nil, fmt.Errorf("parameter iterator is empty")
+		}
+		iterationCount = count
+		inputMetadata.Parameters = append(inputMetadata.Parameters, pm...)
+	} else if artifactIterator != nil {
+		am, count, err := resolveArtifactIterator(opts, inputMetadata.Artifacts)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(am) == 0 {
+			return nil, nil, fmt.Errorf("artifact iterator is empty")
+		}
+		iterationCount = count
+		inputMetadata.Artifacts = append(inputMetadata.Artifacts, am...)
 	}
 
 	return inputMetadata, iterationCount, nil
