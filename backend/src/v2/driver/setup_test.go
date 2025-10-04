@@ -154,7 +154,10 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 
 				// Determine if this is an input or output artifact based on ArtifactTaskType
 				switch artifactTask.Type {
-				case apiv2beta1.IOType_COMPONENT_INPUT, apiv2beta1.IOType_ITERATOR_INPUT, apiv2beta1.IOType_RUNTIME_VALUE_INPUT:
+				case apiv2beta1.IOType_COMPONENT_INPUT,
+					apiv2beta1.IOType_ITERATOR_INPUT,
+					apiv2beta1.IOType_RUNTIME_VALUE_INPUT,
+					apiv2beta1.IOType_TASK_OUTPUT_INPUT:
 					inputArtifacts = append(inputArtifacts, ioArtifact)
 				case apiv2beta1.IOType_OUTPUT, apiv2beta1.IOType_ITERATOR_OUTPUT:
 					outputArtifacts = append(outputArtifacts, ioArtifact)

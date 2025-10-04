@@ -84,6 +84,5 @@ func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, *i
 		iterationCount = count
 		inputMetadata.Artifacts = append(inputMetadata.Artifacts, am...)
 	}
-
 	return inputMetadata, iterationCount, nil
 }

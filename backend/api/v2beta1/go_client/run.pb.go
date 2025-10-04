@@ -2366,8 +2366,8 @@ type PipelineTaskDetail_InputOutputs struct {
 	// For Loops parameters are filled with resolved
 	// parameterIterator.items
 	Parameters []*PipelineTaskDetail_InputOutputs_IOParameter `protobuf:"bytes,1,rep,name=parameters,proto3" json:"parameters,omitempty"`
-	// Output Only. To create Artifacts for a task are created
-	// via ArtifactTasks.
+	// Output Only. To create Artifacts for a task use
+	// ArtifactTasks to link artifacts to tasks.
 	Artifacts     []*PipelineTaskDetail_InputOutputs_IOArtifact `protobuf:"bytes,2,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2424,7 +2424,7 @@ type PipelineTaskDetail_InputOutputs_IOParameter struct {
 	ParameterKey string                 `protobuf:"bytes,3,opt,name=parameter_key,json=parameterKey,proto3" json:"parameter_key,omitempty"`
 	// This field is optional because in the case of
 	// Input RuntimeValues and Raw Iterator Inputs
-	// there are no producer
+	// there are no producers
 	Producer      *IOProducer `protobuf:"bytes,4,opt,name=producer,proto3,oneof" json:"producer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

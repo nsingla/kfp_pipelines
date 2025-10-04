@@ -59,14 +59,21 @@ const (
 	// In a for loop task, introduced via ParallelFor, this type
 	// is used to indicate whether this resolved input belongs
 	// to a parameterIterator or artifactIterator.
+	// In such a case the "artifacts" field for IOArtifact.artifacts
+	// is the list of resolved items for this parallelFor.
 	IOType_ITERATOR_INPUT IOType = 4
 	// Raw Iterator inputs have no producer
 	IOType_ITERATOR_INPUT_RAW IOType = 5
-	// Used for dsl.Collected
-	// when used, all Parameter values, or Artifact list items
-	// are considered the collected values of this loop's output
+	// When an output is produced by a Runtime Iteration Task
+	// This value is use to differentiate between standard inputs
 	IOType_ITERATOR_OUTPUT IOType = 6
-	IOType_OUTPUT          IOType = 7
+	// Used for dsl.Collected
+	// Usage of this type indicates that all
+	// Artifacts with8in the IOArtifact.artifacts
+	// are inputs collected from sub tasks with
+	// ITERATOR_OUTPUT outputs.
+	IOType_COLLECTED_INPUTS IOType = 7
+	IOType_OUTPUT           IOType = 8
 )
 
 // Enum value maps for IOType.
@@ -79,7 +86,8 @@ var (
 		4: "ITERATOR_INPUT",
 		5: "ITERATOR_INPUT_RAW",
 		6: "ITERATOR_OUTPUT",
-		7: "OUTPUT",
+		7: "COLLECTED_INPUTS",
+		8: "OUTPUT",
 	}
 	IOType_value = map[string]int32{
 		"UNSPECIFIED":         0,
@@ -89,7 +97,8 @@ var (
 		"ITERATOR_INPUT":      4,
 		"ITERATOR_INPUT_RAW":  5,
 		"ITERATOR_OUTPUT":     6,
-		"OUTPUT":              7,
+		"COLLECTED_INPUTS":    7,
+		"OUTPUT":              8,
 	}
 )
 
@@ -1124,7 +1133,7 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x14ClassificationMetric\x10\a\x12\x1e\n" +
 	"\x1aSlicedClassificationMetric\x10\bB\x06\n" +
 	"\x04_uriB\x0f\n" +
-	"\r_number_value*\xab\x01\n" +
+	"\r_number_value*\xc1\x01\n" +
 	"\x06IOType\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11TASK_OUTPUT_INPUT\x10\x01\x12\x13\n" +
@@ -1132,9 +1141,10 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x13RUNTIME_VALUE_INPUT\x10\x03\x12\x12\n" +
 	"\x0eITERATOR_INPUT\x10\x04\x12\x16\n" +
 	"\x12ITERATOR_INPUT_RAW\x10\x05\x12\x13\n" +
-	"\x0fITERATOR_OUTPUT\x10\x06\x12\n" +
+	"\x0fITERATOR_OUTPUT\x10\x06\x12\x14\n" +
+	"\x10COLLECTED_INPUTS\x10\a\x12\n" +
 	"\n" +
-	"\x06OUTPUT\x10\a2\xd3\f\n" +
+	"\x06OUTPUT\x10\b2\xd3\f\n" +
 	"\x0fArtifactService\x12\x84\x02\n" +
 	"\rListArtifacts\x12;.kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse\"x\x92AV\n" +
 	"\x0fArtifactService\x123Finds all artifacts within the specified namespace.*\x0elist_artifacts\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/artifacts\x12\xee\x01\n" +

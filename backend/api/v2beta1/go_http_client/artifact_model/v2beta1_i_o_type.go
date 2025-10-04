@@ -30,11 +30,18 @@ import (
 //
 // is used to indicate whether this resolved input belongs
 // to a parameterIterator or artifactIterator.
+// In such a case the "artifacts" field for IOArtifact.artifacts
+// is the list of resolved items for this parallelFor.
 //   - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer
-//   - ITERATOR_OUTPUT: Used for dsl.Collected
+//   - ITERATOR_OUTPUT: When an output is produced by a Runtime Iteration Task
 //
-// when used, all Parameter values, or Artifact list items
-// are considered the collected values of this loop's output
+// This value is use to differentiate between standard inputs
+//   - COLLECTED_INPUTS: Used for dsl.Collected
+//
+// Usage of this type indicates that all
+// Artifacts with8in the IOArtifact.artifacts
+// are inputs collected from sub tasks with
+// ITERATOR_OUTPUT outputs.
 //
 // swagger:model v2beta1IOType
 type V2beta1IOType string
@@ -71,6 +78,9 @@ const (
 	// V2beta1IOTypeITERATOROUTPUT captures enum value "ITERATOR_OUTPUT"
 	V2beta1IOTypeITERATOROUTPUT V2beta1IOType = "ITERATOR_OUTPUT"
 
+	// V2beta1IOTypeCOLLECTEDINPUTS captures enum value "COLLECTED_INPUTS"
+	V2beta1IOTypeCOLLECTEDINPUTS V2beta1IOType = "COLLECTED_INPUTS"
+
 	// V2beta1IOTypeOUTPUT captures enum value "OUTPUT"
 	V2beta1IOTypeOUTPUT V2beta1IOType = "OUTPUT"
 )
@@ -80,7 +90,7 @@ var v2beta1IOTypeEnum []interface{}
 
 func init() {
 	var res []V2beta1IOType
-	if err := json.Unmarshal([]byte(`["UNSPECIFIED","TASK_OUTPUT_INPUT","COMPONENT_INPUT","RUNTIME_VALUE_INPUT","ITERATOR_INPUT","ITERATOR_INPUT_RAW","ITERATOR_OUTPUT","OUTPUT"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["UNSPECIFIED","TASK_OUTPUT_INPUT","COMPONENT_INPUT","RUNTIME_VALUE_INPUT","ITERATOR_INPUT","ITERATOR_INPUT_RAW","ITERATOR_OUTPUT","COLLECTED_INPUTS","OUTPUT"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

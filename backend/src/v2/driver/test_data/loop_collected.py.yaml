@@ -134,7 +134,6 @@ components:
                   # This will search for for-loop-2-dag-id in tasks Map
                   # and then search for the outputs.ArtifactIO
                   # that maps to the key below
-
                   # In this case the output should be list of type Iterator_OUTPUT
                   # This means when each for-loop-2's process-task finished
                   # it should have created artifactTask links to the output

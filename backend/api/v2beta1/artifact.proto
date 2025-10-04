@@ -257,12 +257,18 @@ enum IOType {
   ITERATOR_INPUT = 4;
   // Raw Iterator inputs have no producer
   ITERATOR_INPUT_RAW = 5;
-  // Used for dsl.Collected
-  // when used, all Parameter values, or Artifact list items
-  // are considered the collected values of this loop's output
+  // When an output is produced by a Runtime Iteration Task
+  // This value is use to differentiate between standard inputs
   ITERATOR_OUTPUT = 6;
 
-  OUTPUT = 7;
+  // Used for dsl.Collected
+  // Usage of this type indicates that all
+  // Artifacts with8in the IOArtifact.artifacts
+  // are inputs collected from sub tasks with
+  // ITERATOR_OUTPUT outputs.
+  COLLECTED_INPUTS = 7;
+
+  OUTPUT = 8;
 }
 
 message IOProducer {

@@ -84,7 +84,7 @@
           },
           {
             "name": "type",
-            "description": "Optional. Only list artifact tasks that have artifacts of this type.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output",
+            "description": "Optional. Only list artifact tasks that have artifacts of this type.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\nIn such a case the \"artifacts\" field for IOArtifact.artifacts\nis the list of resolved items for this parallelFor.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: When an output is produced by a Runtime Iteration Task\nThis value is use to differentiate between standard inputs\n - COLLECTED_INPUTS: Used for dsl.Collected\nUsage of this type indicates that all\nArtifacts with8in the IOArtifact.artifacts\nare inputs collected from sub tasks with\nITERATOR_OUTPUT outputs.",
             "in": "query",
             "required": false,
             "type": "string",
@@ -96,6 +96,7 @@
               "ITERATOR_INPUT",
               "ITERATOR_INPUT_RAW",
               "ITERATOR_OUTPUT",
+              "COLLECTED_INPUTS",
               "OUTPUT"
             ],
             "default": "UNSPECIFIED"
@@ -2273,10 +2274,11 @@
         "ITERATOR_INPUT",
         "ITERATOR_INPUT_RAW",
         "ITERATOR_OUTPUT",
+        "COLLECTED_INPUTS",
         "OUTPUT"
       ],
       "default": "UNSPECIFIED",
-      "description": "Describes the I/O relationship between\nthis Artifacts & Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
+      "description": "Describes the I/O relationship between\nthis Artifacts & Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\nIn such a case the \"artifacts\" field for IOArtifact.artifacts\nis the list of resolved items for this parallelFor.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: When an output is produced by a Runtime Iteration Task\nThis value is use to differentiate between standard inputs\n - COLLECTED_INPUTS: Used for dsl.Collected\nUsage of this type indicates that all\nArtifacts with8in the IOArtifact.artifacts\nare inputs collected from sub tasks with\nITERATOR_OUTPUT outputs."
     },
     "v2beta1ListArtifactResponse": {
       "type": "object",
@@ -2915,7 +2917,7 @@
         },
         "producer": {
           "$ref": "#/definitions/v2beta1IOProducer",
-          "title": "This field is optional because in the case of\nInput RuntimeValues and Raw Iterator Inputs\nthere are no producer"
+          "title": "This field is optional because in the case of\nInput RuntimeValues and Raw Iterator Inputs\nthere are no producers"
         }
       }
     },
@@ -2949,7 +2951,7 @@
             "type": "object",
             "$ref": "#/definitions/InputOutputsIOArtifact"
           },
-          "description": "Output Only. To create Artifacts for a task are created\nvia ArtifactTasks."
+          "description": "Output Only. To create Artifacts for a task use\nArtifactTasks to link artifacts to tasks."
         }
       }
     },

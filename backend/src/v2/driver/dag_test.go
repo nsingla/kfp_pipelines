@@ -241,7 +241,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 				ArtifactId: createArtifact.ArtifactId,
 				TaskId:     loopExecution.TaskID,
 				RunId:      run.GetRunId(),
-				Key:        "output_artifact",
+				Key:        "pipelinechannel--process-dataset-output_artifact",
 				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset", Iteration: util.Int64Pointer(int64(index))},
 				Type:       apiv2beta1.IOType_ITERATOR_OUTPUT,
 			},
@@ -267,7 +267,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 				ArtifactId: createArtifact.ArtifactId,
 				TaskId:     secondaryPipelineExecution.TaskID,
 				RunId:      run.GetRunId(),
-				Key:        "output_artifact",
+				Key:        "pipelinechannel--process-dataset-output_artifact",
 				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset", Iteration: util.Int64Pointer(int64(index))},
 				Type:       apiv2beta1.IOType_ITERATOR_OUTPUT,
 			},
@@ -294,6 +294,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.Equal(t, 1, len(analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()))
 		require.Equal(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()[0].ArtifactId, "some-artifact-id-2")
 
+		// Mock the Launcher run
 		outputArtifact = &apiv2beta1.Artifact{
 			ArtifactId: "some-artifact-id-3",
 			Name:       "analyze_output_artifact",

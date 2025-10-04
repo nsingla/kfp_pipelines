@@ -23,7 +23,7 @@ type InputOutputsIOParameter struct {
 
 	// This field is optional because in the case of
 	// Input RuntimeValues and Raw Iterator Inputs
-	// there are no producer
+	// there are no producers
 	Producer *V2beta1IOProducer `json:"producer,omitempty"`
 
 	// type

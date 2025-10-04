@@ -19,8 +19,8 @@ import (
 // swagger:model PipelineTaskDetailInputOutputs
 type PipelineTaskDetailInputOutputs struct {
 
-	// Output Only. To create Artifacts for a task are created
-	// via ArtifactTasks.
+	// Output Only. To create Artifacts for a task use
+	// ArtifactTasks to link artifacts to tasks.
 	Artifacts []*InputOutputsIOArtifact `json:"artifacts"`
 
 	// For Loops parameters are filled with resolved

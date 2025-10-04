@@ -268,10 +268,34 @@ func findArtifactByProducerKeyInList(
 	producerKey string,
 	artifactsIO []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
 ) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
+	ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
+	var artifactIOList []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 	for _, artifactIO := range artifactsIO {
 		if artifactIO.GetArtifactKey() == producerKey {
-			return artifactIO, nil
+			artifactIOList = append(artifactIOList, artifactIO)
 		}
 	}
-	return nil, fmt.Errorf("artifact with producer key %s not found", producerKey)
+	if len(artifactIOList) == 0 {
+		return nil, fmt.Errorf("artifact with producer key %s not found", producerKey)
+	}
+	if len(artifactIOList) > 1 {
+		// This occurs in the parallelFor case, where multiple iterations resulted in the same
+		// producer key, we do a correctness check by validating the type of all artifacts
+		var artifacts []*apiv2beta1.Artifact
+		for _, artifactIO := range artifactIOList {
+			if artifactIO.Type != apiv2beta1.IOType_ITERATOR_OUTPUT {
+				return nil, fmt.Errorf("encountered a non iterator output that has the same producer key (%s)", producerKey)
+			}
+			// Support for an iterator over list of artifacts is not supported yet.
+			artifacts = append(artifacts, artifactIO.Artifacts[0])
+		}
+		ioType = apiv2beta1.IOType_COLLECTED_INPUTS
+		newArtifactIO := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+			Artifacts:   artifacts,
+			Type:        ioType,
+			ArtifactKey: producerKey,
+		}
+		return newArtifactIO, nil
+	}
+	return artifactIOList[0], fmt.Errorf("artifact with producer key %s not found", producerKey)
 }
