@@ -66,7 +66,7 @@ func (s *CronSchedule) getEffectiveLastJobTime(lastJobTime *v1.Time,
 	// time.
 	effectiveLastJobTime := defaultStartTime
 	if lastJobTime != nil {
-		// Last job epoch takes first precedence.
+		// last job epoch takes first precedence.
 		effectiveLastJobTime = lastJobTime.Time
 	} else if s.StartTime != nil {
 		// Start time takes second precedence.

@@ -51,7 +51,7 @@ func TestCronSchedule_getNextScheduledTime_Cron_StartDate_EndDate(t *testing.T) 
 	assert.Equal(t, lastJobTime.Add(time.Minute),
 		schedule.getNextScheduledTime(lastJobTime, location))
 
-	// Last job
+	// last job
 	lastJobTime = time.Unix(13*hour, 0).UTC()
 	assert.Equal(t, maxTime.UTC(),
 		schedule.getNextScheduledTime(lastJobTime.UTC(), location))

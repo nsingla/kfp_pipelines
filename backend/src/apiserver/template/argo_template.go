@@ -48,7 +48,7 @@ func (t *Argo) RunWorkflow(modelRun *model.Run, options RunWorkflowOptions) (uti
 	if err := workflow.VerifyParameters(parameters); err != nil {
 		return nil, util.Wrap(err, "Failed to verify parameters")
 	}
-	// Append provided parameter
+	// append provided parameter
 	workflow.OverrideParameters(parameters)
 
 	// Replace macros
@@ -113,7 +113,7 @@ func (t *Argo) ScheduledWorkflow(modelJob *model.Job) (*scheduledworkflow.Schedu
 	if err := workflow.VerifyParameters(parameters); err != nil {
 		return nil, util.Wrap(err, "Failed to verify parameters")
 	}
-	// Append provided parameter
+	// append provided parameter
 	workflow.OverrideParameters(parameters)
 	setDefaultServiceAccount(workflow, modelJob.ServiceAccount)
 	// Disable istio sidecar injection if not specified

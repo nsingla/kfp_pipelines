@@ -41,7 +41,7 @@ func TestPeriodicSchedule_getNextScheduledEpoch_StartDate_EndDate(t *testing.T) 
 	assert.Equal(t, int64(10*hour+6*minute),
 		schedule.getNextScheduledEpoch(lastJobEpoch))
 
-	// Last job
+	// last job
 	lastJobEpoch = int64(13 * hour)
 	assert.Equal(t, int64(math.MaxInt64),
 		schedule.getNextScheduledEpoch(lastJobEpoch))

@@ -959,7 +959,7 @@ type Artifact struct {
 	State *Artifact_State `protobuf:"varint,6,opt,name=state,enum=ml_metadata.Artifact_State" json:"state,omitempty"`
 	// Output only. Create time of the artifact in millisecond since epoch.
 	CreateTimeSinceEpoch *int64 `protobuf:"varint,9,opt,name=create_time_since_epoch,json=createTimeSinceEpoch" json:"create_time_since_epoch,omitempty"`
-	// Output only. Last update time of the artifact since epoch in millisecond
+	// Output only. last update time of the artifact since epoch in millisecond
 	// since epoch.
 	LastUpdateTimeSinceEpoch *int64 `protobuf:"varint,10,opt,name=last_update_time_since_epoch,json=lastUpdateTimeSinceEpoch" json:"last_update_time_since_epoch,omitempty"`
 	// Output only.
@@ -1402,7 +1402,7 @@ type Execution struct {
 	CustomProperties map[string]*Value `protobuf:"bytes,5,rep,name=custom_properties,json=customProperties" json:"custom_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Output only. Create time of the execution in millisecond since epoch.
 	CreateTimeSinceEpoch *int64 `protobuf:"varint,8,opt,name=create_time_since_epoch,json=createTimeSinceEpoch" json:"create_time_since_epoch,omitempty"`
-	// Output only. Last update time of the execution in millisecond since epoch.
+	// Output only. last update time of the execution in millisecond since epoch.
 	LastUpdateTimeSinceEpoch *int64 `protobuf:"varint,9,opt,name=last_update_time_since_epoch,json=lastUpdateTimeSinceEpoch" json:"last_update_time_since_epoch,omitempty"`
 	// Output only.
 	SystemMetadata *anypb.Any `protobuf:"bytes,11,opt,name=system_metadata,json=systemMetadata" json:"system_metadata,omitempty"`
@@ -1795,7 +1795,7 @@ type Context struct {
 	CustomProperties map[string]*Value `protobuf:"bytes,5,rep,name=custom_properties,json=customProperties" json:"custom_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Output only. Create time of the context in millisecond since epoch.
 	CreateTimeSinceEpoch *int64 `protobuf:"varint,7,opt,name=create_time_since_epoch,json=createTimeSinceEpoch" json:"create_time_since_epoch,omitempty"`
-	// Output only. Last update time of the context in millisecond since epoch.
+	// Output only. last update time of the context in millisecond since epoch.
 	LastUpdateTimeSinceEpoch *int64 `protobuf:"varint,8,opt,name=last_update_time_since_epoch,json=lastUpdateTimeSinceEpoch" json:"last_update_time_since_epoch,omitempty"`
 	// Output only system metadata.
 	SystemMetadata *anypb.Any `protobuf:"bytes,10,opt,name=system_metadata,json=systemMetadata" json:"system_metadata,omitempty"`
