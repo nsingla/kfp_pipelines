@@ -2,8 +2,10 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
@@ -124,31 +126,14 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Nil(t, createDataSetExecution.ExecutorInput.Outputs)
 
 	// Mock a Launcher run by updating the task with output data
-	outputArtifact := &apiv2beta1.Artifact{
-		ArtifactId: "some-artifact-id-1",
-		Name:       "output_dataset",
-		Type:       apiv2beta1.Artifact_Dataset,
-		Uri:        util.StringPointer("s3://some.location/output_dataset"),
-		Namespace:  testNamespace,
-		Metadata: map[string]*structpb.Value{
-			"display_name": structpb.NewStringValue("output_dataset"),
-		},
-	}
-	createArtifact, err := testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
-	require.NoError(t, err)
-	require.NotNil(t, createArtifact)
-	at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
-		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId: createArtifact.ArtifactId,
-			TaskId:     createDataSetExecution.TaskID,
-			RunId:      run.GetRunId(),
-			Key:        "output_dataset",
-			Producer:   &apiv2beta1.IOProducer{TaskName: "create-dataset"},
-			Type:       apiv2beta1.IOType_OUTPUT,
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, at)
+	createDataSetOutputArtifactID := currentRun.MockLauncherArtifactCreate(
+		createDataSetExecution.TaskID,
+		"output_dataset",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"create-dataset",
+		nil,
+	)
 
 	// Refresh Run so it has the new tasks
 	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
@@ -190,12 +175,12 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.Nil(t, processExecution.ExecutorInput.Outputs)
 		require.NotNil(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"])
 		require.Equal(t, 1, len(processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()))
-		require.Equal(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()[0].ArtifactId, "some-artifact-id-1")
+		require.Equal(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()[0].ArtifactId, createDataSetOutputArtifactID)
 		require.NotNil(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"])
 		require.Equal(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"].GetStringValue(), paramID)
 
 		// Mock the Launcher run
-		outputArtifact = &apiv2beta1.Artifact{
+		outputArtifact := &apiv2beta1.Artifact{
 			ArtifactId: "some-artifact-id-2",
 			Name:       "output_artifact",
 			Type:       apiv2beta1.Artifact_Artifact,
@@ -205,10 +190,10 @@ func TestLoopArtifactPassing(t *testing.T) {
 				"display_name": structpb.NewStringValue("output_artifact"),
 			},
 		}
-		createArtifact, err = testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
+		createArtifact, err := testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
 		require.NoError(t, err)
 		require.NotNil(t, createArtifact)
-		at, err = testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
+		at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
 			ArtifactTask: &apiv2beta1.ArtifactTask{
 				ArtifactId: createArtifact.ArtifactId,
 				TaskId:     processExecution.TaskID,
@@ -425,6 +410,83 @@ func (r *CurrentRun) RefreshRun() {
 	run, err := r.TestSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: r.Run.RunId})
 	require.NoError(t, err)
 	r.Run = run
+}
+
+func (r *CurrentRun) MockLauncherArtifactCreate(
+	TaskId string,
+	artifactKey string,
+	artifactType apiv2beta1.Artifact_ArtifactType,
+	outputType apiv2beta1.IOType,
+	producerTask string,
+	producerIteration *int64,
+) string {
+	t := r.T
+	artifactID, _ := uuid.NewRandom()
+	outputArtifact := &apiv2beta1.Artifact{
+		ArtifactId: artifactID.String(),
+		Name:       artifactKey,
+		Type:       artifactType,
+		Uri:        util.StringPointer(fmt.Sprintf("s3://some.location/%s", artifactKey)),
+		Namespace:  testNamespace,
+		Metadata: map[string]*structpb.Value{
+			"display_name": structpb.NewStringValue(artifactKey),
+		},
+	}
+	createArtifact, err := r.TestSetup.DriverAPI.CreateArtifact(
+		context.Background(),
+		&apiv2beta1.CreateArtifactRequest{
+			Artifact: outputArtifact,
+		})
+	require.NoError(t, err)
+	require.NotNil(t, createArtifact)
+
+	artifactTask := &apiv2beta1.ArtifactTask{
+		ArtifactId: artifactID.String(),
+		TaskId:     TaskId,
+		RunId:      r.Run.GetRunId(),
+		Key:        artifactKey,
+		Producer:   &apiv2beta1.IOProducer{TaskName: producerTask},
+		Type:       outputType,
+	}
+	if producerIteration != nil {
+		artifactTask.Producer.Iteration = producerIteration
+	}
+	at, err := r.TestSetup.DriverAPI.CreateArtifactTask(
+		context.Background(),
+		&apiv2beta1.CreateArtifactTaskRequest{
+			ArtifactTask: artifactTask,
+		})
+	require.NoError(t, err)
+	require.NotNil(t, at)
+	r.RefreshRun()
+	return artifactID.String()
+}
+
+func (r *CurrentRun) MockLauncherArtifactTaskCreate(
+	producerTaskName, taskID, key string,
+	artifactID *string, producerIteration *int64, outputType apiv2beta1.IOType) {
+	t := r.T
+	if artifactID == nil {
+		id, _ := uuid.NewRandom()
+		artifactID = util.StringPointer(id.String())
+	}
+	at := &apiv2beta1.ArtifactTask{
+		ArtifactId: *artifactID,
+		TaskId:     taskID,
+		RunId:      r.Run.GetRunId(),
+		Key:        key,
+		Type:       outputType,
+		Producer:   &apiv2beta1.IOProducer{TaskName: producerTaskName},
+	}
+	if producerIteration != nil {
+		at.Producer.Iteration = producerIteration
+	}
+	result, err := r.TestSetup.DriverAPI.CreateArtifactTask(
+		context.Background(),
+		&apiv2beta1.CreateArtifactTaskRequest{ArtifactTask: at})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	r.RefreshRun()
 }
 
 // TODO:
