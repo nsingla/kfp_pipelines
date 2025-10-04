@@ -26,8 +26,8 @@ func (e *ScopePathEntry) GetComponentSpec() *pipelinespec.ComponentSpec {
 
 func NewScopePath(
 	pipelineSpec *pipelinespec.PipelineSpec,
-) *ScopePath {
-	return &ScopePath{
+) ScopePath {
+	return ScopePath{
 		pipelineSpec: pipelineSpec,
 	}
 }
