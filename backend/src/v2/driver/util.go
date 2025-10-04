@@ -21,7 +21,6 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiV2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
-	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -168,7 +167,6 @@ func validateNonRoot(opts common.Options) error {
 // handleTaskParametersCreation creates a new PipelineTaskDetail_InputOutputs_IOParameter
 // for each parameter in the executor input.
 func handleTaskParametersCreation(
-	opts common.Options,
 	parameterMetadata []resolver.ParameterMetadata,
 	task *apiV2beta1.PipelineTaskDetail,
 ) (*apiV2beta1.PipelineTaskDetail, error) {
@@ -183,28 +181,7 @@ func handleTaskParametersCreation(
 		task.Inputs.Parameters = []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{}
 	}
 	for _, pm := range parameterMetadata {
-		parameterNew := &apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
-			Value:        pm.ParameterIO.Value,
-			ParameterKey: pm.Key,
-			Producer: &apiV2beta1.IOProducer{
-				TaskName: opts.TaskName,
-			},
-		}
-		if opts.IterationIndex >= 0 {
-			parameterNew.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
-		}
-		switch pm.InputParameterSpec.GetKind().(type) {
-		case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
-			parameterNew.Type = apiV2beta1.IOType_TASK_OUTPUT_INPUT
-		case *pipelinespec.TaskInputsSpec_InputParameterSpec_RuntimeValue:
-			parameterNew.Type = apiV2beta1.IOType_RUNTIME_VALUE_INPUT
-		case *pipelinespec.TaskInputsSpec_InputParameterSpec_ComponentInputParameter:
-			parameterNew.Type = apiV2beta1.IOType_COMPONENT_INPUT
-		case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskFinalStatus_: // TODO(HumairAK)
-			return nil, fmt.Errorf("task final status is not implemented yet")
-		default:
-			return nil, fmt.Errorf("unknown input parameter type")
-		}
+		parameterNew := pm.ParameterIO
 		task.Inputs.Parameters = append(task.Inputs.Parameters, parameterNew)
 	}
 	return task, nil
@@ -227,13 +204,8 @@ func handleTaskArtifactsCreation(
 				RunId:      opts.Run.GetRunId(),
 				TaskId:     task.TaskId,
 				Type:       am.ArtifactIO.Type,
-				Producer: &apiV2beta1.IOProducer{
-					TaskName: opts.TaskName,
-				},
-				Key: am.ArtifactIO.ArtifactKey,
-			}
-			if opts.IterationIndex >= 0 {
-				at.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
+				Producer:   am.ArtifactIO.Producer,
+				Key:        am.ArtifactIO.ArtifactKey,
 			}
 			artifactTasks = append(artifactTasks, at)
 		}

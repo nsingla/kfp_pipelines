@@ -6,6 +6,7 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 )
 
@@ -13,15 +14,24 @@ func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetad
 	var artifacts []ArtifactMetadata
 
 	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
+		v, ioType, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
 		if err != nil {
 			return nil, nil, err
 		}
-		artifacts = append(artifacts, ArtifactMetadata{
+
+		am := ArtifactMetadata{
 			Key:               name,
-			ArtifactIO:        v,
 			InputArtifactSpec: artifactSpec,
-		})
+			ArtifactIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{
+				Artifacts: v.Artifacts,
+				Type:      ioType,
+				Producer:  &apiv2beta1.IOProducer{TaskName: opts.ParentTask.Name},
+			},
+		}
+		if opts.IterationIndex >= 0 {
+			am.ArtifactIO.Producer.Iteration = util.Int64Pointer(int64(opts.IterationIndex))
+		}
+		artifacts = append(artifacts, am)
 	}
 
 	var iterationCount *int
@@ -60,7 +70,7 @@ func resolveInputArtifact(
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 	inputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
-) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, apiv2beta1.IOType, error) {
 	artifactError := func(err error) error {
 		return fmt.Errorf("failed to resolve input artifact %s with spec %s: %w", name, artifactSpec, err)
 	}
@@ -68,17 +78,17 @@ func resolveInputArtifact(
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_ComponentInputArtifact:
 		artifactIO, err := resolveArtifactComponentInputParameter(opts, artifactSpec, inputArtifacts)
 		if err != nil {
-			return nil, artifactError(err)
+			return nil, apiv2beta1.IOType_COMPONENT_INPUT, artifactError(err)
 		}
-		return artifactIO, nil
+		return artifactIO, apiv2beta1.IOType_COMPONENT_INPUT, nil
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_TaskOutputArtifact:
 		artifact, err := resolveUpstreamArtifacts(ctx, opts, artifactSpec)
 		if err != nil {
-			return nil, err
+			return nil, apiv2beta1.IOType_TASK_OUTPUT_INPUT, err
 		}
-		return artifact, nil
+		return artifact, apiv2beta1.IOType_TASK_OUTPUT_INPUT, nil
 	default:
-		return nil, artifactError(fmt.Errorf("artifact spec of type %T not implemented yet", t))
+		return nil, apiv2beta1.IOType_UNSPECIFIED, artifactError(fmt.Errorf("artifact spec of type %T not implemented yet", t))
 	}
 }
 

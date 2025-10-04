@@ -118,7 +118,7 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	if opts.ParentTask.GetTaskId() != "" {
 		taskToCreate.ParentTaskId = util.StringPointer(opts.ParentTask.GetTaskId())
 	}
-	taskToCreate, err = handleTaskParametersCreation(opts, inputs.Parameters, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}

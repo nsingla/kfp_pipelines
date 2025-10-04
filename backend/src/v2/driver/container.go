@@ -206,7 +206,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	// ### CREATE TASK ###
 	// ######################################
 
-	taskToCreate, err = handleTaskParametersCreation(opts, inputs.Parameters, taskToCreate)
+	taskToCreate, err = handleTaskParametersCreation(inputs.Parameters, taskToCreate)
 	if err != nil {
 		return execution, err
 	}
