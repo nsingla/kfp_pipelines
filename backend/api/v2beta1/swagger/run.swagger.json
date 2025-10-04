@@ -632,7 +632,7 @@
         },
         "producer": {
           "$ref": "#/definitions/v2beta1IOProducer",
-          "title": "Optional because in the case of RuntimeValues there is no producer"
+          "title": "This field is optional because in the case of\nInput RuntimeValues and Raw Iterator Inputs\nthere are no producer"
         }
       }
     },
@@ -857,11 +857,12 @@
         "COMPONENT_INPUT",
         "RUNTIME_VALUE_INPUT",
         "ITERATOR_INPUT",
+        "ITERATOR_INPUT_RAW",
         "ITERATOR_OUTPUT",
         "OUTPUT"
       ],
       "default": "UNSPECIFIED",
-      "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
+      "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: Used for dsl.Collected\nwhen used, all Parameter values, or Artifact list items\nare considered the collected values of this loop's output"
     },
     "v2beta1ListRunsResponse": {
       "type": "object",

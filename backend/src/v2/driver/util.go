@@ -92,25 +92,6 @@ func inputParamTaskOutput(producerTask, outputParamKey string) *pipelinespec.Tas
 	}
 }
 
-// Get iteration items from a structpb.Value.
-// Return value may be
-// * a list of JSON serializable structs
-// * a list of structpb.Value
-func getItems(value *structpb.Value) (items []*structpb.Value, err error) {
-	switch v := value.GetKind().(type) {
-	case *structpb.Value_ListValue:
-		return v.ListValue.GetValues(), nil
-	case *structpb.Value_StringValue:
-		listValue := structpb.Value{}
-		if err = listValue.UnmarshalJSON([]byte(v.StringValue)); err != nil {
-			return nil, err
-		}
-		return listValue.GetListValue().GetValues(), nil
-	default:
-		return nil, fmt.Errorf("value of type %T cannot be iterated", v)
-	}
-}
-
 // validateRootDAG contains validation for root DAG driver options, without MLMD dependencies.
 func validateRootDAG(opts common.Options) (err error) {
 	defer func() {

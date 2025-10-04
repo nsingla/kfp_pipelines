@@ -51,7 +51,7 @@ type Options struct {
 	PodUID           string
 }
 
-// Identifying information used for error messages
+// Info provides information used for debugging
 func (o Options) Info() string {
 	msg := fmt.Sprintf("pipelineName=%v, runID=%v", o.PipelineName, o.Run.GetRunId())
 	if o.Task.GetTaskInfo().GetName() != "" {
@@ -82,63 +82,6 @@ func (o Options) Info() string {
 }
 
 const pipelineChannelPrefix = "pipelinechannel--"
-
-// ParameterNameToIOFields parses a pipeline channel name into its key,
-// It also extracts producerTaskName, and producerKey if the channel has
-// a Task producer. Note that a channel does not always have a task
-// producer, such as in the case for raw parameterIterator.
-func ParameterNameToIOFields(name string,
-) (key string, producerTaskName string, producerKey string, err error) {
-	if !strings.HasPrefix(name, pipelineChannelPrefix) {
-		return name, "", "", nil
-	}
-
-	// Remove prefix
-	nameWithoutPrefix := strings.TrimPrefix(name, pipelineChannelPrefix)
-
-	// Split remaining string by last dash to separate producer task name and key
-	parts := strings.Split(nameWithoutPrefix, "-")
-	if len(parts) < 2 {
-		return "", "", "",
-			fmt.Errorf("invalid pipeline channel name: %s", name)
-	}
-
-	// This is a parameterIterator Pipeline Channel, i.e. a LoopArgument
-	// There are two cases here
-	if strings.HasPrefix(nameWithoutPrefix, "loop-item") {
-		// Case 1. It is a Raw parameterIterator in which case
-		// its format is "pipelinechannel--loop-item-param-{code}"
-		// The declared LoopArgument parameter, for cases like
-		// nested parellelFor loops.
-
-		if len(parts) != 4 || parts[2] != "param" {
-			return "", "", "",
-				fmt.Errorf("invalid pipeline channel name for raw LoopArgument: %s", name)
-		}
-		key = strings.Join(parts[:4], "-")
-		return key, "", "", nil
-
-	} else if strings.HasSuffix(nameWithoutPrefix, "loop-item") {
-		// Case 2. If it is an inputParameter parameterIterator, (i.e., it has a producer)
-		// Then its format is "pipelinechannel--{producerTaskName}-{producerKey}-loop-item"'
-		// Note that {producerTaskName} can have dashes, but the last dash separates the
-		// Task Name from the Key.
-
-		if len(parts) < 4 {
-			return "", "", "",
-				fmt.Errorf("invalid pipeline channel name for inputParameter LoopArgument: %s", name)
-		}
-		producerKey = parts[len(parts)-3]
-		taskName := strings.Join(parts[:len(parts)-3], "-")
-		return "", taskName, producerKey, nil
-	}
-
-	key = parts[len(parts)-1]
-	producerTaskName = strings.Join(parts[:len(parts)-1], "-")
-	producerKey = key
-
-	return key, producerTaskName, producerKey, nil
-}
 
 func IsPipelineChannel(name string) bool {
 	return strings.HasPrefix(name, "pipelinechannel--")

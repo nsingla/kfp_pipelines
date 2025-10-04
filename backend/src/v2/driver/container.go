@@ -63,7 +63,7 @@ func Container(ctx context.Context, opts common.Options, driverAPI common.Driver
 	// ######################################
 	// ### RESOLVE INPUTS ###
 	// ######################################
-	inputs, err := resolver.ResolveInputs(ctx, opts)
+	inputs, _, err := resolver.ResolveInputs(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

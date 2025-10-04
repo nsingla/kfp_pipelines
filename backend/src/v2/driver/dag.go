@@ -7,13 +7,11 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	gc "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/resolver"
 	"github.com/kubeflow/pipelines/backend/src/v2/expression"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // DAG mirrors DAG but uses KFP RunService/ArtifactService instead of MLMD.
@@ -45,7 +43,8 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		return nil, err
 	}
 
-	inputs, err := resolver.ResolveInputs(ctx, opts)
+	// Determine this Task's Type
+	inputs, iterationCount, err := resolver.ResolveInputs(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,6 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 		execution.Condition = &willTrigger
 	}
 
-	// Create the DAG task record.
 	taskName := opts.TaskName
 	if taskName == "" {
 		taskName = opts.Task.GetTaskInfo().GetName()
@@ -78,48 +76,6 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 
 	if opts.Task.GetArtifactIterator() != nil {
 		return execution, fmt.Errorf("ArtifactIterator is not implemented")
-	}
-	isIterator := opts.Task.GetParameterIterator() != nil && opts.IterationIndex < 0
-	// Fan out iterations
-	var iterationCount *int
-	if execution.WillTrigger() && isIterator {
-		iterator := opts.Task.GetParameterIterator()
-		report := func(err error) error {
-			return fmt.Errorf("iterating on item input %q failed: %w", iterator.GetItemInput(), err)
-		}
-		// Check the items type of parameterIterator:
-		// It can be "inputParameter" or "Raw"
-		var value *structpb.Value
-		switch iterator.GetItems().GetKind().(type) {
-		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_InputParameter:
-			var ok bool
-			value, ok = executorInput.GetInputs().GetParameterValues()[iterator.GetItems().GetInputParameter()]
-			if !ok {
-				return execution, report(fmt.Errorf("cannot find input parameter"))
-			}
-		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_Raw:
-			valueRaw := iterator.GetItems().GetRaw()
-			var unmarshalledRaw interface{}
-			err = json.Unmarshal([]byte(valueRaw), &unmarshalledRaw)
-			if err != nil {
-				return execution, fmt.Errorf("error unmarshall raw string: %q", err)
-			}
-			value, err = structpb.NewValue(unmarshalledRaw)
-			if err != nil {
-				return execution, fmt.Errorf("error converting unmarshalled raw string into protobuf Value type: %q", err)
-			}
-			// Add the raw input to the executor input
-			execution.ExecutorInput.Inputs.ParameterValues[iterator.GetItemInput()] = value
-		default:
-			return execution, fmt.Errorf("cannot find parameter iterator")
-		}
-		items, err := getItems(value)
-		if err != nil {
-			return execution, report(err)
-		}
-		count := len(items)
-		iterationCount = &count
-		execution.IterationCount = &count
 	}
 
 	taskToCreate := &gc.PipelineTaskDetail{
@@ -157,6 +113,8 @@ func DAG(ctx context.Context, opts common.Options, driverAPI common.DriverAPI) (
 	} else if strings.HasPrefix(taskName, "condition") && !strings.HasPrefix(taskName, "condition-branch") {
 		taskToCreate.Type = gc.PipelineTaskDetail_CONDITION
 		taskToCreate.DisplayName = "Condition"
+	} else {
+		taskToCreate.Type = gc.PipelineTaskDetail_DAG
 	}
 
 	if opts.ParentTask.GetTaskId() != "" {

@@ -59,12 +59,14 @@ const (
 	// In a for loop task, introduced via ParallelFor, this type
 	// is used to indicate whether this resolved input belongs
 	// to a parameterIterator or artifactIterator.
-	IOType_ITERATOR_INPUT IOType = 5
+	IOType_ITERATOR_INPUT IOType = 4
+	// Raw Iterator inputs have no producer
+	IOType_ITERATOR_INPUT_RAW IOType = 5
 	// Used for dsl.Collected
 	// when used, all Parameter values, or Artifact list items
 	// are considered the collected values of this loop's output
 	IOType_ITERATOR_OUTPUT IOType = 6
-	IOType_OUTPUT          IOType = 4
+	IOType_OUTPUT          IOType = 7
 )
 
 // Enum value maps for IOType.
@@ -74,18 +76,20 @@ var (
 		1: "TASK_OUTPUT_INPUT",
 		2: "COMPONENT_INPUT",
 		3: "RUNTIME_VALUE_INPUT",
-		5: "ITERATOR_INPUT",
+		4: "ITERATOR_INPUT",
+		5: "ITERATOR_INPUT_RAW",
 		6: "ITERATOR_OUTPUT",
-		4: "OUTPUT",
+		7: "OUTPUT",
 	}
 	IOType_value = map[string]int32{
 		"UNSPECIFIED":         0,
 		"TASK_OUTPUT_INPUT":   1,
 		"COMPONENT_INPUT":     2,
 		"RUNTIME_VALUE_INPUT": 3,
-		"ITERATOR_INPUT":      5,
+		"ITERATOR_INPUT":      4,
+		"ITERATOR_INPUT_RAW":  5,
 		"ITERATOR_OUTPUT":     6,
-		"OUTPUT":              4,
+		"OUTPUT":              7,
 	}
 )
 
@@ -1120,16 +1124,17 @@ const file_backend_api_v2beta1_artifact_proto_rawDesc = "" +
 	"\x14ClassificationMetric\x10\a\x12\x1e\n" +
 	"\x1aSlicedClassificationMetric\x10\bB\x06\n" +
 	"\x04_uriB\x0f\n" +
-	"\r_number_value*\x93\x01\n" +
+	"\r_number_value*\xab\x01\n" +
 	"\x06IOType\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11TASK_OUTPUT_INPUT\x10\x01\x12\x13\n" +
 	"\x0fCOMPONENT_INPUT\x10\x02\x12\x17\n" +
 	"\x13RUNTIME_VALUE_INPUT\x10\x03\x12\x12\n" +
-	"\x0eITERATOR_INPUT\x10\x05\x12\x13\n" +
+	"\x0eITERATOR_INPUT\x10\x04\x12\x16\n" +
+	"\x12ITERATOR_INPUT_RAW\x10\x05\x12\x13\n" +
 	"\x0fITERATOR_OUTPUT\x10\x06\x12\n" +
 	"\n" +
-	"\x06OUTPUT\x10\x042\xd3\f\n" +
+	"\x06OUTPUT\x10\a2\xd3\f\n" +
 	"\x0fArtifactService\x12\x84\x02\n" +
 	"\rListArtifacts\x12;.kubeflow.pipelines.backend.api.v2beta1.ListArtifactRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListArtifactResponse\"x\x92AV\n" +
 	"\x0fArtifactService\x123Finds all artifacts within the specified namespace.*\x0elist_artifacts\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/artifacts\x12\xee\x01\n" +

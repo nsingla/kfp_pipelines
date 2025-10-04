@@ -451,7 +451,9 @@ message PipelineTaskDetail {
       google.protobuf.Value value = 1;
       IOType type = 2;
       string parameter_key = 3;
-      // Optional because in the case of Input RuntimeValues there is no producer
+      // This field is optional because in the case of
+      // Input RuntimeValues and Raw Iterator Inputs
+      // there are no producers
       optional IOProducer producer = 4;
     }
 
@@ -466,8 +468,8 @@ message PipelineTaskDetail {
     // parameterIterator.items
     repeated IOParameter parameters = 1;
 
-    // Output Only. To create Artifacts for a task are created
-    // via ArtifactTasks.
+    // Output Only. To create Artifacts for a task use
+    // ArtifactTasks to link artifacts to tasks.
     repeated IOArtifact artifacts = 2;
   }
   InputOutputs inputs = 18;

@@ -17,15 +17,29 @@ var paramError = func(paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 var ErrResolvedInputNull = errors.New("the resolved input is null")
 
 type ParameterMetadata struct {
+	// This is the key of the parameter in this task's inputs.
 	Key                string
 	ParameterIO        *apiV2beta1.PipelineTaskDetail_InputOutputs_IOParameter
 	InputParameterSpec *pipelinespec.TaskInputsSpec_InputParameterSpec
+	ParameterIterator  *pipelinespec.ParameterIteratorSpec
 }
 
 type ArtifactMetadata struct {
-	Key               string
-	ArtifactIOList    []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+	Key string
+
+	// InputArtifactSpec is mutually exclusive with ArtifactIterator
 	InputArtifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec
+	ArtifactIterator  *pipelinespec.ArtifactIteratorSpec
+
+	// TODO - When a componentInput needs to be resolved for an iteration Runtime task
+	// it should find the index on the parentTasks.outputs where producer.Iteration maps to
+	// the runtime task's index.
+	ArtifactIO *apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+
+	// This is for when a key can map to a collection of artifacts
+	// In such a case each artifact has its own IOProducer.
+	// This is only in the case when ArtifactIOs have IOType ITERATOR_OUTPUT
+	ArtifactIOList []*apiV2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 }
 
 type InputMetadata struct {
@@ -33,56 +47,39 @@ type InputMetadata struct {
 	Artifacts  []ArtifactMetadata
 }
 
-func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, error) {
+func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, *int, error) {
 	inputMetadata := &InputMetadata{
 		Parameters: []ParameterMetadata{},
 		Artifacts:  []ArtifactMetadata{},
 	}
+
+	var parameterIteratorCount *int
+	var artifactIteratorCount *int
+
 	// Handle parameters
-	for name, paramSpec := range opts.Task.GetInputs().GetParameters() {
-		if compParam := opts.Component.GetInputDefinitions().GetParameters()[name]; compParam != nil {
-			// Skip resolving dsl.TaskConfig because that information is only available after initPodSpecPatch and
-			// extendPodSpecPatch are called.
-			if compParam.GetParameterType() == pipelinespec.ParameterType_TASK_CONFIG {
-				continue
-			}
-		}
+	resolvedParameters, parameterIteratorCount, err := resolveParameters(opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	inputMetadata.Parameters = resolvedParameters
 
-		v, err := resolveInputParameter(opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
-		if err != nil {
-			if !errors.Is(err, ErrResolvedInputNull) {
-				return nil, err
-			}
-			componentParam, ok := opts.Component.GetInputDefinitions().GetParameters()[name]
-			if !ok {
-				return nil, fmt.Errorf("parameter %s not found in component input definitions", name)
-			}
-			// If the resolved parameter was null and the component input parameter is optional, just skip setting
-			// it and the launcher will handle defaults.
-			if componentParam != nil && componentParam.IsOptional {
-				continue
-			}
-			return nil, err
-		}
-		inputMetadata.Parameters = append(inputMetadata.Parameters, ParameterMetadata{
-			Key:                name,
-			ParameterIO:        v,
-			InputParameterSpec: paramSpec,
-		})
+	// Handle Artifacts
+	resolvedArtifacts, artifactIteratorCount, err := resolveArtifacts(ctx, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	inputMetadata.Artifacts = resolvedArtifacts
+
+	// Determine iteration count
+	// Note that we can only have one of the two.
+	var iterationCount *int
+	if parameterIteratorCount != nil && artifactIteratorCount != nil {
+		return nil, nil, errors.New("cannot have both parameter and artifact iterators")
+	} else if parameterIteratorCount != nil {
+		iterationCount = parameterIteratorCount
+	} else if artifactIteratorCount != nil {
+		iterationCount = artifactIteratorCount
 	}
 
-	// Handle artifacts.
-	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
-		if err != nil {
-			return nil, err
-		}
-		inputMetadata.Artifacts = append(inputMetadata.Artifacts, ArtifactMetadata{
-			Key:               name,
-			ArtifactIOList:    v,
-			InputArtifactSpec: artifactSpec,
-		})
-	}
-
-	return inputMetadata, nil
+	return inputMetadata, iterationCount, nil
 }

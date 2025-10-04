@@ -30,6 +30,7 @@ import (
 //
 // is used to indicate whether this resolved input belongs
 // to a parameterIterator or artifactIterator.
+//   - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer
 //   - ITERATOR_OUTPUT: Used for dsl.Collected
 //
 // when used, all Parameter values, or Artifact list items
@@ -64,6 +65,9 @@ const (
 	// V2beta1IOTypeITERATORINPUT captures enum value "ITERATOR_INPUT"
 	V2beta1IOTypeITERATORINPUT V2beta1IOType = "ITERATOR_INPUT"
 
+	// V2beta1IOTypeITERATORINPUTRAW captures enum value "ITERATOR_INPUT_RAW"
+	V2beta1IOTypeITERATORINPUTRAW V2beta1IOType = "ITERATOR_INPUT_RAW"
+
 	// V2beta1IOTypeITERATOROUTPUT captures enum value "ITERATOR_OUTPUT"
 	V2beta1IOTypeITERATOROUTPUT V2beta1IOType = "ITERATOR_OUTPUT"
 
@@ -76,7 +80,7 @@ var v2beta1IOTypeEnum []interface{}
 
 func init() {
 	var res []V2beta1IOType
-	if err := json.Unmarshal([]byte(`["UNSPECIFIED","TASK_OUTPUT_INPUT","COMPONENT_INPUT","RUNTIME_VALUE_INPUT","ITERATOR_INPUT","ITERATOR_OUTPUT","OUTPUT"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["UNSPECIFIED","TASK_OUTPUT_INPUT","COMPONENT_INPUT","RUNTIME_VALUE_INPUT","ITERATOR_INPUT","ITERATOR_INPUT_RAW","ITERATOR_OUTPUT","OUTPUT"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

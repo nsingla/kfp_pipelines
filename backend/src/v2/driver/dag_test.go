@@ -168,15 +168,18 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NotNil(t, loopExecution)
 	require.Nil(t, loopExecution.ExecutorInput.Outputs)
 
+	// Refresh Parent Task - The parent task should be "for-loop-2" for the iterations at first depth
+	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+	require.NoError(t, err)
+	require.NoError(t, err)
+	require.NotNil(t, parentTask)
+	require.NotZero(t, len(parentTask.Inputs.Parameters))
+
 	// Perform the iteration calls, mock any launcher calls
 	for index, paramID := range []string{"1", "2", "3"} {
 		// Run the first iteration
 		// Refresh Run so it has the new tasks
 		run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-		require.NoError(t, err)
-
-		// Refresh Parent Task - The parent task should be "for-loop-2" for "process-dataset"
-		parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
 		require.NoError(t, err)
 
 		// Run the "process-dataset" Container Task with iteration index
@@ -369,3 +372,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NotNil(t, analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
 	require.Equal(t, 3, len(analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
 }
+
+// TODO:
+// * Add test for parameterIterator -> InputParameter (i.e. task output)
+// * Add test for artifactIterator

@@ -9,13 +9,52 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 )
 
+func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetadata, *int, error) {
+	var artifacts []ArtifactMetadata
+
+	for name, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
+		v, err := resolveInputArtifact(ctx, opts, name, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
+		if err != nil {
+			return nil, nil, err
+		}
+		artifacts = append(artifacts, ArtifactMetadata{
+			Key:               name,
+			ArtifactIOList:    v,
+			InputArtifactSpec: artifactSpec,
+		})
+	}
+
+	var iterationCount *int
+
+	if opts.Task.GetArtifactIterator() != nil {
+		var items []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
+		iterator := opts.Task.GetArtifactIterator()
+
+		artifactIO, err := findArtifactByIOKey(iterator.GetItems().GetInputArtifact(), artifacts)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		artifacts = append(artifacts, ArtifactMetadata{
+			Key:              iterator.GetItemInput(),
+			ArtifactIOList:   []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{},
+			ArtifactIterator: iterator,
+		})
+
+		count := len(items)
+		iterationCount = &count
+	}
+
+	return artifacts, nil, nil
+}
+
 func resolveInputArtifact(
 	ctx context.Context,
 	opts common.Options,
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 	inputArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
-) ([]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	artifactError := func(err error) error {
 		return fmt.Errorf("failed to resolve input artifact %s with spec %s: %w", name, artifactSpec, err)
 	}
@@ -25,13 +64,13 @@ func resolveInputArtifact(
 		if err != nil {
 			return nil, artifactError(err)
 		}
-		return []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact{artifactIO}, nil
+		return artifactIO, nil
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_TaskOutputArtifact:
-		artifacts, err := resolveUpstreamArtifacts(ctx, opts, artifactSpec)
+		artifact, err := resolveUpstreamArtifacts(ctx, opts, artifactSpec)
 		if err != nil {
 			return nil, err
 		}
-		return artifacts, nil
+		return artifact, nil
 	default:
 		return nil, artifactError(fmt.Errorf("artifact spec of type %T not implemented yet", t))
 	}
@@ -59,15 +98,14 @@ func resolveArtifactComponentInputParameter(
 			return artifactIO, nil
 		}
 	}
-	return nil, fmt.Errorf("failed to find input param %s", key)
+	return nil, fmt.Errorf("failed to find input artifact %s", key)
 
 }
 
 func resolveUpstreamArtifacts(ctx context.Context,
 	opts common.Options,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
-) ([]*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
-
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	tasks, err := getSubTasks(opts.ParentTask, opts.Run.Tasks, nil)
 	if err != nil {
 		return nil, err
@@ -81,51 +119,25 @@ func resolveUpstreamArtifacts(ctx context.Context,
 	}
 	producerTaskUniqueName := getTaskNameWithTaskID(producerTaskAmbiguousName, opts.ParentTask.GetTaskId())
 	if opts.IterationIndex >= 0 {
-		producerTaskUniqueName = getParallelForTaskName(producerTaskUniqueName, int64(opts.IterationIndex))
+		producerTaskUniqueName = getTaskNameWithIterationIndex(producerTaskUniqueName, int64(opts.IterationIndex))
 	}
+	// producerTask is the specific task guaranteed to have the output artifact
+	// producerTaskUniqueName may look something like "task_name_a_dag_id_1_idx_0"
 	producerTask := tasks[producerTaskUniqueName]
 	if producerTask == nil {
 		return nil, fmt.Errorf("producerTask task %s not found", producerTaskUniqueName)
 	}
-
-	currentTask := producerTask
 	outputArtifactKey := artifactSpec.GetTaskOutputArtifact().GetOutputArtifactKey()
 
-	var collectArtifacts []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
-	switch producerTask.GetType() {
-	case apiv2beta1.PipelineTaskDetail_RUNTIME:
-		outputArtifacts := currentTask.GetOutputs().GetArtifacts()
-		artifactIO, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
-		if err != nil {
-			return nil, err
-		}
-		if artifactIO == nil {
-			return nil, fmt.Errorf("output artifact %s not found", outputArtifactKey)
-		}
-		collectArtifacts = append(collectArtifacts, artifactIO)
-		return collectArtifacts, nil
-	case apiv2beta1.PipelineTaskDetail_LOOP:
-		if !common.IsPipelineChannel(outputArtifactKey) {
-			return nil, fmt.Errorf("loop output artifact %s must be a pipeline channel", outputArtifactKey)
-		}
-
-		for _, ioArtifact := range currentTask.GetOutputs().GetArtifacts() {
-			if ioArtifact.GetType() == apiv2beta1.IOType_ITERATOR_OUTPUT &&
-				ioArtifact.GetArtifactKey() == outputArtifactKey &&
-				ioArtifact.GetProducer().TaskName == currentTask.Name {
-				collectArtifacts = append(collectArtifacts, ioArtifact)
-			}
-		}
-		if len(collectArtifacts) == 0 {
-			return nil, fmt.Errorf("loop output artifacts for key %s not found", outputArtifactKey)
-		}
-		return collectArtifacts, nil
-	case apiv2beta1.PipelineTaskDetail_DAG:
-		return nil, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
-
-	default:
-		return nil, fmt.Errorf("task type %s not implemented yet", producerTask.GetType())
+	outputArtifacts := producerTask.GetOutputs().GetArtifacts()
+	artifactIO, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
+	if err != nil {
+		return nil, err
 	}
+	if artifactIO == nil {
+		return nil, fmt.Errorf("output artifact %s not found", outputArtifactKey)
+	}
+	return artifactIO, nil
 }
 
 // generateUniqueTaskName generates a unique task name for a given task.
@@ -138,12 +150,12 @@ func generateUniqueTaskName(task, parentTask *apiv2beta1.PipelineTaskDetail) (st
 		if task.TypeAttributes == nil || task.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}
-		taskName = getParallelForTaskName(taskName, *task.TypeAttributes.IterationIndex)
+		taskName = getTaskNameWithIterationIndex(taskName, *task.TypeAttributes.IterationIndex)
 	} else if common.IsRuntimeIterationTask(parentTask) {
 		if parentTask.TypeAttributes == nil || parentTask.TypeAttributes.IterationIndex == nil {
 			return "", fmt.Errorf("iteration index cannot be nil for loop iteration")
 		}
-		taskName = getParallelForTaskName(taskName, *parentTask.TypeAttributes.IterationIndex)
+		taskName = getTaskNameWithIterationIndex(taskName, *parentTask.TypeAttributes.IterationIndex)
 	}
 	return taskName, nil
 }
@@ -171,6 +183,23 @@ func getChildTasks(
 	return taskMap, nil
 }
 
+// getSubTasks creates a map of all subtasks under currentTask.
+// The keys of the map are formed by concatenating the task name with the task id.
+// If the task is a runtime iteration task, then the key is formed by concatenating
+// the task name with the iteration index.
+// So you may end up with a map of the form:
+//
+//	{
+//	  "task_name_a_dag_id_1_idx_0": {
+//	    ...
+//	  },
+//	  "task_name_a_dag_id_1_idx_1": {
+//	    ...
+//	  },
+//	  "task_name_b_dag_id_2": {
+//	    ...
+//	  },
+//	},
 func getSubTasks(
 	currentTask *apiv2beta1.PipelineTaskDetail,
 	allRuntasks []*apiv2beta1.PipelineTaskDetail,
@@ -197,7 +226,7 @@ func getSubTasks(
 	return flattenedTasks, nil
 }
 
-func getParallelForTaskName(taskName string, iterationIndex int64) string {
+func getTaskNameWithIterationIndex(taskName string, iterationIndex int64) string {
 	return fmt.Sprintf("%s_idx_%d", taskName, iterationIndex)
 }
 

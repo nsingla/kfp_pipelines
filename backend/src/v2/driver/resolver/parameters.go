@@ -2,6 +2,8 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,6 +14,96 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func resolveParameters(opts common.Options) ([]ParameterMetadata, *int, error) {
+	var parameters []ParameterMetadata
+	for name, paramSpec := range opts.Task.GetInputs().GetParameters() {
+		if compParam := opts.Component.GetInputDefinitions().GetParameters()[name]; compParam != nil {
+			// Skip resolving dsl.TaskConfig because that information is only available after initPodSpecPatch and
+			// extendPodSpecPatch are called.
+			if compParam.GetParameterType() == pipelinespec.ParameterType_TASK_CONFIG {
+				continue
+			}
+		}
+
+		v, err := resolveInputParameter(opts, paramSpec, opts.ParentTask.Inputs.GetParameters())
+		if err != nil {
+			if !errors.Is(err, ErrResolvedInputNull) {
+				return nil, nil, err
+			}
+			componentParam, ok := opts.Component.GetInputDefinitions().GetParameters()[name]
+			if !ok {
+				return nil, nil, fmt.Errorf("parameter %s not found in component input definitions", name)
+			}
+			// If the resolved parameter was null and the component input parameter is optional, just skip setting
+			// it and the launcher will handle defaults.
+			if componentParam != nil && componentParam.IsOptional {
+				continue
+			}
+			return nil, nil, err
+		}
+		parameters = append(parameters, ParameterMetadata{
+			Key:                name,
+			ParameterIO:        v,
+			InputParameterSpec: paramSpec,
+		})
+	}
+
+	// Handle Parameter Iterator
+	var iterationCount *int
+	var value *structpb.Value
+	if opts.Task.GetParameterIterator() != nil {
+		iterator := opts.Task.GetParameterIterator()
+		switch iterator.GetItems().GetKind().(type) {
+		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_InputParameter:
+			var err error
+			parameterIO, err := findParameterByIOKey(iterator.GetItems().GetInputParameter(), parameters)
+			if err != nil {
+				return nil, nil, err
+			}
+			value = parameterIO.GetValue()
+			parameters = append(parameters, ParameterMetadata{
+				Key: iterator.GetItemInput(),
+				ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+					Value:    value,
+					Type:     apiv2beta1.IOType_ITERATOR_INPUT,
+					Producer: parameterIO.Producer,
+				},
+				ParameterIterator: iterator,
+			})
+		case *pipelinespec.ParameterIteratorSpec_ItemsSpec_Raw:
+			valueRaw := iterator.GetItems().GetRaw()
+			var unmarshalledRaw interface{}
+			err := json.Unmarshal([]byte(valueRaw), &unmarshalledRaw)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error unmarshall raw string: %q", err)
+			}
+			value, err = structpb.NewValue(unmarshalledRaw)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error converting unmarshalled raw string into protobuf Value type: %q", err)
+			}
+			parameters = append(parameters, ParameterMetadata{
+				Key: iterator.GetItemInput(),
+				ParameterIO: &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+					Value:    value,
+					Type:     apiv2beta1.IOType_ITERATOR_INPUT_RAW,
+					Producer: nil, // Raw Inputs have no producer
+				},
+				ParameterIterator: iterator,
+			})
+		default:
+			return nil, nil, fmt.Errorf("cannot find parameter iterator")
+		}
+		items, err := getItems(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		count := len(items)
+		iterationCount = &count
+	}
+
+	return parameters, iterationCount, nil
+}
 
 func resolveInputParameter(
 	opts common.Options,
@@ -85,7 +177,6 @@ func resolveParameterComponentInputParameter(
 	if paramName == "" {
 		return nil, paramError(paramSpec, fmt.Errorf("empty component input"))
 	}
-
 	for _, param := range inputParams {
 		generateName := param.ParameterKey
 		if paramName == generateName {
@@ -99,6 +190,25 @@ func resolveParameterComponentInputParameter(
 		}
 	}
 	return nil, fmt.Errorf("failed to find input param %s", paramName)
+}
+
+// getItems iteration items from a structpb.Value.
+// Return value may be
+// * a list of JSON serializable structs
+// * a list of structpb.Value
+func getItems(value *structpb.Value) (items []*structpb.Value, err error) {
+	switch v := value.GetKind().(type) {
+	case *structpb.Value_ListValue:
+		return v.ListValue.GetValues(), nil
+	case *structpb.Value_StringValue:
+		listValue := structpb.Value{}
+		if err = listValue.UnmarshalJSON([]byte(v.StringValue)); err != nil {
+			return nil, err
+		}
+		return listValue.GetListValue().GetValues(), nil
+	default:
+		return nil, fmt.Errorf("value of type %T cannot be iterated", v)
+	}
 }
 
 func ResolvePodSpecInputRuntimeParameter(n string, input *pipelinespec.ExecutorInput) (string, error) {
