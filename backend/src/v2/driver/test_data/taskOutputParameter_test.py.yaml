@@ -4,39 +4,29 @@ components:
   comp-analyze-artifact:
     executorLabel: exec-analyze-artifact
     inputDefinitions:
-      artifacts:
+      parameters:
         data_input:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
+          parameterType: NUMBER_INTEGER
     outputDefinitions:
-      artifacts:
-        output_artifact:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
+      parameters:
+        output_opinion:
+          parameterType: BOOLEAN
   comp-create-dataset:
     executorLabel: exec-create-dataset
     outputDefinitions:
-      artifacts:
-        output_dataset:
-          artifactType:
-            schemaTitle: system.Dataset
-            schemaVersion: 0.0.1
+      parameters:
+        output_parameter_path:
+          parameterType: STRING
   comp-process-dataset:
     executorLabel: exec-process-dataset
     inputDefinitions:
-      artifacts:
+      parameters:
         input_dataset:
-          artifactType:
-            schemaTitle: system.Dataset
-            schemaVersion: 0.0.1
+          parameterType: STRING
     outputDefinitions:
-      artifacts:
-        output_artifact:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
+      parameters:
+        output_int:
+          parameterType: NUMBER_INTEGER
 deploymentSpec:
   executors:
     exec-analyze-artifact:
@@ -65,9 +55,9 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef analyze_artifact(data_input: Input[Artifact], output_artifact:\
-          \ Output[Artifact]):\n    with open(data_input.path, \"r\") as f:\n    \
-          \    data = f.read()\n    assert data == \"very_bad\"\n\n"
+          \ *\n\ndef analyze_artifact(data_input: int, output_opinion: OutputPath(bool)):\n\
+          \    assert data_input == 100\n    with open(output_opinion, \"w\") as f:\n\
+          \        f.write(True)\n\n"
         image: python:3.9
     exec-create-dataset:
       container:
@@ -95,10 +85,9 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef create_dataset(output_dataset: Output[Dataset]):\n    with open(output_dataset.path,\
-          \ \"w\") as f:\n        f.write('hurricane')\n    output_dataset.metadata[\"\
-          category\"] = 5\n    output_dataset.metadata[\"description\"] = \"A simple\
-          \ dataset\"\n\n"
+          \ *\n\ndef create_dataset(output_parameter_path: OutputPath(str)):\n   \
+          \ with open(output_parameter_path, \"w\") as f:\n        f.write('hurricane')\n\
+          \n"
         image: python:3.9
     exec-process-dataset:
       container:
@@ -126,10 +115,9 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef process_dataset(input_dataset: Input[Dataset], output_artifact:\
-          \ Output[Artifact]):\n    with open(input_dataset.path, \"r\") as f:\n \
-          \       data = f.read()\n    assert data == \"hurricane\"\n    with open(output_artifact.path,\
-          \ \"w\") as f:\n        f.write(f'very_bad')\n\n"
+          \ *\n\ndef process_dataset(input_dataset: str, output_int: OutputPath(int)):\n\
+          \    assert input_dataset == \"hurricane\"\n    with open(output_int, \"\
+          w\") as f:\n        f.write(\"100\")\n\n"
         image: python:3.9
 pipelineInfo:
   name: primary-pipeline
@@ -143,10 +131,10 @@ root:
         dependentTasks:
         - process-dataset
         inputs:
-          artifacts:
+          parameters:
             data_input:
-              taskOutputArtifact:
-                outputArtifactKey: output_artifact
+              taskOutputParameter:
+                outputParameterKey: output_int
                 producerTask: process-dataset
         taskInfo:
           name: analyze-artifact
@@ -163,10 +151,10 @@ root:
         dependentTasks:
         - create-dataset
         inputs:
-          artifacts:
+          parameters:
             input_dataset:
-              taskOutputArtifact:
-                outputArtifactKey: output_dataset
+              taskOutputParameter:
+                outputParameterKey: output_parameter_path
                 producerTask: create-dataset
         taskInfo:
           name: process-dataset

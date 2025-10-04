@@ -295,6 +295,65 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 12, len(run.Tasks))
 }
 
+func TestParameterInputIterator(t *testing.T) {
+
+}
+
+func TestArtifactIterator(t *testing.T) {
+
+}
+
+func TestFinalStatus(t *testing.T) {
+
+}
+
+// TODO Can't do this unless we can mock the filter API call on fingerprint and status
+// See getFingerPrintsANDID
+func TestWithCaching(t *testing.T) {
+
+}
+
+func TestParameterTaskOutput(t *testing.T) {
+	// Setup test environment
+	testSetup := NewTestSetup(t)
+
+	// Create a test run
+	run := testSetup.CreateTestRun(t, "test-pipeline")
+	require.NotNil(t, run)
+
+	// Load pipeline spec
+	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/taskOutputParameter_test.py.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, pipelineSpec)
+
+	// Create a root DAG execution using basic inputs
+	rootDagExecution, err := setupBasicRootDag(testSetup, run, pipelineSpec, &pipelinespec.PipelineJob_RuntimeConfig{})
+	require.NoError(t, err)
+	require.NotNil(t, rootDagExecution)
+
+	rootTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
+		TaskId: rootDagExecution.TaskID,
+	})
+	require.NoError(t, err)
+	parentTask := rootTask
+
+	currentRun := &CurrentRun{
+		Run:          run,
+		ScopePath:    NewScopePath(pipelineSpec),
+		T:            t,
+		TestSetup:    testSetup,
+		PipelineSpec: pipelineSpec,
+	}
+	err = currentRun.ScopePath.Push("root")
+	require.NoError(t, err)
+
+	// Run Dag on the First Task
+	_, _ = currentRun.RunContainer("create-dataset", parentTask, nil)
+	_, _ = currentRun.RunContainer("process-dataset", parentTask, nil)
+	_, _ = currentRun.RunContainer("analyze-artifact", parentTask, nil)
+
+}
+
 func (r *CurrentRun) RunDag(
 	taskName string,
 	parentTask *apiv2beta1.PipelineTaskDetail) (*Execution, *apiv2beta1.PipelineTaskDetail) {
@@ -431,7 +490,3 @@ func (r *CurrentRun) MockLauncherArtifactTaskCreate(
 	require.NotNil(t, result)
 	r.RefreshRun()
 }
-
-// TODO:
-// * Add test for parameterIterator -> InputParameter (i.e. task output)
-// * Add test for artifactIterator

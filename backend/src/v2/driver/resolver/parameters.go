@@ -67,7 +67,6 @@ func resolveInputParameter(
 	paramSpec *pipelinespec.TaskInputsSpec_InputParameterSpec,
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 ) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, apiv2beta1.IOType, error) {
-
 	switch t := paramSpec.Kind.(type) {
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_ComponentInputParameter:
 		glog.V(4).Infof("resolving component input parameter %s", paramSpec.GetComponentInputParameter())

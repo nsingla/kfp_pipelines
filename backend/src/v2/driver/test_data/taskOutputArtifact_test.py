@@ -34,6 +34,8 @@ def analyze_artifact(data_input: Input[Artifact], output_artifact: Output[Artifa
     with open(data_input.path, "r") as f:
         data = f.read()
     assert data == "very_bad"
+    with open(output_artifact.path, "w") as f:
+        f.write(f'done_analyzing')
 
 @dsl.pipeline
 def primary_pipeline():
