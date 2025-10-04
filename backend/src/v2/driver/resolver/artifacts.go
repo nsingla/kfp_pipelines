@@ -60,7 +60,11 @@ func resolveInputArtifact(
 		if err != nil {
 			return nil, apiv2beta1.IOType_TASK_OUTPUT_INPUT, err
 		}
-		return artifact, apiv2beta1.IOType_TASK_OUTPUT_INPUT, nil
+		ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
+		if artifact.GetType() == apiv2beta1.IOType_COLLECTED_INPUTS {
+			ioType = apiv2beta1.IOType_COLLECTED_INPUTS
+		}
+		return artifact, ioType, nil
 	default:
 		return nil, apiv2beta1.IOType_UNSPECIFIED, artifactError(fmt.Errorf("artifact spec of type %T not implemented yet", t))
 	}
@@ -278,9 +282,10 @@ func findArtifactByProducerKeyInList(
 	if len(artifactIOList) == 0 {
 		return nil, fmt.Errorf("artifact with producer key %s not found", producerKey)
 	}
-	if len(artifactIOList) > 1 {
-		// This occurs in the parallelFor case, where multiple iterations resulted in the same
-		// producer key, we do a correctness check by validating the type of all artifacts
+	// This occurs in the parallelFor case, where multiple iterations resulted in the same
+	// producer key, we do a correctness check by validating the type of all artifacts
+	isCollection := len(artifactIOList) > 1
+	if isCollection {
 		var artifacts []*apiv2beta1.Artifact
 		for _, artifactIO := range artifactIOList {
 			if artifactIO.Type != apiv2beta1.IOType_ITERATOR_OUTPUT {
@@ -294,8 +299,10 @@ func findArtifactByProducerKeyInList(
 			Artifacts:   artifacts,
 			Type:        ioType,
 			ArtifactKey: producerKey,
+			// This is unused by the caller
+			Producer: nil,
 		}
 		return newArtifactIO, nil
 	}
-	return artifactIOList[0], fmt.Errorf("artifact with producer key %s not found", producerKey)
+	return artifactIOList[0], nil
 }

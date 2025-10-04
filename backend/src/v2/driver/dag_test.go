@@ -267,7 +267,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 				ArtifactId: createArtifact.ArtifactId,
 				TaskId:     secondaryPipelineExecution.TaskID,
 				RunId:      run.GetRunId(),
-				Key:        "pipelinechannel--process-dataset-output_artifact",
+				Key:        "Output",
 				Producer:   &apiv2beta1.IOProducer{TaskName: "process-dataset", Iteration: util.Int64Pointer(int64(index))},
 				Type:       apiv2beta1.IOType_ITERATOR_OUTPUT,
 			},
@@ -346,6 +346,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.NotNil(t, analyzeArtifactListExecution)
 	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
 	require.NotNil(t, analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
+	// Secondary-pipeline output
 	require.Equal(t, 3, len(analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
 
 	// Primary Pipeline tests
