@@ -114,21 +114,13 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Nil(t, secondaryPipelineExecution.ExecutorInput.Outputs)
 	require.Equal(t, apiv2beta1.PipelineTaskDetail_RUNNING, secondaryPipelineTask.Status)
 
-	// Refresh Run
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
 	// Refresh Parent Task - The parent task should be the secondary pipeline task for "create-dataset"
-	parentTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
-	require.NoError(t, err)
+	parentTask = secondaryPipelineTask
 
-	// In this section we'll run the subtasks in the secondary pipeline, one of which is a loop of 3 iterations
+	// Now we'll run the subtasks in the secondary pipeline, one of which is a loop of 3 iterations
 
 	// Run the Downstream Task that will use the output artifact
-	createDatasetTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["create-dataset"]
-	opts := setupContainerOptions(t, testSetup, run, parentTask, createDatasetTaskSpec, pipelineSpec, nil)
-	createDataSetExecution, err := Container(context.Background(), opts, testSetup.DriverAPI)
-	require.NoError(t, err)
-	require.NotNil(t, createDataSetExecution)
+	createDataSetExecution, _ := currentRun.RunContainer("create-dataset", parentTask)
 	require.Nil(t, createDataSetExecution.ExecutorInput.Outputs)
 
 	// Mock a Launcher run by updating the task with output data
@@ -164,7 +156,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 
 	// Run the Loop Task - note that parentTask for for-loop-2 remains as secondary-pipeline
 	loopTaskSpec := pipelineSpec.Components["comp-secondary-pipeline"].GetDag().Tasks["for-loop-2"]
-	opts = setupDagOptions(t, testSetup, run, parentTask, loopTaskSpec, pipelineSpec, nil)
+	opts := setupDagOptions(t, testSetup, run, parentTask, loopTaskSpec, pipelineSpec, nil)
 	loopExecution, err := DAG(context.Background(), opts, testSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, loopExecution)
@@ -391,9 +383,9 @@ func (r *CurrentRun) RunDag(taskName string, parentTask *apiv2beta1.PipelineTask
 	r.RefreshRun()
 	err := r.ScopePath.Push(taskName)
 	require.NoError(t, err)
-	secondaryPipelineTaskSpec := r.GetLast().GetTaskSpec()
+	taskSpec := r.GetLast().GetTaskSpec()
 
-	opts := setupDagOptions(t, r.TestSetup, r.Run, parentTask, secondaryPipelineTaskSpec, r.PipelineSpec, nil)
+	opts := setupDagOptions(t, r.TestSetup, r.Run, parentTask, taskSpec, r.PipelineSpec, nil)
 	execution, err := DAG(context.Background(), opts, r.TestSetup.DriverAPI)
 	require.NoError(t, err)
 	require.NotNil(t, execution)
@@ -403,6 +395,28 @@ func (r *CurrentRun) RunDag(taskName string, parentTask *apiv2beta1.PipelineTask
 	require.NotNil(t, task)
 	require.Equal(t, execution.TaskID, task.TaskId)
 	require.Equal(t, taskName, task.GetName())
+	r.RefreshRun()
+	return execution, task
+}
+
+func (r *CurrentRun) RunContainer(taskName string, parentTask *apiv2beta1.PipelineTaskDetail) (*Execution, *apiv2beta1.PipelineTaskDetail) {
+	t := r.T
+	r.RefreshRun()
+	err := r.ScopePath.Push(taskName)
+	require.NoError(t, err)
+	taskSpec := r.GetLast().GetTaskSpec()
+
+	opts := setupContainerOptions(t, r.TestSetup, r.Run, parentTask, taskSpec, r.PipelineSpec, nil)
+	execution, err := Container(context.Background(), opts, r.TestSetup.DriverAPI)
+	require.NoError(t, err)
+	require.NotNil(t, execution)
+
+	task, err := r.TestSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
+	require.NoError(t, err)
+	require.NotNil(t, task)
+	require.Equal(t, execution.TaskID, task.TaskId)
+	require.Equal(t, taskName, task.GetName())
+	r.RefreshRun()
 	return execution, task
 }
 
