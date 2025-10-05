@@ -45,34 +45,6 @@ func LoadPipelineSpecFromYAML(path string) (*pipelinespec.PipelineSpec, error) {
 	return &spec, nil
 }
 
-func basicRuntimeConfig() *pipelinespec.PipelineJob_RuntimeConfig {
-	return &pipelinespec.PipelineJob_RuntimeConfig{
-		ParameterValues: map[string]*structpb.Value{
-			"string_input": structpb.NewStringValue("test-input1"),
-			"number_input": structpb.NewNumberValue(42.5),
-			"bool_input":   structpb.NewBoolValue(true),
-			"null_input":   structpb.NewNullValue(),
-			"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
-				structpb.NewStringValue("value1"),
-				structpb.NewNumberValue(42),
-				structpb.NewBoolValue(true),
-			}}),
-			"map_input": structpb.NewStructValue(&structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					"key1": structpb.NewStringValue("value1"),
-					"key2": structpb.NewNumberValue(42),
-					"key3": structpb.NewListValue(&structpb.ListValue{
-						Values: []*structpb.Value{
-							structpb.NewStringValue("nested1"),
-							structpb.NewStringValue("nested2"),
-						},
-					}),
-				},
-			}),
-		},
-	}
-}
-
 // MockDriverAPI provides a mock implementation of DriverAPI for testing
 type MockDriverAPI struct {
 	runs          map[string]*apiv2beta1.Run

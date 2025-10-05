@@ -124,7 +124,7 @@ func resolveInputParameter(
 				ParameterKey: "",
 				Value:        v,
 			}
-			return ioParameter, apiv2beta1.IOType_UNSPECIFIED, nil
+			return ioParameter, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, nil
 		default:
 			return nil, apiv2beta1.IOType_UNSPECIFIED, paramError(paramSpec, fmt.Errorf("param runtime value spec of type %T not implemented", t))
 		}

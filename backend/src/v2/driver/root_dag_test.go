@@ -46,28 +46,37 @@ func setupBasicRootDag(
 	return execution, err
 }
 
+func basicRuntimeConfig() *pipelinespec.PipelineJob_RuntimeConfig {
+	return &pipelinespec.PipelineJob_RuntimeConfig{
+		ParameterValues: map[string]*structpb.Value{
+			"string_input": structpb.NewStringValue("test-input1"),
+			"number_input": structpb.NewNumberValue(42.5),
+			"bool_input":   structpb.NewBoolValue(true),
+			"null_input":   structpb.NewNullValue(),
+			"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewStringValue("value1"),
+				structpb.NewNumberValue(42),
+				structpb.NewBoolValue(true),
+			}}),
+			"map_input": structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"key1": structpb.NewStringValue("value1"),
+					"key2": structpb.NewNumberValue(42),
+					"key3": structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{
+							structpb.NewStringValue("nested1"),
+							structpb.NewStringValue("nested2"),
+						},
+					}),
+				},
+			}),
+		},
+	}
+}
+
 func TestRootDagComponentInputs(t *testing.T) {
-	// Setup test environment
-	testSetup := NewTestSetup(t)
-
-	// Create a test run
-	run := testSetup.CreateTestRun(t, "test-pipeline")
-	assert.NotNil(t, run)
-
-	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/taskOutput_level_1_test.py.yaml")
-	require.NoError(t, err)
-	require.NotNil(t, pipelineSpec)
-
-	execution, err := setupBasicRootDag(testSetup, run, pipelineSpec, basicRuntimeConfig())
-	require.NoError(t, err)
-	require.NotNil(t, execution)
-
-	// Verify the task was created with correct inputs
-	task, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
-		TaskId: execution.TaskID,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, task)
+	currentRun := SetupCurrentRun(t, basicRuntimeConfig(), "test_data/taskOutputArtifact_test.py.yaml")
+	task := currentRun.RootTask
 	require.NotNil(t, task.Inputs)
 	require.NotEmpty(t, task.Inputs.Parameters)
 
