@@ -1,12 +1,10 @@
 package driver
 
 import (
-	"context"
 	"testing"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
-	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
@@ -78,18 +76,6 @@ func fetchParameter(key string, params []*apiv2beta1.PipelineTaskDetail_InputOut
 // and runtime constants. The test verifies that the inputs are correctly passed
 // to the Runtime Task.
 func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
-	// Setup test environment
-	testSetup := NewTestSetup(t)
-
-	// Create a test run
-	run := testSetup.CreateTestRun(t, "test-pipeline")
-	require.NotNil(t, run)
-
-	// Load pipeline spec
-	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/componentInput_level_1_test.py.yaml")
-	require.NoError(t, err)
-	require.NotNil(t, pipelineSpec)
-
 	// Create a root DAG execution using basic inputs
 	runtimeInputs := &pipelinespec.PipelineJob_RuntimeConfig{
 		ParameterValues: map[string]*structpb.Value{
@@ -99,31 +85,14 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 			"active_in":    structpb.NewBoolValue(false),
 		},
 	}
-	rootDagExecution, err := setupBasicRootDag(testSetup, run, pipelineSpec, runtimeInputs)
-	require.NoError(t, err)
-	require.NotNil(t, rootDagExecution)
 
-	parentTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
-		TaskId: rootDagExecution.TaskID,
-	})
-	require.NoError(t, err)
-
-	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
+	currentRun := SetupCurrentRun(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
 
 	// Run Container on the First Task
-	taskSpec := pipelineSpec.Root.GetDag().Tasks["process-inputs"]
-	opts := setupContainerOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
-	execution, err := Container(context.Background(), opts, testSetup.DriverAPI)
-	require.NoError(t, err)
-	require.NotNil(t, execution)
-	require.Nil(t, execution.ExecutorInput.Outputs)
+	processInputsExecution, processInputsTask := currentRun.RunContainer("process-inputs", currentRun.RootTask, nil)
+	require.Nil(t, processInputsExecution.ExecutorInput.Outputs)
 
 	// Fetch the task created by the Container() call
-	processInputsTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
-	require.NoError(t, err)
-	require.NotNil(t, processInputsTask)
 	params := processInputsTask.Inputs.GetParameters()
 	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("name", params).GetType())
 	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("number", params).GetType())
@@ -133,62 +102,32 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_number", params).GetType())
 	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_bool", params).GetType())
 
-	require.Equal(t, execution.TaskID, processInputsTask.TaskId)
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["threshold"].GetNumberValue(), 0.1)
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["active"].GetBoolValue(), false)
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["a_runtime_string"].GetStringValue(), "foo")
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["a_runtime_number"].GetNumberValue(), 10.0)
-	require.Equal(t, execution.ExecutorInput.Inputs.ParameterValues["a_runtime_bool"].GetBoolValue(), true)
+	require.Equal(t, processInputsExecution.TaskID, processInputsTask.TaskId)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["threshold"].GetNumberValue(), 0.1)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["active"].GetBoolValue(), false)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_string"].GetStringValue(), "foo")
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_number"].GetNumberValue(), 10.0)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_bool"].GetBoolValue(), true)
 
 	// Mock a Launcher run by updating the task with output data
-	outputArtifact := &apiv2beta1.Artifact{
-		ArtifactId: "some-artifact-id-1",
-		Name:       "output_text",
-		Type:       apiv2beta1.Artifact_Dataset,
-		Uri:        util.StringPointer("s3://some.location/output_text"),
-		Namespace:  testNamespace,
-		Metadata: map[string]*structpb.Value{
-			"display_name": structpb.NewStringValue("output_text"),
-		},
-	}
-	createArtifact, err := testSetup.DriverAPI.CreateArtifact(context.Background(), &apiv2beta1.CreateArtifactRequest{Artifact: outputArtifact})
-	require.NoError(t, err)
-	require.NotNil(t, createArtifact)
-	at, err := testSetup.DriverAPI.CreateArtifactTask(context.Background(), &apiv2beta1.CreateArtifactTaskRequest{
-		ArtifactTask: &apiv2beta1.ArtifactTask{
-			ArtifactId: createArtifact.ArtifactId,
-			TaskId:     processInputsTask.TaskId,
-			RunId:      run.GetRunId(),
-			Key:        "output_text",
-			Producer:   &apiv2beta1.IOProducer{TaskName: "process-inputs"},
-			Type:       apiv2beta1.IOType_OUTPUT,
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, at)
+	currentRun.MockLauncherArtifactCreate(
+		processInputsTask.TaskId,
+		"output_text",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"process-inputs",
+		nil,
+	)
 
-	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
-
-	// Run the Downstream Task that will use the output artifact
-	taskSpec = pipelineSpec.Root.GetDag().Tasks["analyze-inputs"]
-	opts = setupContainerOptions(t, testSetup, run, parentTask, taskSpec, pipelineSpec, nil)
-	execution, err = Container(context.Background(), opts, testSetup.DriverAPI)
-	require.NoError(t, err)
-	require.NotNil(t, execution)
-	require.Nil(t, execution.ExecutorInput.Outputs)
-
-	// Fetch the task created by the Container() call
-	analyzeTaskResp, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
-	require.NoError(t, err)
-	require.Equal(t, execution.TaskID, analyzeTaskResp.TaskId)
-	require.Equal(t, 1, len(execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
+	analyzeInputsExecution, _ := currentRun.RunContainer("analyze-inputs", currentRun.RootTask, nil)
+	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
+	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
+	require.Equal(t, 1, len(analyzeInputsExecution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
 
 	// Verify Executor Input has the correct artifact
-	artifact := execution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
+	artifact := analyzeInputsExecution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
 	require.NotNil(t, artifact.Metadata)
 	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])
 	require.Equal(t, "output_text", artifact.Metadata.GetFields()["display_name"].GetStringValue())
@@ -197,10 +136,5 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, "output_text", artifact.Name)
 }
 
-// Try with multiple upstream tasks, but one has the correct input (maybe just update the above)
-
-// TODO(HumairAK):
-// Do an output that points to a Dag (for-loop-2)
-// Collect inputs
-// Caching tests
-// Optional fields
+// TODO: Add tests for optional fields
+func TestOptionalFields(t *testing.T) {}
