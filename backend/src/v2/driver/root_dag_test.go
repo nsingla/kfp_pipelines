@@ -1,54 +1,16 @@
 package driver
 
 import (
-	"context"
 	"testing"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
-	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
-	. "github.com/kubeflow/pipelines/backend/src/v2/driver/test_utils"
-	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func setupBasicRootDag(
-	testSetup *TestSetup,
-	run *apiv2beta1.Run,
-	pipelineSpec *pipelinespec.PipelineSpec,
-	runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig,
-) (*Execution, error) {
-	opts := common.Options{
-		PipelineName:             TestPipelineName,
-		Run:                      run,
-		Component:                pipelineSpec.Root,
-		ParentTask:               nil,
-		DriverAPI:                testSetup.DriverAPI,
-		IterationIndex:           -1,
-		RuntimeConfig:            runtimeConfig,
-		Namespace:                TestNamespace,
-		Task:                     nil,
-		Container:                nil,
-		KubernetesExecutorConfig: &kubernetesplatform.KubernetesExecutorConfig{},
-		PipelineLogLevel:         "1",
-		PublishLogs:              "false",
-		CacheDisabled:            false,
-		DriverType:               "ROOT_DAG",
-		TaskName:                 "", // Empty for root driver
-		PodName:                  "system-dag-driver",
-		PodUID:                   "some-uid",
-	}
-
-	// Execute RootDAG
-	execution, err := RootDAG(context.Background(), opts, testSetup.DriverAPI)
-
-	return execution, err
-}
-
-func basicRuntimeConfig() *pipelinespec.PipelineJob_RuntimeConfig {
-	return &pipelinespec.PipelineJob_RuntimeConfig{
+func TestRootDagComponentInputs(t *testing.T) {
+	runtimeConfig := &pipelinespec.PipelineJob_RuntimeConfig{
 		ParameterValues: map[string]*structpb.Value{
 			"string_input": structpb.NewStringValue("test-input1"),
 			"number_input": structpb.NewNumberValue(42.5),
@@ -73,10 +35,8 @@ func basicRuntimeConfig() *pipelinespec.PipelineJob_RuntimeConfig {
 			}),
 		},
 	}
-}
 
-func TestRootDagComponentInputs(t *testing.T) {
-	currentRun := SetupCurrentRun(t, basicRuntimeConfig(), "test_data/taskOutputArtifact_test.py.yaml")
+	currentRun := SetupCurrentRun(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
 	task := currentRun.RootTask
 	require.NotNil(t, task.Inputs)
 	require.NotEmpty(t, task.Inputs.Parameters)

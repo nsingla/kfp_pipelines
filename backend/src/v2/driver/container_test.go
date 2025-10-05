@@ -5,64 +5,9 @@ import (
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
-	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
-	. "github.com/kubeflow/pipelines/backend/src/v2/driver/test_utils"
-	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-func setupContainerOptions(
-	t *testing.T,
-	testSetup *TestSetup,
-	run *apiv2beta1.Run,
-	parentTask *apiv2beta1.PipelineTaskDetail,
-	taskSpec *pipelinespec.PipelineTaskSpec,
-	pipelineSpec *pipelinespec.PipelineSpec,
-	KubernetesExecutorConfig *kubernetesplatform.KubernetesExecutorConfig,
-) common.Options {
-	componentSpec := pipelineSpec.Components[taskSpec.ComponentRef.Name]
-
-	ds := pipelineSpec.GetDeploymentSpec()
-	platformDeploymentSpec := &pipelinespec.PlatformDeploymentConfig{}
-
-	b, err := protojson.Marshal(ds)
-	require.NoError(t, err)
-	err = protojson.Unmarshal(b, platformDeploymentSpec)
-	require.NoError(t, err)
-	assert.NotNil(t, platformDeploymentSpec)
-
-	cs := platformDeploymentSpec.Executors[componentSpec.GetExecutorLabel()]
-	containerExecutorSpec := &pipelinespec.PipelineDeploymentConfig_ExecutorSpec{}
-	b, err = protojson.Marshal(cs)
-	require.NoError(t, err)
-	err = protojson.Unmarshal(b, containerExecutorSpec)
-	require.NoError(t, err)
-	assert.NotNil(t, containerExecutorSpec)
-
-	return common.Options{
-		PipelineName:             TestPipelineName,
-		Run:                      run,
-		Component:                componentSpec,
-		ParentTask:               parentTask,
-		DriverAPI:                testSetup.DriverAPI,
-		IterationIndex:           -1,
-		RuntimeConfig:            nil,
-		Namespace:                TestNamespace,
-		Task:                     taskSpec,
-		Container:                containerExecutorSpec.GetContainer(),
-		KubernetesExecutorConfig: KubernetesExecutorConfig,
-		PipelineLogLevel:         "1",
-		PublishLogs:              "false",
-		CacheDisabled:            false,
-		DriverType:               "CONTAINER",
-		TaskName:                 taskSpec.TaskInfo.GetName(),
-		PodName:                  "system-container-impl",
-		PodUID:                   "some-uid",
-	}
-}
 
 func fetchParameter(key string, params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
 	for _, p := range params {
