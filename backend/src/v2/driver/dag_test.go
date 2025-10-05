@@ -7,9 +7,57 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func TestRootDagComponentInputs(t *testing.T) {
+	runtimeConfig := &pipelinespec.PipelineJob_RuntimeConfig{
+		ParameterValues: map[string]*structpb.Value{
+			"string_input": structpb.NewStringValue("test-input1"),
+			"number_input": structpb.NewNumberValue(42.5),
+			"bool_input":   structpb.NewBoolValue(true),
+			"null_input":   structpb.NewNullValue(),
+			"list_input": structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{
+				structpb.NewStringValue("value1"),
+				structpb.NewNumberValue(42),
+				structpb.NewBoolValue(true),
+			}}),
+			"map_input": structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"key1": structpb.NewStringValue("value1"),
+					"key2": structpb.NewNumberValue(42),
+					"key3": structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{
+							structpb.NewStringValue("nested1"),
+							structpb.NewStringValue("nested2"),
+						},
+					}),
+				},
+			}),
+		},
+	}
+
+	tc := NewTestContext(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
+	task := tc.RootTask
+	require.NotNil(t, task.Inputs)
+	require.NotEmpty(t, task.Inputs.Parameters)
+
+	// Verify parameter values
+	paramMap := make(map[string]*structpb.Value)
+	for _, param := range task.Inputs.Parameters {
+		paramMap[param.GetParameterKey()] = param.Value
+	}
+
+	assert.Equal(t, "test-input1", paramMap["string_input"].GetStringValue())
+	assert.Equal(t, 42.5, paramMap["number_input"].GetNumberValue())
+	assert.Equal(t, true, paramMap["bool_input"].GetBoolValue())
+	assert.NotNil(t, paramMap["null_input"].GetNullValue())
+	assert.Len(t, paramMap["list_input"].GetListValue().Values, 3)
+	assert.NotNil(t, paramMap["map_input"].GetStructValue())
+	assert.Len(t, paramMap["map_input"].GetStructValue().Fields, 3)
+}
 
 func TestLoopArtifactPassing(t *testing.T) {
 	tc := NewTestContext(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
@@ -205,13 +253,11 @@ func TestArtifactIterator(t *testing.T) {
 }
 
 func TestFinalStatus(t *testing.T) {
-
 }
 
 // TODO Can't do this unless we can mock the filter API call on fingerprint and status
 // See getFingerPrintsANDID
 func TestWithCaching(t *testing.T) {
-
 }
 
 func TestParameterTaskOutput(t *testing.T) {
@@ -246,4 +292,80 @@ func TestParameterTaskOutput(t *testing.T) {
 		"analyze-artifact",
 		nil,
 	)
+}
+
+// This test creates a DAG with a single task that uses a component with inputs
+// and runtime constants. The test verifies that the inputs are correctly passed
+// to the Runtime Task.
+func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
+	// Create a root DAG execution using basic inputs
+	runtimeInputs := &pipelinespec.PipelineJob_RuntimeConfig{
+		ParameterValues: map[string]*structpb.Value{
+			"name_in":      structpb.NewStringValue("some_name"),
+			"number_in":    structpb.NewNumberValue(1.0),
+			"threshold_in": structpb.NewNumberValue(0.1),
+			"active_in":    structpb.NewBoolValue(false),
+		},
+	}
+
+	tc := NewTestContext(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
+
+	// Run Container on the First Task
+	processInputsExecution, processInputsTask := tc.RunContainer("process-inputs", tc.RootTask, nil)
+	require.Nil(t, processInputsExecution.ExecutorInput.Outputs)
+
+	// Fetch the task created by the Container() call
+	params := processInputsTask.Inputs.GetParameters()
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("name", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("number", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("active", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_COMPONENT_INPUT, fetchParameter("threshold", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_string", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_number", params).GetType())
+	require.Equal(t, apiv2beta1.IOType_RUNTIME_VALUE_INPUT, fetchParameter("a_runtime_bool", params).GetType())
+
+	require.Equal(t, processInputsExecution.TaskID, processInputsTask.TaskId)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["name"].GetStringValue(), "some_name")
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["number"].GetNumberValue(), 1.0)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["threshold"].GetNumberValue(), 0.1)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["active"].GetBoolValue(), false)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_string"].GetStringValue(), "foo")
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_number"].GetNumberValue(), 10.0)
+	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_bool"].GetBoolValue(), true)
+
+	// Mock a Launcher run by updating the task with output data
+	tc.MockLauncherArtifactCreate(
+		processInputsTask.TaskId,
+		"output_text",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"process-inputs",
+		nil,
+	)
+
+	analyzeInputsExecution, _ := tc.RunContainer("analyze-inputs", tc.RootTask, nil)
+	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
+	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
+	require.Equal(t, 1, len(analyzeInputsExecution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
+
+	// Verify Executor Input has the correct artifact
+	artifact := analyzeInputsExecution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts[0]
+	require.NotNil(t, artifact.Metadata)
+	require.NotNil(t, artifact.Metadata.GetFields()["display_name"])
+	require.Equal(t, "output_text", artifact.Metadata.GetFields()["display_name"].GetStringValue())
+	require.Equal(t, "s3://some.location/output_text", artifact.Uri)
+	require.Equal(t, apiv2beta1.Artifact_Dataset.String(), artifact.Type.GetSchemaTitle())
+	require.Equal(t, "output_text", artifact.Name)
+}
+
+// TODO: Add tests for optional fields
+func TestOptionalFields(t *testing.T) {}
+
+func fetchParameter(key string, params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
+	for _, p := range params {
+		if key == p.ParameterKey {
+			return p
+		}
+	}
+	panic("parameter not found")
 }
