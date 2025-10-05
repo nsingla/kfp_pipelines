@@ -245,10 +245,11 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 12, len(tc.Run.Tasks))
 }
 
+// TestParameterInputIterator will test parameter Input Iterator
+// and parameter collection from output of a task in a loop
 func TestParameterInputIterator(t *testing.T) {
 	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected_dynamic.py.yaml")
 	// Execute full pipeline
-
 	parentTask := tc.RootTask
 	_, secondaryPipelineTask := tc.RunDag("secondary-pipeline", parentTask)
 	parentTask = secondaryPipelineTask
@@ -283,33 +284,13 @@ func TestParameterInputIterator(t *testing.T) {
 			index64,
 		)
 
-		createFileArtifactID := tc.MockLauncherArtifactCreate(
+		tc.MockLauncherArtifactCreate(
 			createFileTask.GetTaskId(),
 			"file",
 			apiv2beta1.Artifact_Artifact,
 			apiv2beta1.IOType_OUTPUT,
 			"create-file",
 			index64,
-		)
-		// Also expect Launcher->API Server to upload the output artifact to
-		// the for-loop-1 task's outputs
-		tc.MockLauncherArtifactTaskCreate(
-			"create-file",
-			loopTask.GetTaskId(),
-			"pipelinechannel--create-file-file",
-			createFileArtifactID,
-			index64,
-			apiv2beta1.IOType_ITERATOR_OUTPUT,
-		)
-		// Also expect Launcher->API Server to upload the output artifact to
-		// to secondary-pipeline task's outputs'
-		tc.MockLauncherArtifactTaskCreate(
-			"create-file",
-			secondaryPipelineTask.GetTaskId(),
-			"pipelinechannel--create-file-file",
-			createFileArtifactID,
-			index64,
-			apiv2beta1.IOType_ITERATOR_OUTPUT,
 		)
 
 		// Run next task
@@ -318,31 +299,51 @@ func TestParameterInputIterator(t *testing.T) {
 			parentTask,
 			index64,
 		)
+		mockSingleFileTaskOutputParameterValue := &structpb.Value{
+			Kind: &structpb.Value_StringValue{
+				StringValue: fmt.Sprintf("file-%d", index),
+			},
+		}
 		tc.MockLauncherParameterCreate(
 			readSingleFileTask.GetTaskId(),
 			"Output",
-			&structpb.Value{
-				Kind: &structpb.Value_StringValue{
-					StringValue: fmt.Sprintf("file-%d", index),
-				},
-			},
-			apiv2beta1.IOType_OUTPUT,
+			mockSingleFileTaskOutputParameterValue,
+			apiv2beta1.IOType_ITERATOR_OUTPUT,
 			"read-single-file",
 			index64,
 		)
+
+		// Parameter should be also sent upstream for collection
+		tc.MockLauncherParameterCreate(
+			loopTask.GetTaskId(),
+			"pipelinechannel--read-single-file-Output",
+			mockSingleFileTaskOutputParameterValue,
+			apiv2beta1.IOType_ITERATOR_OUTPUT,
+			"read-single-file",
+			index64,
+		)
+		tc.MockLauncherParameterCreate(
+			secondaryPipelineTask.GetTaskId(),
+			"Output",
+			mockSingleFileTaskOutputParameterValue,
+			apiv2beta1.IOType_ITERATOR_OUTPUT,
+			"read-single-file",
+			index64,
+		)
+
 	}
 
 	_, ok := tc.ScopePath.Pop()
 	require.True(t, ok)
 	parentTask = secondaryPipelineTask
 
-	_, readFilesTask := tc.RunContainer("read-files", parentTask, nil)
+	_, readValuesTask := tc.RunContainer("read-values", parentTask, nil)
 	tc.MockLauncherParameterCreate(
-		readFilesTask.GetTaskId(),
+		readValuesTask.GetTaskId(),
 		"Output",
 		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "files read"}},
 		apiv2beta1.IOType_OUTPUT,
-		"read-files",
+		"read-values",
 		nil,
 	)
 
@@ -350,15 +351,26 @@ func TestParameterInputIterator(t *testing.T) {
 	require.True(t, ok)
 	parentTask = tc.RootTask
 
-	_, readFilesTask2 := tc.RunContainer("read-files", parentTask, nil)
+	_, readValuesTask2 := tc.RunContainer("read-values", parentTask, nil)
 	tc.MockLauncherParameterCreate(
-		readFilesTask2.GetTaskId(),
+		readValuesTask2.GetTaskId(),
 		"Output",
 		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "files read"}},
 		apiv2beta1.IOType_OUTPUT,
-		"read-files",
+		"read-values",
 		nil,
 	)
+
+	task, err := tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineTask.GetTaskId()})
+	require.NoError(t, err)
+	require.NotNil(t, task.Outputs)
+	require.Equal(t, 3, len(task.Outputs.Parameters))
+	var collectOutputs []string
+	for _, params := range task.Outputs.Parameters {
+		collectOutputs = append(collectOutputs, params.GetValue().GetStringValue())
+		require.Equal(t, apiv2beta1.IOType_ITERATOR_OUTPUT, params.GetType())
+	}
+	require.Equal(t, []string{"file-0", "file-1", "file-2"}, collectOutputs)
 
 }
 

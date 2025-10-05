@@ -59,8 +59,6 @@ components:
           inputs:
             artifacts:
               analyze_artifact_input:
-                # This will search in taskMap for `process-dataset-dag-id-idx`
-                # And search for the output with key `output_artifact`
                 taskOutputArtifact:
                   outputArtifactKey: output_artifact
                   producerTask: process-dataset
@@ -131,13 +129,6 @@ components:
             artifacts:
               artifact_list_input:
                 taskOutputArtifact:
-                  # This will search for for-loop-2-dag-id in tasks Map
-                  # and then search for the outputs.ArtifactIO
-                  # that maps to the key below
-                  # In this case the output should be list of type Iterator_OUTPUT
-                  # This means when each for-loop-2's process-task finished
-                  # it should have created artifactTask links to the output
-                  # for for-loop-2, with the key being outputArtifactKey
                   outputArtifactKey: pipelinechannel--process-dataset-output_artifact
                   producerTask: for-loop-2
           taskInfo:
@@ -353,9 +344,6 @@ root:
         inputs:
           artifacts:
             artifact_list_input:
-              # For this case since it's not a pipeline channel, we search
-              # for the producer task, and in its outputs section we search
-              # for the parameter_key/artifact_key
               taskOutputArtifact:
                 outputArtifactKey: Output
                 producerTask: secondary-pipeline

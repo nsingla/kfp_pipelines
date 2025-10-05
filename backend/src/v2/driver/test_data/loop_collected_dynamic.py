@@ -25,17 +25,13 @@ def create_file(file: Output[Artifact], content: str):
         f.write(content)
 
 @component()
-def read_files(files: List[Artifact]) -> str:
+def read_values(values: List[str]) -> str:
     collect = []
-    for f in files:
-        print(f'Reading artifact {f.name} file: {f.path}')
-        with open(f.path, 'r') as f:
-            data = f.read()
-            print(data)
-            collect.append(data)
+    for v in values:
+        collect.append(v)
     print(collect)
-    assert collect == ['s1', 's2', 's3']
-    return 'files read'
+    assert collect == ['1', '2', '3']
+    return 'values read'
 
 
 @component()
@@ -45,23 +41,23 @@ def read_single_file(file: Artifact, expected: str) -> str:
         data = f.read()
         print(data)
         assert expected == data
-    return file.uri
+    return data
 
 @pipeline()
-def secondary_pipeline(model_ids: str = '',) -> List[Artifact]:
+def secondary_pipeline(model_ids: str = '',) -> List[str]:
     ids_split_op = split_ids(model_ids=model_ids)
     with ParallelFor(ids_split_op.output) as model_id:
         create_file_op = create_file(content=model_id)
-        read_single_file(file=create_file_op.outputs['file'], expected=model_id)
-    read_files(files=Collected(create_file_op.outputs['file']))
-    return Collected(create_file_op.outputs['file'])
+        read_single_file_task = read_single_file(file=create_file_op.outputs['file'], expected=model_id)
+    read_values(values=Collected(read_single_file_task.output))
+    return Collected(read_single_file_task.output)
 
 
 @pipeline()
 def primary_pipeline():
     model_ids = 's1,s2,s3'
     dag = secondary_pipeline(model_ids=model_ids)
-    read_files(files=dag.output)
+    read_values(values=dag.output)
 
 if __name__ == '__main__':
     from kfp import compiler

@@ -16,11 +16,11 @@ components:
   comp-for-loop-1:
     dag:
       outputs:
-        artifacts:
-          pipelinechannel--create-file-file:
-            artifactSelectors:
-            - outputArtifactKey: file
-              producerSubtask: create-file
+        parameters:
+          pipelinechannel--read-single-file-Output:
+            valueFromParameter:
+              outputParameterKey: Output
+              producerSubtask: read-single-file
       tasks:
         create-file:
           cachingOptions: {}
@@ -56,38 +56,9 @@ components:
         pipelinechannel--split-ids-Output-loop-item:
           parameterType: STRING
     outputDefinitions:
-      artifacts:
-        pipelinechannel--create-file-file:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-          isArtifactList: true
-  comp-read-files:
-    executorLabel: exec-read-files
-    inputDefinitions:
-      artifacts:
-        files:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-          isArtifactList: true
-    outputDefinitions:
       parameters:
-        Output:
-          parameterType: STRING
-  comp-read-files-2:
-    executorLabel: exec-read-files-2
-    inputDefinitions:
-      artifacts:
-        files:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-          isArtifactList: true
-    outputDefinitions:
-      parameters:
-        Output:
-          parameterType: STRING
+        pipelinechannel--read-single-file-Output:
+          parameterType: LIST
   comp-read-single-file:
     executorLabel: exec-read-single-file
     inputDefinitions:
@@ -103,13 +74,33 @@ components:
       parameters:
         Output:
           parameterType: STRING
+  comp-read-values:
+    executorLabel: exec-read-values
+    inputDefinitions:
+      parameters:
+        values:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-read-values-2:
+    executorLabel: exec-read-values-2
+    inputDefinitions:
+      parameters:
+        values:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
   comp-secondary-pipeline:
     dag:
       outputs:
-        artifacts:
+        parameters:
           Output:
-            artifactSelectors:
-            - outputArtifactKey: pipelinechannel--create-file-file
+            valueFromParameter:
+              outputParameterKey: pipelinechannel--read-single-file-Output
               producerSubtask: for-loop-1
       tasks:
         for-loop-1:
@@ -129,20 +120,20 @@ components:
               inputParameter: pipelinechannel--split-ids-Output
           taskInfo:
             name: for-loop-1
-        read-files:
+        read-values:
           cachingOptions: {}
           componentRef:
-            name: comp-read-files
+            name: comp-read-values
           dependentTasks:
           - for-loop-1
           inputs:
-            artifacts:
-              files:
-                taskOutputArtifact:
-                  outputArtifactKey: pipelinechannel--create-file-file
+            parameters:
+              values:
+                taskOutputParameter:
+                  outputParameterKey: pipelinechannel--read-single-file-Output
                   producerTask: for-loop-1
           taskInfo:
-            name: read-files
+            name: read-values
         split-ids:
           cachingOptions: {}
           componentRef:
@@ -160,12 +151,9 @@ components:
           isOptional: true
           parameterType: STRING
     outputDefinitions:
-      artifacts:
+      parameters:
         Output:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-          isArtifactList: true
+          parameterType: LIST
   comp-split-ids:
     executorLabel: exec-split-ids
     inputDefinitions:
@@ -208,70 +196,6 @@ deploymentSpec:
           \ file with content: {content}')\n    with open(file.path, 'w') as f:\n\
           \        f.write(content)\n\n"
         image: python:3.9
-    exec-read-files:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - read_files
-        command:
-        - sh
-        - -c
-        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
-          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
-          $0\" \"$@\"\n"
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef read_files(files: List[Artifact]) -> str:\n    collect = []\n\
-          \    for f in files:\n        print(f'Reading artifact {f.name} file: {f.path}')\n\
-          \        with open(f.path, 'r') as f:\n            data = f.read()\n   \
-          \         print(data)\n            collect.append(data)\n    print(collect)\n\
-          \    assert collect == ['s1', 's2', 's3']\n    return 'files read'\n\n"
-        image: python:3.9
-    exec-read-files-2:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - read_files
-        command:
-        - sh
-        - -c
-        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
-          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
-          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
-          $0\" \"$@\"\n"
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef read_files(files: List[Artifact]) -> str:\n    collect = []\n\
-          \    for f in files:\n        print(f'Reading artifact {f.name} file: {f.path}')\n\
-          \        with open(f.path, 'r') as f:\n            data = f.read()\n   \
-          \         print(data)\n            collect.append(data)\n    print(collect)\n\
-          \    assert collect == ['s1', 's2', 's3']\n    return 'files read'\n\n"
-        image: python:3.9
     exec-read-single-file:
       container:
         args:
@@ -301,7 +225,67 @@ deploymentSpec:
           \ *\n\ndef read_single_file(file: Artifact, expected: str) -> str:\n   \
           \ print(f'Reading file: {file.path}')\n    with open(file.path, 'r') as\
           \ f:\n        data = f.read()\n        print(data)\n        assert expected\
-          \ == data\n    return file.uri\n\n"
+          \ == data\n    return data\n\n"
+        image: python:3.9
+    exec-read-values:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - read_values
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef read_values(values: List[str]) -> str:\n    collect = []\n  \
+          \  for v in values:\n        collect.append(v)\n    print(collect)\n   \
+          \ assert collect == ['1', '2', '3']\n    return 'values read'\n\n"
+        image: python:3.9
+    exec-read-values-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - read_values
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef read_values(values: List[str]) -> str:\n    collect = []\n  \
+          \  for v in values:\n        collect.append(v)\n    print(collect)\n   \
+          \ assert collect == ['1', '2', '3']\n    return 'values read'\n\n"
         image: python:3.9
     exec-split-ids:
       container:
@@ -337,20 +321,20 @@ pipelineInfo:
 root:
   dag:
     tasks:
-      read-files:
+      read-values:
         cachingOptions: {}
         componentRef:
-          name: comp-read-files-2
+          name: comp-read-values-2
         dependentTasks:
         - secondary-pipeline
         inputs:
-          artifacts:
-            files:
-              taskOutputArtifact:
-                outputArtifactKey: Output
+          parameters:
+            values:
+              taskOutputParameter:
+                outputParameterKey: Output
                 producerTask: secondary-pipeline
         taskInfo:
-          name: read-files
+          name: read-values
       secondary-pipeline:
         cachingOptions: {}
         componentRef:

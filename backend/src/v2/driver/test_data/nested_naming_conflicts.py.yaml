@@ -14,7 +14,7 @@ components:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
   comp-a-2:
-    executorLabel: exec-a-2-2
+    executorLabel: exec-a-3
     inputDefinitions:
       parameters:
         situation:
@@ -26,7 +26,7 @@ components:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
   comp-a-2-2:
-    executorLabel: exec-a-2-2
+    executorLabel: exec-a-2
     inputDefinitions:
       parameters:
         situation:
@@ -252,7 +252,7 @@ deploymentSpec:
           \ *\n\ndef a(situation: str, output_dataset: Output[Dataset]):\n    with\
           \ open(output_dataset.path, \"w\") as f:\n        f.write(situation)\n\n"
         image: python:3.9
-    exec-a-2-2:
+    exec-a-3:
       container:
         args:
         - --executor_input
