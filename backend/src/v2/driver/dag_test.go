@@ -388,10 +388,7 @@ func TestNestedDag(t *testing.T) {
 		"a",
 		nil)
 
-	_, pipelineATask := tc.RunDag("pipeline_a", parentTask)
-	parentTask = pipelineATask
-
-	_, pipelineBTask := tc.RunDag("pipeline_b", parentTask)
+	_, pipelineBTask := tc.RunDag("pipeline-b", parentTask)
 	parentTask = pipelineBTask
 
 	_, nestedATask := tc.RunContainer("a", parentTask, nil)
@@ -412,7 +409,7 @@ func TestNestedDag(t *testing.T) {
 		"b",
 		nil)
 
-	_, pipelineCTask := tc.RunDag("pipeline_c", parentTask)
+	_, pipelineCTask := tc.RunDag("pipeline-c", parentTask)
 	parentTask = pipelineCTask
 
 	_, nestedNestedATask := tc.RunContainer("a", parentTask, nil)
@@ -434,7 +431,7 @@ func TestNestedDag(t *testing.T) {
 		nil)
 
 	_, cTask := tc.RunContainer("c", parentTask, nil)
-	tc.MockLauncherArtifactCreate(
+	cTaskArtifactID := tc.MockLauncherArtifactCreate(
 		cTask.GetTaskId(),
 		"output_artifact_c",
 		apiv2beta1.Artifact_Artifact,
@@ -442,18 +439,42 @@ func TestNestedDag(t *testing.T) {
 		"c",
 		nil)
 
+	// Dag output for pipeline_b
+	tc.MockLauncherArtifactTaskCreate(
+		cTask.GetName(),
+		pipelineBTask.GetTaskId(),
+		"Output",
+		cTaskArtifactID,
+		nil,
+		apiv2beta1.IOType_OUTPUT,
+	)
+
 	_, ok := tc.ScopePath.Pop()
 	require.True(t, ok)
 	parentTask = pipelineBTask
 
 	_, ok = tc.ScopePath.Pop()
 	require.True(t, ok)
-	parentTask = pipelineATask
-
-	_, ok = tc.ScopePath.Pop()
-	require.True(t, ok)
 	parentTask = tc.RootTask
 
+	_, _ = tc.RunContainer("verify", parentTask, nil)
+
+	var err error
+
+	// Confirm that the artifact passed to "verify" task came from task_c
+	pipelineBTask, err = tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: pipelineBTask.GetTaskId()})
+	require.NoError(t, err)
+	require.NotNil(t, pipelineBTask.Outputs)
+	require.Equal(t, 1, len(pipelineBTask.Outputs.Artifacts))
+	require.Equal(t, cTask.GetTaskId(), pipelineBTask.Outputs.Artifacts[0].GetArtifacts()[0].GetMetadata()["task_id"].GetStringValue())
+
+	// Confirm that the artifact passed to cTask came from the nestedNestedBtask
+	// I.e the b() task that ran in pipeline-c and not in pipeline-b
+	cTask, err = tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: cTask.GetTaskId()})
+	require.NoError(t, err)
+	require.NotNil(t, cTask.Outputs)
+	require.Equal(t, 1, len(cTask.Outputs.Artifacts))
+	require.Equal(t, nestedNestedBTask.GetTaskId(), cTask.Inputs.Artifacts[0].GetArtifacts()[0].GetMetadata()["task_id"].GetStringValue())
 }
 
 func TestArtifactIterator(t *testing.T) {

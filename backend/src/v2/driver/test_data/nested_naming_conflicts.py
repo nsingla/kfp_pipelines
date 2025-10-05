@@ -56,19 +56,20 @@ def pipeline_c(input_dataset_a: Input[Dataset], input_dataset_b: Input[Dataset])
 
 
 @pipeline
-def pipeline_b(input_dataset: Input[Dataset]):
+def pipeline_b(input_dataset: Input[Dataset]) -> Artifact:
     a_task = a(situation="raining")
     b_task = b(input_dataset=input_dataset)
-    pipeline_c(
+    pipeline_c_op = pipeline_c(
         input_dataset_a=a_task.outputs["output_dataset"],
         input_dataset_b=b_task.outputs["output_artifact_b"],
     )
+    return pipeline_c_op.output
 
 @pipeline
 def pipeline_a():
     a_task = a(situation="sunny")
     nested_pipeline_op = pipeline_b(input_dataset=a_task.outputs["output_dataset"])
-
+    verify(verify_input=nested_pipeline_op.output)
 if __name__ == '__main__':
     from kfp import compiler
 

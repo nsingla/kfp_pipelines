@@ -14,7 +14,7 @@ components:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
   comp-a-2:
-    executorLabel: exec-a-2-2
+    executorLabel: exec-a-3
     inputDefinitions:
       parameters:
         situation:
@@ -25,8 +25,8 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
-  comp-a-3:
-    executorLabel: exec-a-2-2
+  comp-a-2-2:
+    executorLabel: exec-a-2
     inputDefinitions:
       parameters:
         situation:
@@ -81,11 +81,17 @@ components:
             schemaVersion: 0.0.1
   comp-pipeline-b:
     dag:
+      outputs:
+        artifacts:
+          Output:
+            artifactSelectors:
+            - outputArtifactKey: Output
+              producerSubtask: pipeline-c
       tasks:
         a:
           cachingOptions: {}
           componentRef:
-            name: comp-a-3
+            name: comp-a-2
           inputs:
             parameters:
               situation:
@@ -128,6 +134,12 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        Output:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
   comp-pipeline-c:
     dag:
       outputs:
@@ -140,7 +152,7 @@ components:
         a:
           cachingOptions: {}
           componentRef:
-            name: comp-a-2
+            name: comp-a-2-2
           inputs:
             parameters:
               situation:
@@ -189,6 +201,14 @@ components:
     outputDefinitions:
       artifacts:
         Output:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-verify:
+    executorLabel: exec-verify
+    inputDefinitions:
+      artifacts:
+        verify_input:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
@@ -252,7 +272,7 @@ deploymentSpec:
           \ *\n\ndef a(situation: str, output_dataset: Output[Dataset]):\n    with\
           \ open(output_dataset.path, \"w\") as f:\n        f.write(situation)\n\n"
         image: python:3.9
-    exec-a-2-2:
+    exec-a-3:
       container:
         args:
         - --executor_input
@@ -378,6 +398,36 @@ deploymentSpec:
           \  assert data == \"very_bad\"\n    with open(output_artifact_c.path, \"\
           w\") as f:\n        f.write(f'done_analyzing')\n\n"
         image: python:3.9
+    exec-verify:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - verify
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.2'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef verify(verify_input: Input[Artifact]):\n    with open(verify_input.path,\
+          \ \"r\") as f:\n        data = f.read()\n    assert data == \"done_analyzing\"\
+          \n\n"
+        image: python:3.9
 pipelineInfo:
   name: pipeline-a
 root:
@@ -408,5 +458,19 @@ root:
                 producerTask: a
         taskInfo:
           name: pipeline-b
+      verify:
+        cachingOptions: {}
+        componentRef:
+          name: comp-verify
+        dependentTasks:
+        - pipeline-b
+        inputs:
+          artifacts:
+            verify_input:
+              taskOutputArtifact:
+                outputArtifactKey: Output
+                producerTask: pipeline-b
+        taskInfo:
+          name: verify
 schemaVersion: 2.1.0
 sdkVersion: kfp-2.14.2
