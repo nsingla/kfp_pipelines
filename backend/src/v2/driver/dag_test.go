@@ -12,12 +12,11 @@ import (
 )
 
 func TestLoopArtifactPassing(t *testing.T) {
-	currentRun := SetupCurrentRun(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
-	parentTask := currentRun.RootTask
-	testSetup := currentRun.TestSetup
+	tc := NewTestContext(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
+	parentTask := tc.RootTask
 
 	// Run Dag on the First Task
-	secondaryPipelineExecution, secondaryPipelineTask := currentRun.RunDag("secondary-pipeline", parentTask)
+	secondaryPipelineExecution, secondaryPipelineTask := tc.RunDag("secondary-pipeline", parentTask)
 	require.Nil(t, secondaryPipelineExecution.ExecutorInput.Outputs)
 	require.Equal(t, apiv2beta1.PipelineTaskDetail_RUNNING, secondaryPipelineTask.Status)
 
@@ -27,11 +26,11 @@ func TestLoopArtifactPassing(t *testing.T) {
 	// Now we'll run the subtasks in the secondary pipeline, one of which is a loop of 3 iterations
 
 	// Run the Downstream Task that will use the output artifact
-	createDataSetExecution, _ := currentRun.RunContainer("create-dataset", parentTask, nil)
+	createDataSetExecution, _ := tc.RunContainer("create-dataset", parentTask, nil)
 	require.Nil(t, createDataSetExecution.ExecutorInput.Outputs)
 
 	// Mock a Launcher run by updating the task with output data
-	createDataSetOutputArtifactID := currentRun.MockLauncherArtifactCreate(
+	createDataSetOutputArtifactID := tc.MockLauncherArtifactCreate(
 		createDataSetExecution.TaskID,
 		"output_dataset",
 		apiv2beta1.Artifact_Dataset,
@@ -41,7 +40,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	)
 
 	// Run the Loop Task - note that parentTask for for-loop-2 remains as secondary-pipeline
-	loopExecution, loopTask := currentRun.RunDag("for-loop-2", parentTask)
+	loopExecution, loopTask := tc.RunDag("for-loop-2", parentTask)
 	require.Nil(t, secondaryPipelineExecution.ExecutorInput.Outputs)
 	require.NotZero(t, len(loopTask.Inputs.Parameters))
 	// Expect loop task to have resolved its input parameter
@@ -56,7 +55,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	for index, paramID := range []string{"1", "2", "3"} {
 
 		// Run the "process-dataset" Container Task with iteration index
-		processExecution, _ := currentRun.RunContainer("process-dataset", parentTask, util.Int64Pointer(int64(index)))
+		processExecution, _ := tc.RunContainer("process-dataset", parentTask, util.Int64Pointer(int64(index)))
 		require.Nil(t, processExecution.ExecutorInput.Outputs)
 		require.NotNil(t, processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"])
 		require.Equal(t, 1, len(processExecution.ExecutorInput.Inputs.Artifacts["input_dataset"].GetArtifacts()))
@@ -65,7 +64,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.Equal(t, processExecution.ExecutorInput.Inputs.ParameterValues["model_id_in"].GetStringValue(), paramID)
 
 		// Mock the Launcher run
-		processDataSetArtifactID := currentRun.MockLauncherArtifactCreate(
+		processDataSetArtifactID := tc.MockLauncherArtifactCreate(
 			processExecution.TaskID,
 			"output_artifact",
 			apiv2beta1.Artifact_Artifact,
@@ -83,7 +82,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		//            artifactSelectors:
 		//            - outputArtifactKey: output_artifact
 		//              producerSubtask: process-dataset
-		currentRun.MockLauncherArtifactTaskCreate(
+		tc.MockLauncherArtifactTaskCreate(
 			"process-dataset",
 			loopExecution.TaskID,
 			"pipelinechannel--process-dataset-output_artifact",
@@ -91,7 +90,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 			util.Int64Pointer(int64(index)),
 			apiv2beta1.IOType_ITERATOR_OUTPUT,
 		)
-		loopTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+		loopTask, err := tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
 		require.NoError(t, err)
 		require.NotNil(t, loopTask.Outputs)
 		require.Equal(t, len(loopTask.Outputs.Artifacts), index+1)
@@ -106,7 +105,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		//            artifactSelectors:
 		//            - outputArtifactKey: pipelinechannel--process-dataset-output_artifact
 		//              producerSubtask: for-loop-2
-		currentRun.MockLauncherArtifactTaskCreate(
+		tc.MockLauncherArtifactTaskCreate(
 			"process-dataset",
 			secondaryPipelineExecution.TaskID,
 			"Output",
@@ -114,13 +113,13 @@ func TestLoopArtifactPassing(t *testing.T) {
 			util.Int64Pointer(int64(index)),
 			apiv2beta1.IOType_ITERATOR_OUTPUT,
 		)
-		secondaryPipelineTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
+		secondaryPipelineTask, err = tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
 		require.NoError(t, err)
 		require.NotNil(t, secondaryPipelineTask.Outputs)
 		require.Equal(t, len(secondaryPipelineTask.Outputs.Artifacts), index+1)
 
 		// Run next iteration component
-		analyzeExecution, _ := currentRun.RunContainer("analyze-artifact", parentTask, util.Int64Pointer(int64(index)))
+		analyzeExecution, _ := tc.RunContainer("analyze-artifact", parentTask, util.Int64Pointer(int64(index)))
 		require.Nil(t, createDataSetExecution.ExecutorInput.Outputs)
 		require.Nil(t, analyzeExecution.ExecutorInput.Outputs)
 		require.NotNil(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"])
@@ -128,7 +127,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		require.Equal(t, analyzeExecution.ExecutorInput.Inputs.Artifacts["analyze_artifact_input"].GetArtifacts()[0].ArtifactId, processDataSetArtifactID)
 
 		// Mock the Launcher run
-		_ = currentRun.MockLauncherArtifactCreate(
+		_ = tc.MockLauncherArtifactCreate(
 			processExecution.TaskID,
 			"analyze_output_artifact",
 			apiv2beta1.Artifact_Artifact,
@@ -138,7 +137,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 		)
 	}
 
-	tasks, err := testSetup.DriverAPI.ListTasks(context.Background(), &apiv2beta1.ListTasksRequest{
+	tasks, err := tc.DriverAPI.ListTasks(context.Background(), &apiv2beta1.ListTasksRequest{
 		ParentFilter: &apiv2beta1.ListTasksRequest_ParentId{ParentId: loopExecution.TaskID},
 	})
 	require.NoError(t, err)
@@ -147,7 +146,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 6, len(tasks.Tasks))
 
 	// Expect the 3 artifacts from process-task to have been collected by the for-loop-2 task
-	forLoopTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+	forLoopTask, err := tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
 	require.NoError(t, err)
 	require.Equal(t, 3, len(forLoopTask.Outputs.Artifacts))
 
@@ -155,10 +154,10 @@ func TestLoopArtifactPassing(t *testing.T) {
 
 	// Move up a parent
 	parentTask = secondaryPipelineTask
-	_, ok := currentRun.ScopePath.Pop()
+	_, ok := tc.ScopePath.Pop()
 	require.True(t, ok)
 
-	analyzeArtifactListExecution, _ := currentRun.RunContainer("analyze-artifact-list", parentTask, nil)
+	analyzeArtifactListExecution, _ := tc.RunContainer("analyze-artifact-list", parentTask, nil)
 	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
 	require.NotNil(t, analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
 	require.Equal(t, 3, len(analyzeArtifactListExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
@@ -166,25 +165,25 @@ func TestLoopArtifactPassing(t *testing.T) {
 	// Primary Pipeline tests
 
 	// Expect the 3 artifacts from process-task to have been collected by the secondary-pipeline task
-	secondaryPipelineTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
+	secondaryPipelineTask, err = tc.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: secondaryPipelineExecution.TaskID})
 	require.NoError(t, err)
 	require.Equal(t, 3, len(secondaryPipelineTask.Outputs.Artifacts))
 
 	// Move up a parent
-	parentTask = currentRun.RootTask
-	_, ok = currentRun.ScopePath.Pop()
+	parentTask = tc.RootTask
+	_, ok = tc.ScopePath.Pop()
 	require.True(t, ok)
 
 	// Not to be confused with the "analyze-artifact-list" task in secondary pipeline,
 	// this is the "analyze-artifact-list" task in the primary pipeline
-	analyzeArtifactListOuterExecution, _ := currentRun.RunContainer("analyze-artifact-list", parentTask, nil)
+	analyzeArtifactListOuterExecution, _ := tc.RunContainer("analyze-artifact-list", parentTask, nil)
 	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
 	require.Nil(t, analyzeArtifactListOuterExecution.ExecutorInput.Outputs)
 	require.NotNil(t, analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"])
 	require.Equal(t, 3, len(analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
 
 	// Refresh Run so it has the new tasks
-	currentRun.RefreshRun()
+	tc.RefreshRun()
 
 	// primary_pipeline()		 x 1  (root)
 	// secondary_pipeline()      x 1  (dag)
@@ -194,7 +193,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	//	   analyze_artifact()    x 3  (runtime)
 	//   analyze_artifact_list() x 1  (runtime)
 	// analyze_artifact_list()   x 1  (runtime)
-	require.Equal(t, 12, len(currentRun.Run.Tasks))
+	require.Equal(t, 12, len(tc.Run.Tasks))
 }
 
 func TestParameterInputIterator(t *testing.T) {
@@ -216,12 +215,12 @@ func TestWithCaching(t *testing.T) {
 }
 
 func TestParameterTaskOutput(t *testing.T) {
-	currentRun := SetupCurrentRun(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
-	parentTask := currentRun.RootTask
+	tc := NewTestContext(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
+	parentTask := tc.RootTask
 
 	// Run Dag on the First Task
-	cdExecution, _ := currentRun.RunContainer("create-dataset", parentTask, nil)
-	currentRun.MockLauncherParameterCreate(
+	cdExecution, _ := tc.RunContainer("create-dataset", parentTask, nil)
+	tc.MockLauncherParameterCreate(
 		cdExecution.TaskID,
 		"output_parameter_path",
 		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "output_parameter_value"}},
@@ -229,8 +228,8 @@ func TestParameterTaskOutput(t *testing.T) {
 		"create-dataset",
 		nil,
 	)
-	pdExecution, _ := currentRun.RunContainer("process-dataset", parentTask, nil)
-	currentRun.MockLauncherParameterCreate(
+	pdExecution, _ := tc.RunContainer("process-dataset", parentTask, nil)
+	tc.MockLauncherParameterCreate(
 		pdExecution.TaskID,
 		"output_int",
 		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "output_int_value"}},
@@ -238,5 +237,5 @@ func TestParameterTaskOutput(t *testing.T) {
 		"process-dataset",
 		nil,
 	)
-	_, _ = currentRun.RunContainer("analyze-artifact", parentTask, nil)
+	_, _ = tc.RunContainer("analyze-artifact", parentTask, nil)
 }

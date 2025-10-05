@@ -36,8 +36,8 @@ func TestRootDagComponentInputs(t *testing.T) {
 		},
 	}
 
-	currentRun := SetupCurrentRun(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
-	task := currentRun.RootTask
+	tc := NewTestContext(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
+	task := tc.RootTask
 	require.NotNil(t, task.Inputs)
 	require.NotEmpty(t, task.Inputs.Parameters)
 

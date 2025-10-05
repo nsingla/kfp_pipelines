@@ -32,10 +32,10 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 		},
 	}
 
-	currentRun := SetupCurrentRun(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
+	tc := NewTestContext(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
 
 	// Run Container on the First Task
-	processInputsExecution, processInputsTask := currentRun.RunContainer("process-inputs", currentRun.RootTask, nil)
+	processInputsExecution, processInputsTask := tc.RunContainer("process-inputs", tc.RootTask, nil)
 	require.Nil(t, processInputsExecution.ExecutorInput.Outputs)
 
 	// Fetch the task created by the Container() call
@@ -58,7 +58,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, processInputsExecution.ExecutorInput.Inputs.ParameterValues["a_runtime_bool"].GetBoolValue(), true)
 
 	// Mock a Launcher run by updating the task with output data
-	currentRun.MockLauncherArtifactCreate(
+	tc.MockLauncherArtifactCreate(
 		processInputsTask.TaskId,
 		"output_text",
 		apiv2beta1.Artifact_Dataset,
@@ -67,7 +67,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 		nil,
 	)
 
-	analyzeInputsExecution, _ := currentRun.RunContainer("analyze-inputs", currentRun.RootTask, nil)
+	analyzeInputsExecution, _ := tc.RunContainer("analyze-inputs", tc.RootTask, nil)
 	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
 	require.Nil(t, analyzeInputsExecution.ExecutorInput.Outputs)
 	require.Equal(t, 1, len(analyzeInputsExecution.ExecutorInput.Inputs.Artifacts["input_text"].Artifacts))
