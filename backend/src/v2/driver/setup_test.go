@@ -656,6 +656,11 @@ func (tc *TestContext) RefreshRun() {
 	tc.Run = run
 }
 
+func (tc *TestContext) ExitDag() {
+	_, ok := tc.ScopePath.Pop()
+	require.True(tc.T, ok)
+}
+
 func (tc *TestContext) MockLauncherParameterCreate(
 	TaskId string,
 	parameterKey string,

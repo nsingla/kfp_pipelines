@@ -203,8 +203,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 
 	// Move up a parent
 	parentTask = secondaryPipelineTask
-	_, ok := tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 
 	analyzeArtifactListExecution, _ := tc.RunContainer("analyze-artifact-list", parentTask, nil)
 	require.Nil(t, analyzeArtifactListExecution.ExecutorInput.Outputs)
@@ -220,8 +219,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 
 	// Move up a parent
 	parentTask = tc.RootTask
-	_, ok = tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 
 	// Not to be confused with the "analyze-artifact-list" task in secondary pipeline,
 	// this is the "analyze-artifact-list" task in the primary pipeline
@@ -333,8 +331,7 @@ func TestParameterInputIterator(t *testing.T) {
 
 	}
 
-	_, ok := tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 	parentTask = secondaryPipelineTask
 
 	_, readValuesTask := tc.RunContainer("read-values", parentTask, nil)
@@ -347,8 +344,7 @@ func TestParameterInputIterator(t *testing.T) {
 		nil,
 	)
 
-	_, ok = tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 	parentTask = tc.RootTask
 
 	_, readValuesTask2 := tc.RunContainer("read-values", parentTask, nil)
@@ -371,7 +367,6 @@ func TestParameterInputIterator(t *testing.T) {
 		require.Equal(t, apiv2beta1.IOType_ITERATOR_OUTPUT, params.GetType())
 	}
 	require.Equal(t, []string{"file-0", "file-1", "file-2"}, collectOutputs)
-
 }
 
 func TestNestedDag(t *testing.T) {
@@ -448,12 +443,10 @@ func TestNestedDag(t *testing.T) {
 		apiv2beta1.IOType_OUTPUT,
 	)
 
-	_, ok := tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 	parentTask = pipelineBTask
 
-	_, ok = tc.ScopePath.Pop()
-	require.True(t, ok)
+	tc.ExitDag()
 	parentTask = tc.RootTask
 
 	_, _ = tc.RunContainer("verify", parentTask, nil)
@@ -540,11 +533,30 @@ func TestOneOf(t *testing.T) {
 	)
 
 	// Run ConditionBranch
-	_, _ = tc.RunDag("condition-branches-1", parentTask)
+	_, conditionBranch1Task := tc.RunDag("condition-branches-1", parentTask)
+	parentTask = conditionBranch1Task
 
-	// Run Condition and confirm condition task is created
-	// Argo controls whether a ContainerDag will run, but we can
-	// evaluate if the condition is false or true
+	// Expect this condition to not be met
+	condition2Execution, _ := tc.RunDag("condition-2", conditionBranch1Task)
+	require.NotNil(t, condition2Execution.Condition)
+	require.False(t, *condition2Execution.Condition)
+
+	tc.ExitDag()
+
+	// Expect this condition to pass since output of
+	// create-dataset == "second"
+	condition3Execution, _ := tc.RunDag("condition-3", conditionBranch1Task)
+	require.NotNil(t, condition3Execution.Condition)
+	require.True(t, *condition3Execution.Condition)
+
+	tc.ExitDag()
+
+	// Expect this condition to not be met
+	condition4Execution, _ := tc.RunDag("condition-4", conditionBranch1Task)
+	require.NotNil(t, condition4Execution.Condition)
+	require.False(t, *condition4Execution.Condition)
+
+	tc.ExitDag()
 }
 
 // TODO: Probably covered by oneOF
