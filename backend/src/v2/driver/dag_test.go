@@ -376,7 +376,6 @@ func TestParameterInputIterator(t *testing.T) {
 
 func TestNestedDag(t *testing.T) {
 	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/nested_naming_conflicts.py.yaml")
-	// Execute full pipeline
 	parentTask := tc.RootTask
 
 	_, aTask := tc.RunContainer("a", parentTask, nil)
@@ -477,21 +476,6 @@ func TestNestedDag(t *testing.T) {
 	require.Equal(t, nestedNestedBTask.GetTaskId(), cTask.Inputs.Artifacts[0].GetArtifacts()[0].GetMetadata()["task_id"].GetStringValue())
 }
 
-func TestArtifactIterator(t *testing.T) {
-
-}
-
-func TestFinalStatus(t *testing.T) {
-}
-
-// TODO: Add tests for optional fields
-func TestOptionalFields(t *testing.T) {}
-
-// TODO Can't do this unless we can mock the filter API call on fingerprint and status
-// See getFingerPrintsANDID
-func TestWithCaching(t *testing.T) {
-}
-
 func TestParameterTaskOutput(t *testing.T) {
 	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
 	parentTask := tc.RootTask
@@ -524,6 +508,65 @@ func TestParameterTaskOutput(t *testing.T) {
 		"analyze-artifact",
 		nil,
 	)
+}
+
+// TODO
+func TestOneOf(t *testing.T) {
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/oneof_simple.yaml")
+	parentTask := tc.RootTask
+	require.NotNil(t, parentTask)
+
+	// Run secondary pipeline
+	_, secondaryPipelineTask := tc.RunDag("secondary-pipeline", parentTask)
+	parentTask = secondaryPipelineTask
+
+	// Run create_dataset()
+	_, createDatasetTask := tc.RunContainer("create-dataset", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		createDatasetTask.GetTaskId(),
+		"output_dataset",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		createDatasetTask.GetName(),
+		nil,
+	)
+	tc.MockLauncherParameterCreate(
+		createDatasetTask.GetTaskId(),
+		"condition_out",
+		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "second"}},
+		apiv2beta1.IOType_OUTPUT,
+		createDatasetTask.GetName(),
+		nil,
+	)
+
+	// Run ConditionBranch
+	_, _ = tc.RunDag("condition-branches-1", parentTask)
+
+	// Run Condition and confirm condition task is created
+	// Argo controls whether a ContainerDag will run, but we can
+	// evaluate if the condition is false or true
+}
+
+// TODO: Probably covered by oneOF
+func TestConditions(t *testing.T) {
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/conditions_level_1_test.py.yaml")
+	parentTask := tc.RootTask
+	require.NotNil(t, parentTask)
+
+}
+
+func TestFinalStatus(t *testing.T) {
+}
+
+func TestOptionalFields(t *testing.T) {}
+
+func TestWithCaching(t *testing.T) {
+	// TODO Can't do this unless we can mock the filter API call on fingerprint and status
+	// See getFingerPrintsANDID
+}
+
+func TestArtifactIterator(t *testing.T) {
+
 }
 
 // This test creates a DAG with a single task that uses a component with inputs
