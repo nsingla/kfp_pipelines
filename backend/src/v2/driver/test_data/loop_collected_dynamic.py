@@ -30,7 +30,7 @@ def read_values(values: List[str]) -> str:
     for v in values:
         collect.append(v)
     print(collect)
-    assert collect == ['1', '2', '3']
+    assert collect == ['s1', 's2', 's3']
     return 'values read'
 
 

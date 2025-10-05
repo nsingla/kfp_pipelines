@@ -255,7 +255,7 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef read_values(values: List[str]) -> str:\n    collect = []\n  \
           \  for v in values:\n        collect.append(v)\n    print(collect)\n   \
-          \ assert collect == ['1', '2', '3']\n    return 'values read'\n\n"
+          \ assert collect == ['s1', 's2', 's3']\n    return 'values read'\n\n"
         image: python:3.9
     exec-read-values-2:
       container:
@@ -285,7 +285,7 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef read_values(values: List[str]) -> str:\n    collect = []\n  \
           \  for v in values:\n        collect.append(v)\n    print(collect)\n   \
-          \ assert collect == ['1', '2', '3']\n    return 'values read'\n\n"
+          \ assert collect == ['s1', 's2', 's3']\n    return 'values read'\n\n"
         image: python:3.9
     exec-split-ids:
       container:

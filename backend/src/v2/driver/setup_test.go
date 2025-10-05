@@ -711,7 +711,9 @@ func (tc *TestContext) MockLauncherArtifactCreate(
 		Uri:        util.StringPointer(fmt.Sprintf("s3://some.location/%s", artifactKey)),
 		Namespace:  TestNamespace,
 		Metadata: map[string]*structpb.Value{
-			"display_name": structpb.NewStringValue(artifactKey),
+			"display_name":  structpb.NewStringValue(artifactKey),
+			"task_id":       structpb.NewStringValue(TaskId),
+			"producer_task": structpb.NewStringValue(producerTask),
 		},
 	}
 	createArtifact, err := tc.DriverAPI.CreateArtifact(

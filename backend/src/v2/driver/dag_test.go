@@ -374,6 +374,88 @@ func TestParameterInputIterator(t *testing.T) {
 
 }
 
+func TestNestedDag(t *testing.T) {
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/nested_naming_conflicts.py.yaml")
+	// Execute full pipeline
+	parentTask := tc.RootTask
+
+	_, aTask := tc.RunContainer("a", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		aTask.GetTaskId(),
+		"output_dataset",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"a",
+		nil)
+
+	_, pipelineATask := tc.RunDag("pipeline_a", parentTask)
+	parentTask = pipelineATask
+
+	_, pipelineBTask := tc.RunDag("pipeline_b", parentTask)
+	parentTask = pipelineBTask
+
+	_, nestedATask := tc.RunContainer("a", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		nestedATask.GetTaskId(),
+		"output_dataset",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"a",
+		nil)
+
+	_, nestedBTask := tc.RunContainer("b", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		nestedBTask.GetTaskId(),
+		"output_artifact_b",
+		apiv2beta1.Artifact_Artifact,
+		apiv2beta1.IOType_OUTPUT,
+		"b",
+		nil)
+
+	_, pipelineCTask := tc.RunDag("pipeline_c", parentTask)
+	parentTask = pipelineCTask
+
+	_, nestedNestedATask := tc.RunContainer("a", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		nestedNestedATask.GetTaskId(),
+		"output_dataset",
+		apiv2beta1.Artifact_Dataset,
+		apiv2beta1.IOType_OUTPUT,
+		"a",
+		nil)
+
+	_, nestedNestedBTask := tc.RunContainer("b", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		nestedNestedBTask.GetTaskId(),
+		"output_artifact_b",
+		apiv2beta1.Artifact_Artifact,
+		apiv2beta1.IOType_OUTPUT,
+		"b",
+		nil)
+
+	_, cTask := tc.RunContainer("c", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		cTask.GetTaskId(),
+		"output_artifact_c",
+		apiv2beta1.Artifact_Artifact,
+		apiv2beta1.IOType_OUTPUT,
+		"c",
+		nil)
+
+	_, ok := tc.ScopePath.Pop()
+	require.True(t, ok)
+	parentTask = pipelineBTask
+
+	_, ok = tc.ScopePath.Pop()
+	require.True(t, ok)
+	parentTask = pipelineATask
+
+	_, ok = tc.ScopePath.Pop()
+	require.True(t, ok)
+	parentTask = tc.RootTask
+
+}
+
 func TestArtifactIterator(t *testing.T) {
 
 }

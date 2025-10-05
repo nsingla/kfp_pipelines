@@ -1,6 +1,5 @@
 import functools
 
-import kfp
 from kfp import dsl
 from kfp.dsl import (
     Input,
@@ -41,6 +40,12 @@ def c(artifact: Input[Artifact], output_artifact_c: Output[Artifact]):
     assert data == "very_bad"
     with open(output_artifact_c.path, "w") as f:
         f.write(f'done_analyzing')
+
+@component
+def verify(verify_input: Input[Artifact]):
+    with open(verify_input.path, "r") as f:
+        data = f.read()
+    assert data == "done_analyzing"
 
 @pipeline
 def pipeline_c(input_dataset_a: Input[Dataset], input_dataset_b: Input[Dataset]) -> Artifact:
