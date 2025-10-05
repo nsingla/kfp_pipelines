@@ -75,41 +75,13 @@ type CurrentRun struct {
 	T            *testing.T
 	TestSetup    *TestSetup
 	PipelineSpec *pipelinespec.PipelineSpec
+	RootTask     *apiv2beta1.PipelineTaskDetail
 }
 
 func TestLoopArtifactPassing(t *testing.T) {
-	// Setup test environment
-	testSetup := NewTestSetup(t)
-
-	// Create a test run
-	run := testSetup.CreateTestRun(t, "test-pipeline")
-	require.NotNil(t, run)
-
-	// Load pipeline spec
-	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/loop_collected.py.yaml")
-	require.NoError(t, err)
-	require.NotNil(t, pipelineSpec)
-
-	// Create a root DAG execution using basic inputs
-	rootDagExecution, err := setupBasicRootDag(testSetup, run, pipelineSpec, &pipelinespec.PipelineJob_RuntimeConfig{})
-	require.NoError(t, err)
-	require.NotNil(t, rootDagExecution)
-
-	rootTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
-		TaskId: rootDagExecution.TaskID,
-	})
-	require.NoError(t, err)
-	parentTask := rootTask
-
-	currentRun := &CurrentRun{
-		Run:          run,
-		ScopePath:    NewScopePath(pipelineSpec),
-		T:            t,
-		TestSetup:    testSetup,
-		PipelineSpec: pipelineSpec,
-	}
-	err = currentRun.ScopePath.Push("root")
-	require.NoError(t, err)
+	currentRun := SetupCurrentRun(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
+	parentTask := currentRun.RootTask
+	testSetup := currentRun.TestSetup
 
 	// Run Dag on the First Task
 	secondaryPipelineExecution, secondaryPipelineTask := currentRun.RunDag("secondary-pipeline", parentTask)
@@ -186,7 +158,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 			util.Int64Pointer(int64(index)),
 			apiv2beta1.IOType_ITERATOR_OUTPUT,
 		)
-		loopTask, err = testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
+		loopTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: loopExecution.TaskID})
 		require.NoError(t, err)
 		require.NotNil(t, loopTask.Outputs)
 		require.Equal(t, len(loopTask.Outputs.Artifacts), index+1)
@@ -247,9 +219,6 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 3, len(forLoopTask.Outputs.Artifacts))
 
 	// Run "analyze_artifact_list" in "secondary_pipeline"
-	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
 
 	// Move up a parent
 	parentTask = secondaryPipelineTask
@@ -269,7 +238,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 3, len(secondaryPipelineTask.Outputs.Artifacts))
 
 	// Move up a parent
-	parentTask = rootTask
+	parentTask = currentRun.RootTask
 	_, ok = currentRun.ScopePath.Pop()
 	require.True(t, ok)
 
@@ -282,8 +251,8 @@ func TestLoopArtifactPassing(t *testing.T) {
 	require.Equal(t, 3, len(analyzeArtifactListOuterExecution.ExecutorInput.Inputs.Artifacts["artifact_list_input"].GetArtifacts()))
 
 	// Refresh Run so it has the new tasks
-	run, err = testSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: run.GetRunId()})
-	require.NoError(t, err)
+	currentRun.RefreshRun()
+
 	// primary_pipeline()		 x 1  (root)
 	// secondary_pipeline()      x 1  (dag)
 	//   create_dataset()        x 1  (runtime)
@@ -292,7 +261,7 @@ func TestLoopArtifactPassing(t *testing.T) {
 	//	   analyze_artifact()    x 3  (runtime)
 	//   analyze_artifact_list() x 1  (runtime)
 	// analyze_artifact_list()   x 1  (runtime)
-	require.Equal(t, 12, len(run.Tasks))
+	require.Equal(t, 12, len(currentRun.Run.Tasks))
 }
 
 func TestParameterInputIterator(t *testing.T) {
@@ -314,38 +283,8 @@ func TestWithCaching(t *testing.T) {
 }
 
 func TestParameterTaskOutput(t *testing.T) {
-	// Setup test environment
-	testSetup := NewTestSetup(t)
-
-	// Create a test run
-	run := testSetup.CreateTestRun(t, "test-pipeline")
-	require.NotNil(t, run)
-
-	// Load pipeline spec
-	pipelineSpec, err := LoadPipelineSpecFromYAML("test_data/taskOutputParameter_test.py.yaml")
-	require.NoError(t, err)
-	require.NotNil(t, pipelineSpec)
-
-	// Create a root DAG execution using basic inputs
-	rootDagExecution, err := setupBasicRootDag(testSetup, run, pipelineSpec, &pipelinespec.PipelineJob_RuntimeConfig{})
-	require.NoError(t, err)
-	require.NotNil(t, rootDagExecution)
-
-	rootTask, err := testSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{
-		TaskId: rootDagExecution.TaskID,
-	})
-	require.NoError(t, err)
-	parentTask := rootTask
-
-	currentRun := &CurrentRun{
-		Run:          run,
-		ScopePath:    NewScopePath(pipelineSpec),
-		T:            t,
-		TestSetup:    testSetup,
-		PipelineSpec: pipelineSpec,
-	}
-	err = currentRun.ScopePath.Push("root")
-	require.NoError(t, err)
+	currentRun := SetupCurrentRun(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
+	parentTask := currentRun.RootTask
 
 	// Run Dag on the First Task
 	cdExecution, _ := currentRun.RunContainer("create-dataset", parentTask, nil)
@@ -367,6 +306,71 @@ func TestParameterTaskOutput(t *testing.T) {
 		nil,
 	)
 	_, _ = currentRun.RunContainer("analyze-artifact", parentTask, nil)
+}
+
+func SetupCurrentRun(t *testing.T, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig, pipelinePath string) *CurrentRun {
+	// Setup test environment
+	testSetup := NewTestSetup(t)
+
+	// Create a test run
+	run := testSetup.CreateTestRun(t, "test-pipeline")
+	require.NotNil(t, run)
+
+	// Load pipeline spec
+	pipelineSpec, err := LoadPipelineSpecFromYAML(pipelinePath)
+	require.NoError(t, err)
+	require.NotNil(t, pipelineSpec)
+	currentRun := &CurrentRun{
+		Run:          run,
+		ScopePath:    NewScopePath(pipelineSpec),
+		T:            t,
+		TestSetup:    testSetup,
+		PipelineSpec: pipelineSpec,
+	}
+
+	// Create a root DAG execution using basic inputs
+	_, rootTask := currentRun.RunRootDag(testSetup, run, runtimeConfig)
+	currentRun.RootTask = rootTask
+	return currentRun
+}
+
+func (r *CurrentRun) RunRootDag(testSetup *TestSetup, run *apiv2beta1.Run, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig) (*Execution, *apiv2beta1.PipelineTaskDetail) {
+	r.RefreshRun()
+	err := r.ScopePath.Push("root")
+	require.NoError(r.T, err)
+
+	opts := common.Options{
+		PipelineName:             testPipelineName,
+		Run:                      run,
+		Component:                r.ScopePath.GetLast().GetComponentSpec(),
+		ParentTask:               nil,
+		DriverAPI:                testSetup.DriverAPI,
+		IterationIndex:           -1,
+		RuntimeConfig:            runtimeConfig,
+		Namespace:                testNamespace,
+		Task:                     nil,
+		Container:                nil,
+		KubernetesExecutorConfig: &kubernetesplatform.KubernetesExecutorConfig{},
+		PipelineLogLevel:         "1",
+		PublishLogs:              "false",
+		CacheDisabled:            false,
+		DriverType:               "ROOT_DAG",
+		TaskName:                 "", // Empty for root driver
+		PodName:                  "system-dag-driver",
+		PodUID:                   "some-uid",
+	}
+	// Execute RootDAG
+	execution, err := RootDAG(context.Background(), opts, testSetup.DriverAPI)
+	require.NoError(r.T, err)
+	require.NotNil(r.T, execution)
+
+	task, err := r.TestSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: execution.TaskID})
+	require.NoError(r.T, err)
+	require.NotNil(r.T, task)
+	require.Equal(r.T, execution.TaskID, task.TaskId)
+
+	r.RefreshRun()
+	return execution, task
 }
 
 func (r *CurrentRun) RunDag(
