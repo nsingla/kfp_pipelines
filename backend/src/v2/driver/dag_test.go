@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
@@ -39,7 +40,7 @@ func TestRootDagComponentInputs(t *testing.T) {
 		},
 	}
 
-	tc := NewTestContext(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
+	tc := NewTestContextWithRootExecuted(t, runtimeConfig, "test_data/taskOutputArtifact_test.py.yaml")
 	task := tc.RootTask
 	require.NotNil(t, task.Inputs)
 	require.NotEmpty(t, task.Inputs.Parameters)
@@ -60,7 +61,7 @@ func TestRootDagComponentInputs(t *testing.T) {
 }
 
 func TestLoopArtifactPassing(t *testing.T) {
-	tc := NewTestContext(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
 	parentTask := tc.RootTask
 
 	// Run Dag on the First Task
@@ -245,6 +246,119 @@ func TestLoopArtifactPassing(t *testing.T) {
 }
 
 func TestParameterInputIterator(t *testing.T) {
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected_dynamic.py.yaml")
+	// Execute full pipeline
+
+	parentTask := tc.RootTask
+	_, secondaryPipelineTask := tc.RunDag("secondary-pipeline", parentTask)
+	parentTask = secondaryPipelineTask
+	_, splitIDsTask := tc.RunContainer("split-ids", parentTask, nil)
+
+	tc.MockLauncherParameterCreate(
+		splitIDsTask.GetTaskId(),
+		"Output",
+		&structpb.Value{
+			Kind: &structpb.Value_ListValue{ListValue: &structpb.ListValue{
+				Values: []*structpb.Value{
+					structpb.NewStringValue("1"),
+					structpb.NewStringValue("2"),
+					structpb.NewStringValue("3"),
+				},
+			},
+			},
+		},
+		apiv2beta1.IOType_OUTPUT,
+		"split-ids",
+		nil,
+	)
+
+	_, loopTask := tc.RunDag("for-loop-1", parentTask)
+	parentTask = loopTask
+
+	for index, _ := range []string{"1", "2", "3"} {
+		index64 := util.Int64Pointer(int64(index))
+		_, createFileTask := tc.RunContainer(
+			"create-file",
+			parentTask,
+			index64,
+		)
+
+		createFileArtifactID := tc.MockLauncherArtifactCreate(
+			createFileTask.GetTaskId(),
+			"file",
+			apiv2beta1.Artifact_Artifact,
+			apiv2beta1.IOType_OUTPUT,
+			"create-file",
+			index64,
+		)
+		// Also expect Launcher->API Server to upload the output artifact to
+		// the for-loop-1 task's outputs
+		tc.MockLauncherArtifactTaskCreate(
+			"create-file",
+			loopTask.GetTaskId(),
+			"pipelinechannel--create-file-file",
+			createFileArtifactID,
+			index64,
+			apiv2beta1.IOType_ITERATOR_OUTPUT,
+		)
+		// Also expect Launcher->API Server to upload the output artifact to
+		// to secondary-pipeline task's outputs'
+		tc.MockLauncherArtifactTaskCreate(
+			"create-file",
+			secondaryPipelineTask.GetTaskId(),
+			"pipelinechannel--create-file-file",
+			createFileArtifactID,
+			index64,
+			apiv2beta1.IOType_ITERATOR_OUTPUT,
+		)
+
+		// Run next task
+		_, readSingleFileTask := tc.RunContainer(
+			"read-single-file",
+			parentTask,
+			index64,
+		)
+		tc.MockLauncherParameterCreate(
+			readSingleFileTask.GetTaskId(),
+			"Output",
+			&structpb.Value{
+				Kind: &structpb.Value_StringValue{
+					StringValue: fmt.Sprintf("file-%d", index),
+				},
+			},
+			apiv2beta1.IOType_OUTPUT,
+			"read-single-file",
+			index64,
+		)
+	}
+
+	_, ok := tc.ScopePath.Pop()
+	require.True(t, ok)
+	parentTask = secondaryPipelineTask
+
+	_, readFilesTask := tc.RunContainer("read-files", parentTask, nil)
+	tc.MockLauncherParameterCreate(
+		readFilesTask.GetTaskId(),
+		"Output",
+		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "files read"}},
+		apiv2beta1.IOType_OUTPUT,
+		"read-files",
+		nil,
+	)
+
+	_, ok = tc.ScopePath.Pop()
+	require.True(t, ok)
+	parentTask = tc.RootTask
+
+	_, readFilesTask2 := tc.RunContainer("read-files", parentTask, nil)
+	tc.MockLauncherParameterCreate(
+		readFilesTask2.GetTaskId(),
+		"Output",
+		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "files read"}},
+		apiv2beta1.IOType_OUTPUT,
+		"read-files",
+		nil,
+	)
 
 }
 
@@ -255,13 +369,16 @@ func TestArtifactIterator(t *testing.T) {
 func TestFinalStatus(t *testing.T) {
 }
 
+// TODO: Add tests for optional fields
+func TestOptionalFields(t *testing.T) {}
+
 // TODO Can't do this unless we can mock the filter API call on fingerprint and status
 // See getFingerPrintsANDID
 func TestWithCaching(t *testing.T) {
 }
 
 func TestParameterTaskOutput(t *testing.T) {
-	tc := NewTestContext(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
+	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/taskOutputParameter_test.py.yaml")
 	parentTask := tc.RootTask
 
 	// Run Dag on the First Task
@@ -308,7 +425,7 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 		},
 	}
 
-	tc := NewTestContext(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
+	tc := NewTestContextWithRootExecuted(t, runtimeInputs, "test_data/componentInput_level_1_test.py.yaml")
 
 	// Run Container on the First Task
 	processInputsExecution, processInputsTask := tc.RunContainer("process-inputs", tc.RootTask, nil)
@@ -357,9 +474,6 @@ func TestContainerComponentInputsAndRuntimeConstants(t *testing.T) {
 	require.Equal(t, apiv2beta1.Artifact_Dataset.String(), artifact.Type.GetSchemaTitle())
 	require.Equal(t, "output_text", artifact.Name)
 }
-
-// TODO: Add tests for optional fields
-func TestOptionalFields(t *testing.T) {}
 
 func fetchParameter(key string, params []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
 	for _, p := range params {

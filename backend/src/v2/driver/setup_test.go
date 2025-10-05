@@ -247,10 +247,10 @@ type TestContext struct {
 	RootTask     *apiv2beta1.PipelineTaskDetail
 }
 
-// NewTestContext creates a new test context with basic configuration
+// NewTestContextWithRootExecuted creates a new test context with basic configuration
 // It will automatically launch a root DAG using the provided input
 // and update the scope path.
-func NewTestContext(t *testing.T, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig, pipelinePath string) *TestContext {
+func NewTestContextWithRootExecuted(t *testing.T, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig, pipelinePath string) *TestContext {
 	t.Helper()
 	proxy.InitializeConfigWithEmptyForTests()
 
@@ -431,7 +431,7 @@ func CreateParameter(value, key string,
 // Example test demonstrating the usage including artifact population
 func TestTestContext(t *testing.T) {
 	// Setup test environment
-	testSetup := NewTestContext(t, nil, "testdata/taskOutputArtifact_test.py.yaml")
+	testSetup := NewTestContextWithRootExecuted(t, nil, "testdata/taskOutputArtifact_test.py.yaml")
 	require.NotNil(t, testSetup)
 	assert.NotEmpty(t, testSetup.Run.RunId)
 
@@ -550,6 +550,7 @@ func TestTestContext(t *testing.T) {
 
 func (tc *TestContext) RunRootDag(testSetup *TestContext, run *apiv2beta1.Run, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig) (*Execution, *apiv2beta1.PipelineTaskDetail) {
 	tc.RefreshRun()
+	defer tc.RefreshRun()
 	err := tc.ScopePath.Push("root")
 	require.NoError(tc.T, err)
 
@@ -583,7 +584,6 @@ func (tc *TestContext) RunRootDag(testSetup *TestContext, run *apiv2beta1.Run, r
 	require.NotNil(tc.T, task)
 	require.Equal(tc.T, execution.TaskID, task.TaskId)
 
-	tc.RefreshRun()
 	return execution, task
 }
 
@@ -592,6 +592,8 @@ func (tc *TestContext) RunDag(
 	parentTask *apiv2beta1.PipelineTaskDetail) (*Execution, *apiv2beta1.PipelineTaskDetail) {
 	t := tc.T
 	tc.RefreshRun()
+	defer tc.RefreshRun()
+
 	err := tc.ScopePath.Push(taskName)
 	require.NoError(t, err)
 	taskSpec := tc.GetLast().GetTaskSpec()
@@ -607,7 +609,7 @@ func (tc *TestContext) RunDag(
 	require.NotNil(t, task)
 	require.Equal(t, execution.TaskID, task.TaskId)
 	require.Equal(t, taskName, task.GetName())
-	tc.RefreshRun()
+
 	return execution, task
 }
 
