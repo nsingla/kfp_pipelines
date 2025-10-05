@@ -445,83 +445,6 @@ func (ts *TestSetup) CreateTestArtifactTask(t *testing.T, artifactID, taskID, ru
 	return createdArtifactTask
 }
 
-func CreateTestOptions(t *testing.T, driverAPI common.DriverAPI, run *apiv2beta1.Run) *common.Options {
-	t.Helper()
-
-	// Create a basic component spec
-	component := &pipelinespec.ComponentSpec{
-		Implementation: &pipelinespec.ComponentSpec_Dag{
-			Dag: &pipelinespec.DagSpec{
-				Tasks: map[string]*pipelinespec.PipelineTaskSpec{},
-			},
-		},
-	}
-
-	// Create a parent task
-	parentUuid, _ := util.NewFakeUUIDGeneratorOrFatal("parent-task", nil).NewRandom()
-	parentTask := &apiv2beta1.PipelineTaskDetail{
-		TaskId:      parentUuid.String(),
-		Name:        "parent-task",
-		DisplayName: "Parent Task",
-		RunId:       run.RunId,
-		Type:        apiv2beta1.PipelineTaskDetail_DAG,
-		Status:      apiv2beta1.PipelineTaskDetail_RUNNING,
-	}
-
-	return &common.Options{
-		PipelineName:   "test-pipeline",
-		Run:            run,
-		Component:      component,
-		ParentTask:     parentTask,
-		DriverAPI:      driverAPI,
-		IterationIndex: -1, // Not an iteration
-	}
-}
-
-// CreateTestWorkflow creates a test Argo workflow
-func CreateTestWorkflow(name, namespace string) *util.Workflow {
-	return util.NewWorkflow(&v1alpha1.Workflow{
-		TypeMeta:   v1.TypeMeta{APIVersion: "argoproj.io/v1alpha1", Kind: "Workflow"},
-		ObjectMeta: v1.ObjectMeta{Name: name, Namespace: namespace},
-		Spec: v1alpha1.WorkflowSpec{
-			Entrypoint: "main",
-			Templates: []v1alpha1.Template{
-				{
-					Name: "main",
-					Container: &corev1.Container{
-						Image:   "alpine:latest",
-						Command: []string{"echo"},
-						Args:    []string{"hello world"},
-					},
-				},
-			},
-		},
-		Status: v1alpha1.WorkflowStatus{
-			Phase: v1alpha1.WorkflowRunning,
-		},
-	})
-}
-
-// AssertTaskStatus is a helper to check task status
-func AssertTaskStatus(t *testing.T, driverAPI common.DriverAPI, taskID string, expectedStatus apiv2beta1.PipelineTaskDetail_TaskState) {
-	t.Helper()
-
-	ctx := context.Background()
-	task, err := driverAPI.GetTask(ctx, &apiv2beta1.GetTaskRequest{TaskId: taskID})
-	require.NoError(t, err)
-	assert.Equal(t, expectedStatus, task.Status)
-}
-
-// AssertTaskType is a helper to check task type
-func AssertTaskType(t *testing.T, driverAPI common.DriverAPI, taskID string, expectedType apiv2beta1.PipelineTaskDetail_TaskType) {
-	t.Helper()
-
-	ctx := context.Background()
-	task, err := driverAPI.GetTask(ctx, &apiv2beta1.GetTaskRequest{TaskId: taskID})
-	require.NoError(t, err)
-	assert.Equal(t, expectedType, task.Type)
-}
-
 // CreateParameter creates a test parameter with the given name and value
 func CreateParameter(value, key string,
 	producer *apiv2beta1.IOProducer) *apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter {
@@ -532,20 +455,6 @@ func CreateParameter(value, key string,
 		Producer:     producer,
 	}
 	return param
-}
-
-// CreateStatusMetadata creates test status metadata
-func CreateStatusMetadata(message string, properties map[string]interface{}) *apiv2beta1.PipelineTaskDetail_StatusMetadata {
-	customProps := make(map[string]*structpb.Value)
-	for k, v := range properties {
-		val, _ := structpb.NewValue(v)
-		customProps[k] = val
-	}
-
-	return &apiv2beta1.PipelineTaskDetail_StatusMetadata{
-		Message:          message,
-		CustomProperties: customProps,
-	}
 }
 
 // Example test demonstrating the usage including artifact population
