@@ -10,6 +10,7 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	. "github.com/kubeflow/pipelines/backend/src/v2/driver/test_utils"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,14 +47,14 @@ func setupDagOptions(
 	assert.NotNil(t, containerExecutorSpec)
 
 	return common.Options{
-		PipelineName:             testPipelineName,
+		PipelineName:             TestPipelineName,
 		Run:                      run,
 		Component:                componentSpec,
 		ParentTask:               parentTask,
 		DriverAPI:                testSetup.DriverAPI,
 		IterationIndex:           -1,
 		RuntimeConfig:            nil,
-		Namespace:                testNamespace,
+		Namespace:                TestNamespace,
 		Task:                     taskSpec,
 		Container:                nil,
 		KubernetesExecutorConfig: KubernetesExecutorConfig,
@@ -71,7 +72,7 @@ func setupDagOptions(
 
 type CurrentRun struct {
 	Run *apiv2beta1.Run
-	ScopePath
+	util.ScopePath
 	T            *testing.T
 	TestSetup    *TestSetup
 	PipelineSpec *pipelinespec.PipelineSpec
@@ -317,12 +318,12 @@ func SetupCurrentRun(t *testing.T, runtimeConfig *pipelinespec.PipelineJob_Runti
 	require.NotNil(t, run)
 
 	// Load pipeline spec
-	pipelineSpec, err := LoadPipelineSpecFromYAML(pipelinePath)
+	pipelineSpec, err := util.LoadPipelineSpecFromYAML(pipelinePath)
 	require.NoError(t, err)
 	require.NotNil(t, pipelineSpec)
 	currentRun := &CurrentRun{
 		Run:          run,
-		ScopePath:    NewScopePath(pipelineSpec),
+		ScopePath:    util.NewScopePath(pipelineSpec),
 		T:            t,
 		TestSetup:    testSetup,
 		PipelineSpec: pipelineSpec,
@@ -340,14 +341,14 @@ func (r *CurrentRun) RunRootDag(testSetup *TestSetup, run *apiv2beta1.Run, runti
 	require.NoError(r.T, err)
 
 	opts := common.Options{
-		PipelineName:             testPipelineName,
+		PipelineName:             TestPipelineName,
 		Run:                      run,
 		Component:                r.ScopePath.GetLast().GetComponentSpec(),
 		ParentTask:               nil,
 		DriverAPI:                testSetup.DriverAPI,
 		IterationIndex:           -1,
 		RuntimeConfig:            runtimeConfig,
-		Namespace:                testNamespace,
+		Namespace:                TestNamespace,
 		Task:                     nil,
 		Container:                nil,
 		KubernetesExecutorConfig: &kubernetesplatform.KubernetesExecutorConfig{},
@@ -489,7 +490,7 @@ func (r *CurrentRun) MockLauncherArtifactCreate(
 		Name:       artifactKey,
 		Type:       artifactType,
 		Uri:        util.StringPointer(fmt.Sprintf("s3://some.location/%s", artifactKey)),
-		Namespace:  testNamespace,
+		Namespace:  TestNamespace,
 		Metadata: map[string]*structpb.Value{
 			"display_name": structpb.NewStringValue(artifactKey),
 		},

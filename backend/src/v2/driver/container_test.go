@@ -6,6 +6,7 @@ import (
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
+	. "github.com/kubeflow/pipelines/backend/src/v2/driver/test_utils"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,14 +43,14 @@ func setupContainerOptions(
 	assert.NotNil(t, containerExecutorSpec)
 
 	return common.Options{
-		PipelineName:             testPipelineName,
+		PipelineName:             TestPipelineName,
 		Run:                      run,
 		Component:                componentSpec,
 		ParentTask:               parentTask,
 		DriverAPI:                testSetup.DriverAPI,
 		IterationIndex:           -1,
 		RuntimeConfig:            nil,
-		Namespace:                testNamespace,
+		Namespace:                TestNamespace,
 		Task:                     taskSpec,
 		Container:                containerExecutorSpec.GetContainer(),
 		KubernetesExecutorConfig: KubernetesExecutorConfig,
