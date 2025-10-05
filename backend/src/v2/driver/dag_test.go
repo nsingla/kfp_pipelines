@@ -223,7 +223,7 @@ func TestParameterTaskOutput(t *testing.T) {
 	tc.MockLauncherParameterCreate(
 		cdExecution.TaskID,
 		"output_parameter_path",
-		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "output_parameter_value"}},
+		&structpb.Value{Kind: &structpb.Value_NumberValue{NumberValue: 10.0}},
 		apiv2beta1.IOType_OUTPUT,
 		"create-dataset",
 		nil,
@@ -237,5 +237,13 @@ func TestParameterTaskOutput(t *testing.T) {
 		"process-dataset",
 		nil,
 	)
-	_, _ = tc.RunContainer("analyze-artifact", parentTask, nil)
+	analyzeArtifactExecution, _ := tc.RunContainer("analyze-artifact", parentTask, nil)
+	tc.MockLauncherParameterCreate(
+		analyzeArtifactExecution.TaskID,
+		"output_opinion",
+		&structpb.Value{Kind: &structpb.Value_BoolValue{BoolValue: true}},
+		apiv2beta1.IOType_OUTPUT,
+		"analyze-artifact",
+		nil,
+	)
 }
