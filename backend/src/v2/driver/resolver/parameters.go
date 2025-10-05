@@ -75,9 +75,17 @@ func resolveInputParameter(
 			return nil, apiv2beta1.IOType_COMPONENT_INPUT, err
 		}
 		return resolvedInput, apiv2beta1.IOType_COMPONENT_INPUT, nil
-	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter: // TODO(HumairAK)
-		glog.V(4).Infof("resolving task output parameter %s", paramSpec.GetTaskOutputParameter().String())
-		return nil, apiv2beta1.IOType_TASK_OUTPUT_INPUT, paramError(paramSpec, fmt.Errorf("task output parameter not supported yet"))
+	case *pipelinespec.TaskInputsSpec_InputParameterSpec_TaskOutputParameter:
+
+		parameter, err := resolveUpstreamParameters(opts, paramSpec)
+		if err != nil {
+			return nil, apiv2beta1.IOType_TASK_OUTPUT_INPUT, err
+		}
+		ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
+		if parameter.GetType() == apiv2beta1.IOType_COLLECTED_INPUTS {
+			ioType = apiv2beta1.IOType_COLLECTED_INPUTS
+		}
+		return parameter, ioType, nil
 	case *pipelinespec.TaskInputsSpec_InputParameterSpec_RuntimeValue:
 		glog.V(4).Infof("resolving runtime value %s", paramSpec.GetRuntimeValue().String())
 		runtimeValue := paramSpec.GetRuntimeValue()
@@ -126,6 +134,43 @@ func resolveInputParameter(
 	default:
 		return nil, apiv2beta1.IOType_UNSPECIFIED, paramError(paramSpec, fmt.Errorf("parameter spec of type %T not implemented yet", t))
 	}
+}
+
+func resolveUpstreamParameters(
+	opts common.Options,
+	spec *pipelinespec.TaskInputsSpec_InputParameterSpec,
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, error) {
+	tasks, err := getSubTasks(opts.ParentTask, opts.Run.Tasks, nil)
+	if err != nil {
+		return nil, err
+	}
+	if tasks == nil {
+		return nil, fmt.Errorf("failed to get sub tasks for task %s", opts.ParentTask.Name)
+	}
+	producerTaskAmbiguousName := spec.GetTaskOutputParameter().GetProducerTask()
+	if producerTaskAmbiguousName == "" {
+		return nil, fmt.Errorf("producerTask task cannot be empty")
+	}
+	producerTaskUniqueName := getTaskNameWithTaskID(producerTaskAmbiguousName, opts.ParentTask.GetTaskId())
+	if opts.IterationIndex >= 0 {
+		producerTaskUniqueName = getTaskNameWithIterationIndex(producerTaskUniqueName, int64(opts.IterationIndex))
+	}
+	// producerTask is the specific task guaranteed to have the output parameter
+	// producerTaskUniqueName may look something like "task_name_a_dag_id_1_idx_0"
+	producerTask := tasks[producerTaskUniqueName]
+	if producerTask == nil {
+		return nil, fmt.Errorf("producerTask task %s not found", producerTaskUniqueName)
+	}
+	outputKey := spec.GetTaskOutputParameter().GetOutputParameterKey()
+	outputs := producerTask.GetOutputs().GetParameters()
+	outputIO, err := findParameterByProducerKeyInList(outputKey, outputs)
+	if err != nil {
+		return nil, err
+	}
+	if outputIO == nil {
+		return nil, fmt.Errorf("output parameter %s not found", outputKey)
+	}
+	return outputIO, nil
 }
 
 func resolveParameterComponentInputParameter(
@@ -240,6 +285,17 @@ func getItems(value *structpb.Value) (items []*structpb.Value, err error) {
 	}
 }
 
+// Convert []*structpb.Value to a *structpb.Value_ListValue
+func toListValue(items []*structpb.Value) *structpb.Value {
+	listValue := structpb.Value{}
+	listValue.Kind = &structpb.Value_ListValue{
+		ListValue: &structpb.ListValue{
+			Values: items,
+		},
+	}
+	return &listValue
+}
+
 func ResolvePodSpecInputRuntimeParameter(n string, input *pipelinespec.ExecutorInput) (string, error) {
 	return "", nil
 }
@@ -268,4 +324,45 @@ func ResolveInputParameter(
 	inputParams []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
 ) (*structpb.Value, error) {
 	return nil, nil
+}
+
+func findParameterByProducerKeyInList(
+	producerKey string,
+	parametersIO []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter,
+) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter, error) {
+	var parameterIOList []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter
+	for _, parameterIO := range parametersIO {
+		if parameterIO.GetParameterKey() == producerKey {
+			parameterIOList = append(parameterIOList, parameterIO)
+		}
+	}
+	if len(parameterIOList) == 0 {
+		return nil, fmt.Errorf("parameter with producer key %s not found", producerKey)
+	}
+
+	ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
+	// This occurs in the parallelFor case, where multiple iterations resulted in the same
+	// producer key.
+	isCollection := len(parameterIOList) > 1
+	if isCollection {
+		var parameterValues []*structpb.Value
+		for _, parameterIO := range parameterIOList {
+			//  Check correctness by validating the type of all parameters
+			if parameterIO.Type != apiv2beta1.IOType_ITERATOR_OUTPUT {
+				return nil, fmt.Errorf("encountered a non iterator output that has the same producer key (%s)", producerKey)
+			}
+			// Support for an iterator over list of parameters is not supported yet.
+			parameterValues = append(parameterValues, parameterIO.GetValue())
+		}
+		ioType = apiv2beta1.IOType_COLLECTED_INPUTS
+		newParameterIO := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+			Value:        toListValue(parameterValues),
+			Type:         ioType,
+			ParameterKey: producerKey,
+			// This is unused by the caller
+			Producer: nil,
+		}
+		return newParameterIO, nil
+	}
+	return parameterIOList[0], nil
 }

@@ -51,7 +51,7 @@ func ResolveInputs(ctx context.Context, opts common.Options) (*InputMetadata, *i
 	inputMetadata.Parameters = resolvedParameters
 
 	// Handle Artifacts
-	resolvedArtifacts, err := resolveArtifacts(ctx, opts)
+	resolvedArtifacts, err := resolveArtifacts(opts)
 	if err != nil {
 		return nil, nil, err
 	}

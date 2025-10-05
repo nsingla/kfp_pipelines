@@ -348,10 +348,25 @@ func TestParameterTaskOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run Dag on the First Task
-	_, _ = currentRun.RunContainer("create-dataset", parentTask, nil)
-	_, _ = currentRun.RunContainer("process-dataset", parentTask, nil)
+	cdExecution, _ := currentRun.RunContainer("create-dataset", parentTask, nil)
+	currentRun.MockLauncherParameterCreate(
+		cdExecution.TaskID,
+		"output_parameter_path",
+		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "output_parameter_value"}},
+		apiv2beta1.IOType_OUTPUT,
+		"create-dataset",
+		nil,
+	)
+	pdExecution, _ := currentRun.RunContainer("process-dataset", parentTask, nil)
+	currentRun.MockLauncherParameterCreate(
+		pdExecution.TaskID,
+		"output_int",
+		&structpb.Value{Kind: &structpb.Value_StringValue{StringValue: "output_int_value"}},
+		apiv2beta1.IOType_OUTPUT,
+		"process-dataset",
+		nil,
+	)
 	_, _ = currentRun.RunContainer("analyze-artifact", parentTask, nil)
-
 }
 
 func (r *CurrentRun) RunDag(
@@ -415,6 +430,44 @@ func (r *CurrentRun) RefreshRun() {
 	run, err := r.TestSetup.DriverAPI.GetRun(context.Background(), &apiv2beta1.GetRunRequest{RunId: r.Run.RunId})
 	require.NoError(t, err)
 	r.Run = run
+}
+
+func (r *CurrentRun) MockLauncherParameterCreate(
+	TaskId string,
+	parameterKey string,
+	value *structpb.Value,
+	outputType apiv2beta1.IOType,
+	producerTask string,
+	producerIteration *int64,
+) {
+	// Get Task
+	task, err := r.TestSetup.DriverAPI.GetTask(context.Background(), &apiv2beta1.GetTaskRequest{TaskId: TaskId})
+	require.NoError(r.T, err)
+	require.NotNil(r.T, task)
+
+	newParameter := &apiv2beta1.PipelineTaskDetail_InputOutputs_IOParameter{
+		Value:        value,
+		Type:         outputType,
+		ParameterKey: parameterKey,
+		Producer: &apiv2beta1.IOProducer{
+			TaskName: producerTask,
+		},
+	}
+	if producerIteration != nil {
+		newParameter.Producer.Iteration = producerIteration
+	}
+	parameters := task.Outputs.Parameters
+	parameters = append(parameters, newParameter)
+	task.Outputs.Parameters = parameters
+	// Update Task via driverapi UpdateTask
+	task, err = r.TestSetup.DriverAPI.UpdateTask(context.Background(), &apiv2beta1.UpdateTaskRequest{
+		TaskId: TaskId,
+		Task:   task,
+	})
+	require.NoError(r.T, err)
+	require.NotNil(r.T, task)
+
+	r.RefreshRun()
 }
 
 func (r *CurrentRun) MockLauncherArtifactCreate(

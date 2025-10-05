@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
@@ -10,11 +9,11 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/driver/common"
 )
 
-func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetadata, error) {
+func resolveArtifacts(opts common.Options) ([]ArtifactMetadata, error) {
 	var artifacts []ArtifactMetadata
 
 	for key, artifactSpec := range opts.Task.GetInputs().GetArtifacts() {
-		v, ioType, err := resolveInputArtifact(ctx, opts, key, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
+		v, ioType, err := resolveInputArtifact(opts, key, artifactSpec, opts.ParentTask.Inputs.GetArtifacts())
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +38,6 @@ func resolveArtifacts(ctx context.Context, opts common.Options) ([]ArtifactMetad
 }
 
 func resolveInputArtifact(
-	ctx context.Context,
 	opts common.Options,
 	name string,
 	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
@@ -56,7 +54,7 @@ func resolveInputArtifact(
 		}
 		return artifactIO, apiv2beta1.IOType_COMPONENT_INPUT, nil
 	case *pipelinespec.TaskInputsSpec_InputArtifactSpec_TaskOutputArtifact:
-		artifact, err := resolveUpstreamArtifacts(ctx, opts, artifactSpec)
+		artifact, err := resolveUpstreamArtifacts(opts, artifactSpec)
 		if err != nil {
 			return nil, apiv2beta1.IOType_TASK_OUTPUT_INPUT, err
 		}
@@ -96,9 +94,9 @@ func resolveArtifactComponentInputParameter(
 
 }
 
-func resolveUpstreamArtifacts(ctx context.Context,
+func resolveUpstreamArtifacts(
 	opts common.Options,
-	artifactSpec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
+	spec *pipelinespec.TaskInputsSpec_InputArtifactSpec,
 ) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
 	tasks, err := getSubTasks(opts.ParentTask, opts.Run.Tasks, nil)
 	if err != nil {
@@ -107,7 +105,7 @@ func resolveUpstreamArtifacts(ctx context.Context,
 	if tasks == nil {
 		return nil, fmt.Errorf("failed to get sub tasks for task %s", opts.ParentTask.Name)
 	}
-	producerTaskAmbiguousName := artifactSpec.GetTaskOutputArtifact().GetProducerTask()
+	producerTaskAmbiguousName := spec.GetTaskOutputArtifact().GetProducerTask()
 	if producerTaskAmbiguousName == "" {
 		return nil, fmt.Errorf("producerTask task cannot be empty")
 	}
@@ -121,17 +119,16 @@ func resolveUpstreamArtifacts(ctx context.Context,
 	if producerTask == nil {
 		return nil, fmt.Errorf("producerTask task %s not found", producerTaskUniqueName)
 	}
-	outputArtifactKey := artifactSpec.GetTaskOutputArtifact().GetOutputArtifactKey()
-
-	outputArtifacts := producerTask.GetOutputs().GetArtifacts()
-	artifactIO, err := findArtifactByProducerKeyInList(outputArtifactKey, outputArtifacts)
+	outputKey := spec.GetTaskOutputArtifact().GetOutputArtifactKey()
+	outputs := producerTask.GetOutputs().GetArtifacts()
+	outputIO, err := findArtifactByProducerKeyInList(outputKey, outputs)
 	if err != nil {
 		return nil, err
 	}
-	if artifactIO == nil {
-		return nil, fmt.Errorf("output artifact %s not found", outputArtifactKey)
+	if outputIO == nil {
+		return nil, fmt.Errorf("output artifact %s not found", outputKey)
 	}
-	return artifactIO, nil
+	return outputIO, nil
 }
 
 // resolveArtifactIterator handles Artifact Iterator Input resolution
@@ -272,7 +269,6 @@ func findArtifactByProducerKeyInList(
 	producerKey string,
 	artifactsIO []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact,
 ) (*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact, error) {
-	ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
 	var artifactIOList []*apiv2beta1.PipelineTaskDetail_InputOutputs_IOArtifact
 	for _, artifactIO := range artifactsIO {
 		if artifactIO.GetArtifactKey() == producerKey {
@@ -282,12 +278,15 @@ func findArtifactByProducerKeyInList(
 	if len(artifactIOList) == 0 {
 		return nil, fmt.Errorf("artifact with producer key %s not found", producerKey)
 	}
+
+	ioType := apiv2beta1.IOType_TASK_OUTPUT_INPUT
 	// This occurs in the parallelFor case, where multiple iterations resulted in the same
-	// producer key, we do a correctness check by validating the type of all artifacts
+	// producer key.
 	isCollection := len(artifactIOList) > 1
 	if isCollection {
 		var artifacts []*apiv2beta1.Artifact
 		for _, artifactIO := range artifactIOList {
+			//  Check correctness by validating the type of all parameters
 			if artifactIO.Type != apiv2beta1.IOType_ITERATOR_OUTPUT {
 				return nil, fmt.Errorf("encountered a non iterator output that has the same producer key (%s)", producerKey)
 			}
