@@ -503,7 +503,6 @@ func TestParameterTaskOutput(t *testing.T) {
 	)
 }
 
-// TODO
 func TestOneOf(t *testing.T) {
 	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/oneof_simple.yaml")
 	parentTask := tc.RootTask
@@ -543,28 +542,72 @@ func TestOneOf(t *testing.T) {
 
 	tc.ExitDag()
 
-	// Expect this condition to pass since output of
-	// create-dataset == "second"
-	condition3Execution, _ := tc.RunDag("condition-3", conditionBranch1Task)
-	require.NotNil(t, condition3Execution.Condition)
-	require.True(t, *condition3Execution.Condition)
-
-	tc.ExitDag()
-
 	// Expect this condition to not be met
 	condition4Execution, _ := tc.RunDag("condition-4", conditionBranch1Task)
 	require.NotNil(t, condition4Execution.Condition)
 	require.False(t, *condition4Execution.Condition)
 
 	tc.ExitDag()
-}
 
-// TODO: Probably covered by oneOF
-func TestConditions(t *testing.T) {
-	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/conditions_level_1_test.py.yaml")
-	parentTask := tc.RootTask
-	require.NotNil(t, parentTask)
+	// Expect this condition to pass since output of
+	// create-dataset == "second"
+	condition3Execution, condition3Task := tc.RunDag("condition-3", conditionBranch1Task)
+	require.NotNil(t, condition3Execution.Condition)
+	require.True(t, *condition3Execution.Condition)
 
+	parentTask = condition3Task
+	_, giveAnimal1Task := tc.RunContainer("give-animal-2", parentTask, nil)
+	tc.MockLauncherArtifactCreate(
+		giveAnimal1Task.GetTaskId(),
+		"output_animal",
+		apiv2beta1.Artifact_Artifact,
+		apiv2beta1.IOType_OUTPUT,
+		giveAnimal1Task.GetName(),
+		nil,
+	)
+	_, analyzeAnimal1Task := tc.RunContainer("analyze-animal", parentTask, nil)
+	analyzeAnimal1TaskArtifactID := tc.MockLauncherArtifactCreate(
+		analyzeAnimal1Task.GetTaskId(),
+		"analysis_output",
+		apiv2beta1.Artifact_Artifact,
+		apiv2beta1.IOType_OUTPUT,
+		analyzeAnimal1Task.GetName(),
+		nil,
+	)
+
+	// Expect launcher to create artifact task to
+	// analyzeAnimal1TaskArtifactID. Launcher should
+	// search through the artifactSelectors for the
+	// parentTask, findthe matching outputArtifactKey
+	// the outputArtifactKey in the selector should match
+	// the outputDefinition key of comp-condition-3.
+	tc.MockLauncherArtifactTaskCreate(
+		analyzeAnimal1Task.GetName(),
+		conditionBranch1Task.GetTaskId(),
+		"pipelinechannel--condition-branches-1-oneof-2",
+		analyzeAnimal1TaskArtifactID,
+		nil,
+		apiv2beta1.IOType_ONEOF_OUTPUT,
+	)
+
+	// It is also an output of the secondary pipeline
+	tc.MockLauncherArtifactTaskCreate(
+		analyzeAnimal1Task.GetName(),
+		secondaryPipelineTask.GetTaskId(),
+		"Output",
+		analyzeAnimal1TaskArtifactID,
+		nil,
+		apiv2beta1.IOType_ONEOF_OUTPUT,
+	)
+
+	tc.ExitDag()
+	parentTask = conditionBranch1Task
+	tc.ExitDag()
+	parentTask = secondaryPipelineTask
+	tc.ExitDag()
+	parentTask = tc.RootTask
+
+	_, _ = tc.RunContainer("check-animal", parentTask, nil)
 }
 
 func TestFinalStatus(t *testing.T) {

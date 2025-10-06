@@ -87,7 +87,8 @@
               "ITERATOR_INPUT_RAW",
               "ITERATOR_OUTPUT",
               "COLLECTED_INPUTS",
-              "OUTPUT"
+              "OUTPUT",
+              "ONEOF_OUTPUT"
             ],
             "default": "UNSPECIFIED"
           },
@@ -524,7 +525,8 @@
         "ITERATOR_INPUT_RAW",
         "ITERATOR_OUTPUT",
         "COLLECTED_INPUTS",
-        "OUTPUT"
+        "OUTPUT",
+        "ONEOF_OUTPUT"
       ],
       "default": "UNSPECIFIED",
       "description": "Describes the I/O relationship between\nthis Artifacts \u0026 Parameters and Task\nThere are a couple of instances where\ninput/outputs have special types such\nas in the case of LoopArguments or\ndsl.Collected outputs.\n\n - UNSPECIFIED: For validation\n - TASK_OUTPUT_INPUT: The name seems convoluted, but this aligns with the\nsdk naming in TaskInputsSpec.kind.task_output_parameter\nand TaskInputsSpec.kind.task_output_artifact\n - ITERATOR_INPUT: In a for loop task, introduced via ParallelFor, this type\nis used to indicate whether this resolved input belongs\nto a parameterIterator or artifactIterator.\nIn such a case the \"artifacts\" field for IOArtifact.artifacts\nis the list of resolved items for this parallelFor.\n - ITERATOR_INPUT_RAW: Raw Iterator inputs have no producer\n - ITERATOR_OUTPUT: When an output is produced by a Runtime Iteration Task\nThis value is use to differentiate between standard inputs\n - COLLECTED_INPUTS: Used for dsl.Collected\nUsage of this type indicates that all\nArtifacts with8in the IOArtifact.artifacts\nare inputs collected from sub tasks with\nITERATOR_OUTPUT outputs."

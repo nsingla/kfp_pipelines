@@ -104,7 +104,9 @@ func (m *MockDriverAPI) hydrateTask(task *apiv2beta1.PipelineTaskDetail) *apiv2b
 					apiv2beta1.IOType_RUNTIME_VALUE_INPUT,
 					apiv2beta1.IOType_TASK_OUTPUT_INPUT:
 					inputArtifacts = append(inputArtifacts, ioArtifact)
-				case apiv2beta1.IOType_OUTPUT, apiv2beta1.IOType_ITERATOR_OUTPUT:
+				case apiv2beta1.IOType_OUTPUT,
+					apiv2beta1.IOType_ITERATOR_OUTPUT,
+					apiv2beta1.IOType_ONEOF_OUTPUT:
 					outputArtifacts = append(outputArtifacts, ioArtifact)
 				}
 			}
@@ -250,6 +252,18 @@ type TestContext struct {
 // NewTestContextWithRootExecuted creates a new test context with basic configuration
 // It will automatically launch a root DAG using the provided input
 // and update the scope path.
+// When using a Test Context note the following:
+//   - Output parameters, artifacts and artifact-tasks are not auto created
+//     and must be manually created by using mock launcher calls. This
+//     includes outputs for upstream dags, since we expect launcher->api server
+//     to handle these.
+//   - All other input resolutions are handled automatically.
+//   - ScopePath is automatically pushed/popped for container calls.
+//   - ScopePath is automatically updated for dags upon entering a dag (push),
+//     but not exiting the dag (pop), this should be handled by the caller
+//     via tc.ExitDag()
+//   - When Updating TextContext, ensure for any driver executions the Run
+//     object is refreshed using RefreshRun() otherwise you might use stale data.
 func NewTestContextWithRootExecuted(t *testing.T, runtimeConfig *pipelinespec.PipelineJob_RuntimeConfig, pipelinePath string) *TestContext {
 	t.Helper()
 	proxy.InitializeConfigWithEmptyForTests()

@@ -269,6 +269,8 @@ enum IOType {
   COLLECTED_INPUTS = 7;
 
   OUTPUT = 8;
+
+  ONEOF_OUTPUT = 9;
 }
 
 message IOProducer {
