@@ -61,7 +61,11 @@ func TestRootDagComponentInputs(t *testing.T) {
 }
 
 func TestLoopArtifactPassing(t *testing.T) {
-	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected.py.yaml")
+	tc := NewTestContextWithRootExecuted(
+		t,
+		&pipelinespec.PipelineJob_RuntimeConfig{},
+		"test_data/loop_collected_raw_Iterator.py.yaml",
+	)
 	parentTask := tc.RootTask
 
 	// Run Dag on the First Task
@@ -246,7 +250,11 @@ func TestLoopArtifactPassing(t *testing.T) {
 // TestParameterInputIterator will test parameter Input Iterator
 // and parameter collection from output of a task in a loop
 func TestParameterInputIterator(t *testing.T) {
-	tc := NewTestContextWithRootExecuted(t, &pipelinespec.PipelineJob_RuntimeConfig{}, "test_data/loop_collected_dynamic.py.yaml")
+	tc := NewTestContextWithRootExecuted(
+		t,
+		&pipelinespec.PipelineJob_RuntimeConfig{},
+		"test_data/loop_collected_InputParameter_Iterator.py.yaml",
+	)
 	// Execute full pipeline
 	parentTask := tc.RootTask
 	_, secondaryPipelineTask := tc.RunDag("secondary-pipeline", parentTask)
@@ -623,6 +631,8 @@ func TestWithCaching(t *testing.T) {
 func TestArtifactIterator(t *testing.T) {
 
 }
+
+func TestK8SPlatform(t *testing.T) {}
 
 // This test creates a DAG with a single task that uses a component with inputs
 // and runtime constants. The test verifies that the inputs are correctly passed
