@@ -24,7 +24,7 @@ import pytest
 
 from backend.api.v2beta1.python_http_client.kfp_server_api.models.v2beta1_pipeline import \
     V2beta1Pipeline
-from test_data.python_functions.sequential_v2 import sequential
+from test_data.sdk_compiled_pipelines.valid.sequential_v2 import sequential
 
 from ..test_utils.file_utils import FileUtils
 

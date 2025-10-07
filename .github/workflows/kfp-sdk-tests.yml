@@ -7,7 +7,7 @@ on:
     paths:
       - 'api/**'
       - 'sdk/**'
-      - 'test_data/python_functions/**'
+      - 'test_data/sdk_compiled_pipelines/**'
       - './test/presubmit-tests-sdk.sh'
       - '.github/workflows/kfp-sdk-tests.yml'
       - '!**/*.md'

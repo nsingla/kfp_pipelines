@@ -11,27 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+
 import pathlib
 
 from kfp import compiler
 from kfp import components
 from kfp import dsl
-from sdk.python.test.test_utils.file_utils import FileUtils
 
-test_data_dir = FileUtils.TEST_DATA
-add_op = components.load_component_from_file(
-    str(os.path.join(test_data_dir, "pipeline_files", "valid", "critical",'add_numbers.yaml')))
+ingestion_op = components.load_component_from_file('ingestion_component.yaml')
+
+training_op = components.load_component_from_file('fancy_trainer_component.yaml')
 
 
-@dsl.pipeline(name='add-pipeline')
-def my_pipeline(
-    a: int = 2,
-    b: int = 5,
-):
-    first_add_task = add_op(a=a, b=3)
-    second_add_task = add_op(a=first_add_task.outputs['Output'], b=b)
-    third_add_task = add_op(a=second_add_task.outputs['Output'], b=7)
+@dsl.pipeline(
+    name='two-step-pipeline-with-ontology',
+    description='A linear two-step pipeline with artifact ontology types.')
+def my_pipeline(input_location: str = 'gs://test-bucket/pipeline_root',
+                optimizer: str = 'sgd',
+                n_epochs: int = 200):
+    ingestor = ingestion_op(input_location=input_location)
+    _ = training_op(
+        examples=ingestor.outputs['examples'],
+        optimizer=optimizer,
+        n_epochs=n_epochs)
 
 
 if __name__ == '__main__':

@@ -26,3 +26,8 @@ def fail():
 @dsl.pipeline(name='fail-pipeline')
 def fail_pipeline():
     fail_task = fail()
+
+if __name__ == '__main__':
+    from kfp import compiler
+    compiler.Compiler().compile(
+        pipeline_func=fail_pipeline, package_path=__file__.replace('.py', '.yaml'))

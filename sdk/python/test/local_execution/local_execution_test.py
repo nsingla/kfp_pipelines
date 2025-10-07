@@ -20,30 +20,34 @@ from typing import Any, Callable, Optional
 from kfp import local
 import pytest
 
-from test_data.python_functions.arguments_parameters import \
+from test_data.sdk_compiled_pipelines.valid.arguments_parameters import \
     echo as arguments_echo
-from test_data.python_functions.critical.add_numbers import add_numbers
-from test_data.python_functions.critical.component_with_optional_inputs import \
+from test_data.sdk_compiled_pipelines.valid.critical.add_numbers import \
+    add_numbers
+from test_data.sdk_compiled_pipelines.valid.critical.component_with_optional_inputs import \
     pipeline as optional_inputs_pipeline
-from test_data.python_functions.critical.flip_coin import flip_coin
-from test_data.python_functions.critical.mixed_parameters import \
+from test_data.sdk_compiled_pipelines.valid.critical.flip_coin import flip_coin
+from test_data.sdk_compiled_pipelines.valid.critical.mixed_parameters import \
     crust as mixed_parameters_pipeline
-from test_data.python_functions.critical.producer_consumer_param import \
+from test_data.sdk_compiled_pipelines.valid.critical.producer_consumer_param import \
     producer_consumer_param_pipeline
-from test_data.python_functions.dict_input import dict_input
-from test_data.python_functions.essential.concat_message import concat_message
-from test_data.python_functions.essential.container_no_input import \
+from test_data.sdk_compiled_pipelines.valid.dict_input import dict_input
+from test_data.sdk_compiled_pipelines.valid.essential.concat_message import \
+    concat_message
+from test_data.sdk_compiled_pipelines.valid.essential.container_no_input import \
     container_no_input
-from test_data.python_functions.essential.lightweight_python_functions_with_outputs import \
+from test_data.sdk_compiled_pipelines.valid.essential.lightweight_python_functions_with_outputs import \
     pipeline as lightweight_with_outputs_pipeline
-from test_data.python_functions.hello_world import echo
-from test_data.python_functions.identity import identity
-from test_data.python_functions.multiple_parameters_namedtuple import \
+from test_data.sdk_compiled_pipelines.valid.hello_world import echo
+from test_data.sdk_compiled_pipelines.valid.identity import identity
+from test_data.sdk_compiled_pipelines.valid.multiple_parameters_namedtuple import \
     crust as namedtuple_pipeline
-from test_data.python_functions.nested_return import nested_return
-from test_data.python_functions.output_metrics import output_metrics
-from test_data.python_functions.parameter import crust as parameter_pipeline
-from test_data.python_functions.sequential import sequential
+from test_data.sdk_compiled_pipelines.valid.nested_return import nested_return
+from test_data.sdk_compiled_pipelines.valid.output_metrics import \
+    output_metrics
+from test_data.sdk_compiled_pipelines.valid.parameter import \
+    crust as parameter_pipeline
+from test_data.sdk_compiled_pipelines.valid.sequential_v1 import sequential
 
 
 @dataclass

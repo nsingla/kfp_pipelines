@@ -120,7 +120,7 @@ jobs:
         id: build-sample-modelcar-image
         if: ${{ steps.deploy.outcome == 'success' }}
         run: |
-          docker build -f ./test_data/python_functions/critical/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
+          docker build -f ./test_data/sdk_compiled_pipelines/valid/critical/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
           kind --name kfp load docker-image registry.domain.local/modelcar:test
         continue-on-error: true
 
@@ -202,7 +202,7 @@ jobs:
         id: build-sample-modelcar-image
         if: ${{ steps.deploy.outcome == 'success' }}
         run: |
-          docker build -f ./test_data/python_functions/critical/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
+          docker build -f ./test_data/sdk_compiled_pipelines/valid/critical/modelcar/Dockerfile -t registry.domain.local/modelcar:test .
           kind --name kfp load docker-image registry.domain.local/modelcar:test
         continue-on-error: true
 

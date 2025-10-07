@@ -21,8 +21,8 @@ class FileUtils:
     PROJECT_ROOT = os.path.abspath(
         os.path.join(__file__, *([os.path.pardir] * 5)))
     TEST_DATA = os.path.join(PROJECT_ROOT, "test_data")
-    PYTHON_FUNCTIONS = os.path.join(TEST_DATA, "python_functions")
-    VALID_PIPELINE_FILES = os.path.join(TEST_DATA, "pipeline_files", "valid")
+    SDK_COMPILED_FILES = os.path.join(TEST_DATA, "sdk_compiled_pipelines")
+    VALID_PIPELINE_FILES = os.path.join(SDK_COMPILED_FILES, "valid")
     ESSENTIAL_PIPELINE_FILES = os.path.join(VALID_PIPELINE_FILES, "essential")
     CRITICAL_PIPELINE_FILES = os.path.join(VALID_PIPELINE_FILES, "critical")
     COMPONENTS = os.path.join(TEST_DATA, "components")

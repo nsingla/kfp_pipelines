@@ -41,4 +41,4 @@ def pipeline_with_concat_placeholder():
 if __name__ == '__main__':
     compiler.Compiler().compile(
         pipeline_func=pipeline_with_concat_placeholder,
-        package_path='../pipeline_files/valid/pipeline_with_concat_placeholder.yaml')
+        package_path='pipeline_with_concat_placeholder.yaml')

@@ -19,4 +19,4 @@ python3 -m pip install --upgrade pip
 python3 -m pip install $(grep 'yapf==' sdk/python/requirements-dev.txt)
 python3 -m pip install pre_commit_hooks
 python3 -m pre_commit_hooks.string_fixer $(find sdk/python/kfp/**/*.py -type f)
-yapf --recursive --diff "${source_root}/sdk/python/"
+yapf --recursive -i "${source_root}/sdk/python/"

@@ -1635,10 +1635,10 @@ class TestReadWriteEquality(parameterized.TestCase):
                       directory: str,
                       fn: Optional[str] = None,
                       additional_arguments: Optional[List[str]] = None) -> None:
-        py_file = os.path.join(directory, 'python_functions',
+        py_file = os.path.join(directory, 'sdk_compiled_pipelines', 'valid',
                                f'{file_base_name}.py')
 
-        golden_compiled_file = os.path.join(directory, 'pipeline_files',
+        golden_compiled_file = os.path.join(directory, 'sdk_compiled_pipelines',
                                             'valid', f'{file_base_name}.yaml')
 
         if additional_arguments is None:

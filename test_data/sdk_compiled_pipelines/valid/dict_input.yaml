@@ -1,18 +1,23 @@
 # PIPELINE DEFINITION
-# Name: fail-pipeline
-# Description: Pipeline that prints a message and fails
+# Name: dict-input
+# Inputs:
+#    struct: dict
 components:
-  comp-print-message-and-fail:
-    executorLabel: exec-print-message-and-fail
+  comp-dict-input:
+    executorLabel: exec-dict-input
+    inputDefinitions:
+      parameters:
+        struct:
+          parameterType: STRUCT
 deploymentSpec:
   executors:
-    exec-print-message-and-fail:
+    exec-dict-input:
       container:
         args:
         - --executor_input
         - '{{$}}'
         - --function_to_execute
-        - print_message_and_fail
+        - dict_input
         command:
         - sh
         - -c
@@ -32,21 +37,27 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef print_message_and_fail():\n    \"\"\"Prints a message and fails\"\
-          \"\"\n    print(\"This is a test of failing task\")\n    raise ValueError(\"\
-          Task failed!\")\n\n"
+          \ *\n\ndef dict_input(struct: Dict):\n    print(struct)\n\n"
         image: python:3.9
 pipelineInfo:
-  description: Pipeline that prints a message and fails
-  name: fail-pipeline
+  name: dict-input
 root:
   dag:
     tasks:
-      print-message-and-fail:
-        cachingOptions: {}
+      dict-input:
+        cachingOptions:
+          enableCache: true
         componentRef:
-          name: comp-print-message-and-fail
+          name: comp-dict-input
+        inputs:
+          parameters:
+            struct:
+              componentInputParameter: struct
         taskInfo:
-          name: print-message-and-fail
+          name: dict-input
+  inputDefinitions:
+    parameters:
+      struct:
+        parameterType: STRUCT
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.13.0
+sdkVersion: kfp-2.14.3

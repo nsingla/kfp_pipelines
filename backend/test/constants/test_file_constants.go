@@ -18,7 +18,7 @@ package constants
 const (
 	ParentDirectory          string = "backend"
 	TestDataDir              string = "test_data"
-	PipelineFilesDir         string = "pipeline_files"
+	PipelineFilesDir         string = "sdk_compiled_pipelines"
 	ValidPipelineFilesDir    string = "valid"
 	CompiledPipelineFilesDir string = "compiled-workflows"
 )

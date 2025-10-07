@@ -11,35 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import pathlib
 
+from kfp import compiler
 from kfp import components
 from kfp import dsl
-from kfp import compiler
+from sdk.python.test.test_utils.file_utils import FileUtils
 
-component_op = components.load_component_from_text("""
-name: Print Text
-inputs:
-- {name: text, type: String}
-implementation:
-  container:
-    image: alpine
-    command:
-    - sh
-    - -c
-    - |
-      set -e -x
-      echo "$0"
-    - {inputValue: text}
-""")
+test_data_dir = FileUtils.TEST_DATA
+add_op = components.load_component_from_file(
+    str(os.path.join(test_data_dir, "sdk_compiled_pipelines", "valid", "critical",'add_numbers.yaml')))
 
 
-@dsl.pipeline(name='pipeline-with-after')
-def my_pipeline():
-    task1 = component_op(text='1st task')
-    task2 = component_op(text='2nd task').after(task1)
-    task3 = component_op(text='3rd task').after(task1, task2)
+@dsl.pipeline(name='add-pipeline')
+def my_pipeline(
+    a: int = 2,
+    b: int = 5,
+):
+    first_add_task = add_op(a=a, b=3)
+    second_add_task = add_op(a=first_add_task.outputs['Output'], b=b)
+    third_add_task = add_op(a=second_add_task.outputs['Output'], b=7)
 
 
 if __name__ == '__main__':
     compiler.Compiler().compile(
-        pipeline_func=my_pipeline, output_path=__file__ + '.json')
+        pipeline_func=my_pipeline,
+        package_path=__file__.replace('.py', '.yaml'))

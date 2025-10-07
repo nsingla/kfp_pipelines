@@ -2,37 +2,25 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   creationTimestamp: null
-  generateName: my-pipe-
+  generateName: fail-pipeline-
 spec:
   arguments:
     parameters:
-    - name: components-comp-importer
-      value: '{"executorLabel":"exec-importer","inputDefinitions":{"parameters":{"uri":{"parameterType":"STRING"}}},"outputDefinitions":{"artifacts":{"artifact":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}}}}'
-    - name: implementations-comp-importer
-      value: '{"artifactUri":{"runtimeParameter":"uri"},"reimport":true,"typeSchema":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}'
-    - name: components-8449ec34664176c1b587ca57db361e90df4e3f8f467eb9367376055758f34f1a
-      value: '{"executorLabel":"exec-normalize-dataset","inputDefinitions":{"artifacts":{"input_iris_dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}},"parameters":{"standard_scaler":{"parameterType":"BOOLEAN"}}},"outputDefinitions":{"artifacts":{"normalized_iris_dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}}}}'
-    - name: implementations-8449ec34664176c1b587ca57db361e90df4e3f8f467eb9367376055758f34f1a
-      value: '{"args":["--executor_input","{{$}}","--function_to_execute","normalize_dataset"],"command":["sh","-c","\nif
+    - name: components-b568fbdaaed9b6c215b65a277dc1107af4099ba40aa61cffdbae497666a77ba4
+      value: '{"executorLabel":"exec-fail"}'
+    - name: implementations-b568fbdaaed9b6c215b65a277dc1107af4099ba40aa61cffdbae497666a77ba4
+      value: '{"args":["--executor_input","{{$}}","--function_to_execute","fail"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
         python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
-        ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"''  \u0026\u0026  python3
-        -m pip install --quiet --no-warn-script-location ''pandas==2.2.0'' ''scikit-learn==1.4.0''
-        \u0026\u0026 \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf
-        \"%s\" \"$0\" \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true
-        python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
+        ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
+        \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
+        \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
+        -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
-        normalize_dataset(\n    input_iris_dataset: Input[Dataset], normalized_iris_dataset:
-        Output[Dataset], standard_scaler: bool\n):\n    import pandas as pd  # noqa:
-        PLC0415\n    from sklearn.preprocessing import MinMaxScaler, StandardScaler  #
-        noqa: PLC0415\n\n    with open(input_iris_dataset.path) as f:\n        df
-        = pd.read_csv(f)\n    labels = df.pop(\"Labels\")\n\n    scaler = StandardScaler()
-        if standard_scaler else MinMaxScaler()\n\n    df = pd.DataFrame(scaler.fit_transform(df))\n    df[\"Labels\"]
-        = labels\n    normalized_iris_dataset.metadata[\"state\"] = \"Normalized\"\n    with
-        open(normalized_iris_dataset.path, \"w\") as f:\n        df.to_csv(f)\n\n"],"image":"python:3.9"}'
+        fail():\n    ''''''Fails''''''\n    import sys\n    sys.exit(1)\n\n"],"image":"python:3.9"}'
     - name: components-root
-      value: '{"dag":{"tasks":{"importer":{"cachingOptions":{},"componentRef":{"name":"comp-importer"},"inputs":{"parameters":{"uri":{"componentInputParameter":"artifact_uri"}}},"taskInfo":{"name":"importer"}},"normalize-dataset":{"cachingOptions":{},"componentRef":{"name":"comp-normalize-dataset"},"dependentTasks":["importer"],"inputs":{"artifacts":{"input_iris_dataset":{"taskOutputArtifact":{"outputArtifactKey":"artifact","producerTask":"importer"}}},"parameters":{"standard_scaler":{"componentInputParameter":"standard_scaler"}}},"taskInfo":{"name":"normalize-dataset"}}}},"inputDefinitions":{"parameters":{"artifact_uri":{"parameterType":"STRING"},"standard_scaler":{"defaultValue":true,"isOptional":true,"parameterType":"BOOLEAN"}}}}'
+      value: '{"dag":{"tasks":{"fail":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-fail"},"taskInfo":{"name":"fail"}}}}}'
   entrypoint: entrypoint
   podMetadata:
     annotations:
@@ -43,67 +31,10 @@ spec:
   templates:
   - container:
       args:
-      - --executor_type
-      - importer
-      - --task_spec
-      - '{{inputs.parameters.task}}'
-      - --component_spec
-      - '{{inputs.parameters.component}}'
-      - --importer_spec
-      - '{{inputs.parameters.importer}}'
-      - --pipeline_name
-      - my-pipe
-      - --run_id
-      - '{{workflow.uid}}'
-      - --parent_dag_id
-      - '{{inputs.parameters.parent-dag-id}}'
-      - --pod_name
-      - $(KFP_POD_NAME)
-      - --pod_uid
-      - $(KFP_POD_UID)
-      - --mlmd_server_address
-      - $(METADATA_GRPC_SERVICE_HOST)
-      - --mlmd_server_port
-      - $(METADATA_GRPC_SERVICE_PORT)
-      command:
-      - launcher-v2
-      env:
-      - name: KFP_POD_NAME
-        valueFrom:
-          fieldRef:
-            fieldPath: metadata.name
-      - name: KFP_POD_UID
-        valueFrom:
-          fieldRef:
-            fieldPath: metadata.uid
-      envFrom:
-      - configMapRef:
-          name: metadata-grpc-configmap
-          optional: true
-      image: ghcr.io/kubeflow/kfp-launcher:latest
-      name: ""
-      resources:
-        limits:
-          cpu: 500m
-          memory: 512Mi
-        requests:
-          cpu: 100m
-          memory: 64Mi
-    inputs:
-      parameters:
-      - name: task
-      - name: component
-      - name: importer
-      - name: parent-dag-id
-    metadata: {}
-    name: system-importer
-    outputs: {}
-  - container:
-      args:
       - --type
       - CONTAINER
       - --pipeline_name
-      - my-pipe
+      - fail-pipeline
       - --run_id
       - '{{workflow.uid}}'
       - --run_name
@@ -269,40 +200,27 @@ spec:
       tasks:
       - arguments:
           parameters:
-          - name: task
-            value: '{"cachingOptions":{},"componentRef":{"name":"comp-importer"},"inputs":{"parameters":{"uri":{"componentInputParameter":"artifact_uri"}}},"taskInfo":{"name":"importer"}}'
           - name: component
-            value: '{{workflow.parameters.components-comp-importer}}'
-          - name: importer
-            value: '{{workflow.parameters.implementations-comp-importer}}'
-          - name: parent-dag-id
-            value: '{{inputs.parameters.parent-dag-id}}'
-        name: importer
-        template: system-importer
-      - arguments:
-          parameters:
-          - name: component
-            value: '{{workflow.parameters.components-8449ec34664176c1b587ca57db361e90df4e3f8f467eb9367376055758f34f1a}}'
+            value: '{{workflow.parameters.components-b568fbdaaed9b6c215b65a277dc1107af4099ba40aa61cffdbae497666a77ba4}}'
           - name: task
-            value: '{"cachingOptions":{},"componentRef":{"name":"comp-normalize-dataset"},"dependentTasks":["importer"],"inputs":{"artifacts":{"input_iris_dataset":{"taskOutputArtifact":{"outputArtifactKey":"artifact","producerTask":"importer"}}},"parameters":{"standard_scaler":{"componentInputParameter":"standard_scaler"}}},"taskInfo":{"name":"normalize-dataset"}}'
+            value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-fail"},"taskInfo":{"name":"fail"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-8449ec34664176c1b587ca57db361e90df4e3f8f467eb9367376055758f34f1a}}'
+            value: '{{workflow.parameters.implementations-b568fbdaaed9b6c215b65a277dc1107af4099ba40aa61cffdbae497666a77ba4}}'
           - name: task-name
-            value: normalize-dataset
+            value: fail
           - name: parent-dag-id
             value: '{{inputs.parameters.parent-dag-id}}'
-        depends: importer.Succeeded
-        name: normalize-dataset-driver
+        name: fail-driver
         template: system-container-driver
       - arguments:
           parameters:
           - name: pod-spec-patch
-            value: '{{tasks.normalize-dataset-driver.outputs.parameters.pod-spec-patch}}'
+            value: '{{tasks.fail-driver.outputs.parameters.pod-spec-patch}}'
           - default: "false"
             name: cached-decision
-            value: '{{tasks.normalize-dataset-driver.outputs.parameters.cached-decision}}'
-        depends: normalize-dataset-driver.Succeeded
-        name: normalize-dataset
+            value: '{{tasks.fail-driver.outputs.parameters.cached-decision}}'
+        depends: fail-driver.Succeeded
+        name: fail
         template: system-container-executor
     inputs:
       parameters:
@@ -315,7 +233,7 @@ spec:
       - --type
       - '{{inputs.parameters.driver-type}}'
       - --pipeline_name
-      - my-pipe
+      - fail-pipeline
       - --run_id
       - '{{workflow.uid}}'
       - --run_name
@@ -394,7 +312,7 @@ spec:
           - name: component
             value: '{{workflow.parameters.components-root}}'
           - name: runtime-config
-            value: '{"parameterValues":{"standard_scaler":true}}'
+            value: '{}'
           - name: driver-type
             value: ROOT_DAG
         name: root-driver

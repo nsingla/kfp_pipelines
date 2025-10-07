@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -84,7 +85,9 @@ func GetListOfFilesInADir(directoryPath string) []string {
 
 	for _, file := range files {
 		if !file.IsDir() {
-			fileNames = append(fileNames, file.Name())
+			if !strings.Contains(file.Name(), ".py") && (file.Name() != "Dockerfile") && !strings.Contains(file.Name(), ".md") && !strings.Contains(file.Name(), ".ipynb") {
+				fileNames = append(fileNames, file.Name())
+			}
 		}
 	}
 	return fileNames
@@ -101,7 +104,9 @@ func GetListOfAllFilesInDir(directoryPath string) []string {
 
 		// Check if it's a regular file (not a directory)
 		if !d.IsDir() {
-			filePaths = append(filePaths, path)
+			if !strings.Contains(d.Name(), ".py") && (d.Name() != "Dockerfile") && !strings.Contains(d.Name(), ".md") && !strings.Contains(d.Name(), ".ipynb") {
+				filePaths = append(filePaths, path)
+			}
 		}
 		return nil
 	})
