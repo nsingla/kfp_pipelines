@@ -1,0 +1,360 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: rfeworkflows.rfe.kfp.kubeflow.org
+  annotations:
+    description: "RFE (Request for Enhancement) Workflow Custom Resource for Kubeflow Pipelines"
+spec:
+  group: rfe.kfp.kubeflow.org
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            required: [title, description, umbrellaRepo]
+            properties:
+              title:
+                type: string
+                description: "Title of the RFE"
+              description:
+                type: string
+                description: "Detailed description of the enhancement request"
+              umbrellaRepo:
+                type: object
+                description: "Primary Git repository for the RFE"
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    description: "Git repository URL"
+                  branch:
+                    type: string
+                    default: "main"
+                    description: "Git branch to work on"
+                  path:
+                    type: string
+                    description: "Optional path within repository"
+              supportingRepos:
+                type: array
+                description: "Additional Git repositories related to this RFE"
+                items:
+                  type: object
+                  required: [url]
+                  properties:
+                    url:
+                      type: string
+                      description: "Git repository URL"
+                    branch:
+                      type: string
+                      default: "main"
+                      description: "Git branch to work on"
+                    path:
+                      type: string
+                      description: "Optional path within repository"
+              workspacePath:
+                type: string
+                description: "Workspace path for RFE artifacts"
+              parentOutcome:
+                type: string
+                description: "Optional parent Jira Outcome key for linking"
+              jiraLinks:
+                type: array
+                description: "Links between workspace files and Jira issues"
+                items:
+                  type: object
+                  required: [path, jiraKey]
+                  properties:
+                    path:
+                      type: string
+                      description: "Workspace-relative path to the document"
+                    jiraKey:
+                      type: string
+                      description: "Jira issue key (e.g., PROJ-123)"
+              kfpRequirements:
+                type: array
+                description: "KFP-specific requirements for this RFE"
+                items:
+                  type: object
+                  required: [componentType, name, description]
+                  properties:
+                    componentType:
+                      type: string
+                      enum: ["python_component", "container_component", "pipeline", "notebook_component", "importer"]
+                      description: "Type of KFP component"
+                    name:
+                      type: string
+                      description: "Component name"
+                    description:
+                      type: string
+                      description: "Component description"
+                    inputs:
+                      type: array
+                      items:
+                        type: string
+                      description: "Component input specifications"
+                    outputs:
+                      type: array
+                      items:
+                        type: string
+                      description: "Component output specifications"
+                    dependencies:
+                      type: array
+                      items:
+                        type: string
+                      description: "Component dependencies"
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum:
+                - "Initializing"
+                - "Ready"
+                - "Agent_Analysis"
+                - "Specification"
+                - "Planning"
+                - "Tasks_Generation"
+                - "Approved"
+                - "Rejected"
+                - "Completed"
+                default: "Initializing"
+                description: "Current phase of the RFE workflow"
+              message:
+                type: string
+                description: "Status message or error description"
+              agentAnalyses:
+                type: array
+                description: "Analysis results from the agent council"
+                items:
+                  type: object
+                  required: [agentRole, analysis]
+                  properties:
+                    agentRole:
+                      type: string
+                      enum: ["Parker", "Archie", "Stella", "Uma", "Lee", "Neil", "Jack"]
+                      description: "Agent role that performed the analysis"
+                    analysis:
+                      type: string
+                      description: "Analysis result text"
+                    score:
+                      type: number
+                      minimum: 0
+                      maximum: 10
+                      description: "Numerical score from the agent"
+                    recommendations:
+                      type: array
+                      items:
+                        type: string
+                      description: "Agent recommendations"
+                    concerns:
+                      type: array
+                      items:
+                        type: string
+                      description: "Agent concerns"
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: "When the analysis was completed"
+              specGenerated:
+                type: boolean
+                default: false
+                description: "Whether spec.md has been generated"
+              planGenerated:
+                type: boolean
+                default: false
+                description: "Whether plan.md has been generated"
+              tasksGenerated:
+                type: boolean
+                default: false
+                description: "Whether tasks.md has been generated"
+              overallScore:
+                type: number
+                minimum: 0
+                maximum: 10
+                description: "Overall weighted score from all agents"
+              approvalDecision:
+                type: string
+                enum: ["pending", "approved", "rejected"]
+                default: "pending"
+                description: "Final approval decision"
+              artifactUrls:
+                type: object
+                description: "URLs to generated artifacts"
+                properties:
+                  specUrl:
+                    type: string
+                    description: "URL to generated spec.md"
+                  planUrl:
+                    type: string
+                    description: "URL to generated plan.md"
+                  tasksUrl:
+                    type: string
+                    description: "URL to generated tasks.md"
+                  workspaceUrl:
+                    type: string
+                    description: "URL to workspace repository"
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Phase
+      type: string
+      description: Current phase of the RFE workflow
+      jsonPath: .status.phase
+    - name: Title
+      type: string
+      description: RFE title
+      jsonPath: .spec.title
+    - name: Overall Score
+      type: number
+      description: Overall approval score
+      jsonPath: .status.overallScore
+    - name: Decision
+      type: string
+      description: Approval decision
+      jsonPath: .status.approvalDecision
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: rfeworkflows
+    singular: rfeworkflow
+    kind: RFEWorkflow
+    shortNames:
+    - rfe
+    - rfew
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: rfesessions.rfe.kfp.kubeflow.org
+  annotations:
+    description: "RFE Agent Session Custom Resource for tracking individual agent executions"
+spec:
+  group: rfe.kfp.kubeflow.org
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            required: [rfeWorkflowRef, agentRole, prompt]
+            properties:
+              rfeWorkflowRef:
+                type: string
+                description: "Reference to the parent RFE workflow"
+              agentRole:
+                type: string
+                enum: ["Parker", "Archie", "Stella", "Uma", "Lee", "Neil", "Jack"]
+                description: "Agent role for this session"
+              prompt:
+                type: string
+                description: "Prompt or instructions for the agent"
+              timeout:
+                type: integer
+                default: 3600
+                description: "Session timeout in seconds"
+              interactive:
+                type: boolean
+                default: false
+                description: "Whether this is an interactive session"
+              model:
+                type: string
+                default: "claude-3-5-sonnet-20241022"
+                description: "AI model to use for this session"
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum:
+                - "Pending"
+                - "Running"
+                - "Completed"
+                - "Failed"
+                - "Timeout"
+                default: "Pending"
+                description: "Current phase of the agent session"
+              startTime:
+                type: string
+                format: date-time
+                description: "When the session started"
+              completionTime:
+                type: string
+                format: date-time
+                description: "When the session completed"
+              results:
+                type: object
+                description: "Agent analysis results"
+                properties:
+                  analysis:
+                    type: string
+                    description: "Agent analysis text"
+                  score:
+                    type: number
+                    minimum: 0
+                    maximum: 10
+                    description: "Agent score"
+                  recommendations:
+                    type: array
+                    items:
+                      type: string
+                    description: "Agent recommendations"
+                  concerns:
+                    type: array
+                    items:
+                      type: string
+                    description: "Agent concerns"
+              errorMessage:
+                type: string
+                description: "Error message if session failed"
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: RFE
+      type: string
+      description: Parent RFE workflow
+      jsonPath: .spec.rfeWorkflowRef
+    - name: Agent
+      type: string
+      description: Agent role
+      jsonPath: .spec.agentRole
+    - name: Phase
+      type: string
+      description: Current phase
+      jsonPath: .status.phase
+    - name: Score
+      type: number
+      description: Agent score
+      jsonPath: .status.results.score
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: rfesessions
+    singular: rfesession
+    kind: RFESession
+    shortNames:
+    - rfes
