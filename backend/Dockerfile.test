@@ -1,0 +1,87 @@
+# Copyright 2021-2022 The Kubeflow Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+FROM registry.access.redhat.com/ubi9/go-toolset:1.24@sha256:6f0e6c534d6b785530f7961089f444bbb14d384bfa3ea09070f5a70029b4a5cb
+
+# Update package repo and install required libraries
+RUN dnf update && dnf install -y cmake clang musl-devel openssl
+
+# Declare working directory
+WORKDIR $WORKSPACE
+
+# Set secret name for the aws credential secret to be use for DSPA deployment
+ENV SECRET_NAME="dashboard-dspa-secret"
+
+
+# Download the latest OpenShift CLI binary
+RUN wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.20/openshift-client-linux.tar.gz -P oc-client && \
+    tar -xf oc-client/openshift-client-linux.tar.gz -C oc-client && \
+    cp oc-client/oc /usr/local/bin && \
+    rm -rf oc-client/
+
+# Create DSPA CR template
+RUN cat <<EOF > /tmp/dspa.yaml
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  namespace: ${NAMESPACE}
+spec:
+  dspVersion: v2
+  apiServer:
+    cacheEnabled: true
+    enableSamplePipeline: false
+  objectStorage:
+    externalStorage:
+      bucket: "ods-ci-ds-pipelines"
+      host: "s3.us-east-1.amazonaws.com"
+      region: "us-east-1"
+      s3CredentialsSecret:
+        accessKey: "AWS_ACCESS_KEY"
+        secretKey: "AWS_SECRET_ACCESS_KEY"
+        secretName: ${SECRET_NAME}
+      scheme: https
+  podToPodTLS: true
+EOF
+
+# Copy all required go files from the project
+COPY ./go.mod ./
+COPY ./go.sum ./
+COPY ./kubernetes_platform/go.mod ./kubernetes_platform/go.mod
+COPY ./api/go.mod ./api/go.mod
+
+# Download all go modules
+RUN GO111MODULE=on go mod download
+
+# Copy all other files
+COPY . .
+
+# Set the working directory to test directory
+WORKDIR $TEST_DIRECTORY
+
+# Run Commands to first deploy DSPA and then run tests against it
+CMD ["/bin/sh", "-c", "\
+    oc create namespace ${NAMESPACE} && \
+    oc -n ${NAMESPACE} create secret generic ${SECRET_NAME} \
+        --from-literal=AWS_ACCESS_KEY=${AWS_ACCESS_KEY} \
+        --from-literal=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} && \
+    oc apply -n ${NAMESPACE} -f /tmp/dspa.yaml && \
+    go run github.com/onsi/ginkgo/v2/ginkgo \
+        -r -v --cover -p --keep-going --github-output=true \
+        --nodes=${NUM_PARALLEL_NODES} -v \
+        --label-filter=${TEST_LABEL} \
+        -- -namespace=${NAMESPACE} \
+        -kubeflowMode=${IN_CLUSTER_MODE} \
+        ${EXTRA_ARGS}\
+"]
