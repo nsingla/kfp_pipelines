@@ -85,7 +85,7 @@ func NewHTTPRuntime(clientConfig clientcmd.ClientConfig, debug bool, tlsCfg *tls
 			httpClient = &http.Client{Transport: tr}
 		}
 		var runtimeClient *httptransport.Runtime
-		if tlsCfg != nil {
+		if tlsCfg != nil && !*testconfig.DisableTLSCheck {
 			scheme = []string{"https"}
 			tr := &http.Transport{
 				TLSClientConfig: tlsCfg,
