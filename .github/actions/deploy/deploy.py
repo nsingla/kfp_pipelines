@@ -821,7 +821,10 @@ class DSPDeployer:
             self.deployment_manager.debug_deployment_failure(
                 namespace=self.operator_namespace,
                 deployment_name=self.operator_deployment,
-                resource_type=ResourceType.DEPLOYMENT)
+                resource_type=ResourceType.DEPLOYMENT,
+                include_events=False,  # Print operator logs, not events
+                include_logs=True,
+                log_tail_lines=100)
             raise RuntimeError(
                 'DSPA operator did not create deployment within timeout')
 
@@ -853,7 +856,10 @@ class DSPDeployer:
             self.deployment_manager.debug_deployment_failure(
                 namespace=self.operator_namespace,
                 deployment_name=self.operator_deployment,
-                resource_type=ResourceType.DEPLOYMENT)
+                resource_type=ResourceType.DEPLOYMENT,
+                include_events=False,  # Print operator logs, not events
+                include_logs=True,
+                log_tail_lines=100)
             raise RuntimeError('DSPA did not become ready within timeout')
 
     def deploy_dsp_direct(self):
@@ -951,7 +957,7 @@ class DSPDeployer:
             if name.strip()
         ]
         print(
-            f'✅ Found {len(pod_names)} running pod(s): {", ".join(pod_names)}')
+            f'✅ Found {len(pod_names)} running pod(s): {', '.join(pod_names)}')
 
         # Attempt port forwarding
         forward_script = './.github/resources/scripts/forward-port.sh'
