@@ -957,7 +957,7 @@ class DSPDeployer:
             if name.strip()
         ]
         print(
-            f'✅ Found {len(pod_names)} running pod(s): {', '.join(pod_names)}')
+            f'✅ Found {len(pod_names)} running pod(s): {", ".join(pod_names)}')
 
         # Attempt port forwarding
         forward_script = './.github/resources/scripts/forward-port.sh'
