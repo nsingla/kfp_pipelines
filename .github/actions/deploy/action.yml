@@ -67,6 +67,17 @@ inputs:
     required: false
     default: 'kubeflow'
 
+outputs:
+  deployment_name:
+    description: "Name of the KFP API server deployment/service"
+    value: ${{ steps.deploy-kfp.outputs.DEPLOYMENT_NAME }}
+  service_account_name:
+    description: "Name of the KFP API server service account"
+    value: ${{ steps.deploy-kfp.outputs.SERVICE_ACCOUNT_NAME }}
+  deployment_mode:
+    description: "Deployment mode used (operator or direct)"
+    value: ${{ steps.deploy-kfp.outputs.DEPLOYMENT_MODE }}
+
 runs:
   using: "composite"
   steps:
@@ -103,6 +114,7 @@ runs:
         go-version: 'stable'  # Uses latest stable Go version
 
     - name: Deploy Data Science Pipelines
+      id: deploy-kfp
       shell: bash
       run: |
         # Handle empty inputs by using defaults

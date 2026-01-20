@@ -957,7 +957,7 @@ class DSPDeployer:
             if name.strip()
         ]
         print(
-            f'✅ Found {len(pod_names)} running pod(s): {", ".join(pod_names)}')
+            f'✅ Found {len(pod_names)} running pod(s): {', '.join(pod_names)}')
 
         # Attempt port forwarding
         forward_script = './.github/resources/scripts/forward-port.sh'
@@ -1053,6 +1053,31 @@ class DSPDeployer:
             if self.temp_dir and os.path.exists(self.temp_dir):
                 import shutil
                 shutil.rmtree(self.temp_dir)
+
+    def output_deployment_metadata(self):
+        """Output deployment metadata for GitHub Actions."""
+        # Determine deployment mode and names
+        use_operator = self._should_use_operator_deployment()
+        deployment_mode = 'operator' if use_operator else 'direct'
+
+        if use_operator:
+            # Operator deployment
+            deployment_name = f"ds-pipeline-{self.args.dspa_name}"
+            service_account_name = f"ds-pipeline-{self.args.dspa_name}"
+        else:
+            # Direct deployment (multi-user or proxy)
+            deployment_name = 'ml-pipeline'
+            service_account_name = 'ml-pipeline'
+
+        print(f"📤 Outputting deployment metadata:")
+        print(f"   DEPLOYMENT_MODE={deployment_mode}")
+        print(f"   DEPLOYMENT_NAME={deployment_name}")
+        print(f"   SERVICE_ACCOUNT_NAME={service_account_name}")
+
+        # Output to GitHub Actions
+        output_to_github_actions('DEPLOYMENT_MODE', deployment_mode)
+        output_to_github_actions('DEPLOYMENT_NAME', deployment_name)
+        output_to_github_actions('SERVICE_ACCOUNT_NAME', service_account_name)
 
     def _should_use_operator_deployment(self) -> bool:
         """Determine whether to use DSPO (operator) or direct deployment.
@@ -1183,6 +1208,19 @@ def main():
 
     deployer = DSPDeployer(args)
     deployer.deploy()
+
+    # Output deployment metadata for GitHub Actions
+    deployer.output_deployment_metadata()
+
+
+def output_to_github_actions(key: str, value: str):
+    """Output key-value pair to GitHub Actions outputs."""
+    github_output = os.environ.get('GITHUB_OUTPUT')
+    if github_output:
+        with open(github_output, 'a') as f:
+            f.write(f"{key}={value}\n")
+    else:
+        print(f"::set-output name={key}::{value}")
 
 
 if __name__ == '__main__':
