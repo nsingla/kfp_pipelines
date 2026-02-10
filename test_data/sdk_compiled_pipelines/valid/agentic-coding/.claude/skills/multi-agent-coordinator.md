@@ -60,6 +60,9 @@ Update task status and track completion:
 - Mark tasks as `completed` when agents finish successfully
 - Handle failures with reassignment or escalation
 
+### Step 6: Push the branch to git
+Use the available tools like github cli, github mcp, or plain git commands to push the branch 
+
 ## Agent Selection Logic
 
 **Python Tasks**: Contain keywords like python, pip, pytest, api, script, django, flask

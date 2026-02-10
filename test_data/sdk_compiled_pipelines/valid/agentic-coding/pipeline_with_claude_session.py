@@ -244,6 +244,5 @@ def claude_pipeline(
         # Configure secrets for Claude session
         kubernetes.use_secret_as_env(
             claude_session,
-            secret_name='secret_name',
-            secret_key_to_env={'PASSWORD': 'password_key_in_secret'}
+            secret_name=secret_name
         )
