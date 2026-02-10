@@ -198,7 +198,8 @@ def run_claude_session(pvc_path: str, user_prompt: str):
 )
 def claude_pipeline(
     user_prompt: str | list[str],
-    repo_url: str | list[str]
+    repo_url: str | list[str],
+    secret_name: str = "claude-git-secrets"
 ):
     """
     Pipeline that can clone a GitHub repository and run Claude analysis
@@ -208,16 +209,18 @@ def claude_pipeline(
     """
 
     # Update user prompt to include repository context if repo_url provided
-    if repo_url:
-        enhanced_prompt = f"First, a GitHub repository will be cloned to the workspace. Then: {user_prompt}\n\nPlease analyze the cloned repository content."
-    else:
-        enhanced_prompt = user_prompt
     if isinstance(user_prompt, list):
         assert isinstance(repo_url, list), "Please provide equal number of repositories to work with"
     if isinstance(repo_url, list) and isinstance(user_prompt, str):
-        user_prompt = [user_prompt * 3]
+        user_prompt = [user_prompt * len(repo_url)]
+    if isinstance(repo_url, str) and isinstance(user_prompt, list):
+        repo_url = [repo_url * len(user_prompt)]
+    if isinstance(repo_url, str) and isinstance(user_prompt, str):
+        repo_url = [ repo_url ]
+        user_prompt = [ user_prompt ]
 
-    def clone_and_query_claude(repo_url: str, user_prompt: str):
+
+    with dsl.parallelFor(items=repo_url) as url:
         # Extract repository name if target_dir not provided
         target_dir: str = None
         repo_name = repo_url.split('/')[-1]
@@ -241,13 +244,6 @@ def claude_pipeline(
         # Configure secrets for Claude session
         kubernetes.use_secret_as_env(
             claude_session,
-            secret_name='claude-secrets',
+            secret_name='secret_name',
             secret_key_to_env={'PASSWORD': 'password_key_in_secret'}
         )
-    if isinstance(repo_url, list):
-        i = 0
-        with dsl.parallelFor(items=repo_url) as url:
-            clone_and_query_claude(url, user_prompt[i])
-            i =+ 1
-    else:
-        clone_and_query_claude(repo_url, user_prompt)
