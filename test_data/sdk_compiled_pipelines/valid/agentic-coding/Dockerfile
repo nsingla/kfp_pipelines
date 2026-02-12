@@ -35,5 +35,7 @@ WORKDIR /root
 COPY .claude .claude
 COPY .claude/CLAUDE.md CLAUDE.md
 
+ENV GOOGLE_APPLICATION_CREDENTIALS="/root/.config/gcloud/application_default_credentials.json"
+
 # Default command
 CMD ["bash"]
