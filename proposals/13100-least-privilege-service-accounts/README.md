@@ -8,19 +8,20 @@
   - [Non-Goals](#non-goals)
 - [Proposal](#proposal)
   - [Phase 1: Eliminate Wildcard Permissions from Pipeline Runner](#phase-1-eliminate-wildcard-permissions-from-pipeline-runner)
-  - [Phase 2: Scope Multi-User ClusterRoles to Managed Namespaces](#phase-2-scope-multi-user-clusterroles-to-managed-namespaces)
-  - [Phase 3: Harden Third-Party and Viewer Controller Roles](#phase-3-harden-third-party-and-viewer-controller-roles)
+  - [Phase 2: Remove Obsolete Components and Harden Remaining Roles](#phase-2-remove-obsolete-components-and-harden-remaining-roles)
+  - [Phase 3: Scope Multi-User ClusterRoles to Managed Namespaces](#phase-3-scope-multi-user-clusterroles-to-managed-namespaces)
   - [Phase 4: Introduce Per-Namespace Service Accounts in Multi-User Mode](#phase-4-introduce-per-namespace-service-accounts-in-multi-user-mode)
   - [User Stories](#user-stories)
   - [Risks and Mitigations](#risks-and-mitigations)
 - [Design Details](#design-details)
+  - [Multi-User Architecture Background](#multi-user-architecture-background)
   - [Current RBAC Inventory and Audit](#current-rbac-inventory-and-audit)
   - [Cleanup Responsibility Separation](#cleanup-responsibility-separation)
   - [Driver/Launcher K8s API Call Audit](#driverlauncher-k8s-api-call-audit)
   - [Proposed Changes: Pipeline Runner (Phase 1)](#proposed-changes-pipeline-runner-phase-1)
-  - [Proposed Changes: Multi-User ClusterRoles (Phase 2)](#proposed-changes-multi-user-clusterroles-phase-2)
-  - [Proposed Changes: Cache-Deployer ClusterRole (Phase 3)](#proposed-changes-cache-deployer-clusterrole-phase-3)
-  - [Proposed Changes: Viewer Controller and Application Manager (Phase 3)](#proposed-changes-viewer-controller-and-application-manager-phase-3)
+  - [Proposed Changes: Remove Cache-Deployer and Cache Webhook Server (Phase 2)](#proposed-changes-remove-cache-deployer-and-cache-webhook-server-phase-2)
+  - [Proposed Changes: Remove Application Controller and Harden Viewer Controller (Phase 2)](#proposed-changes-remove-application-controller-and-harden-viewer-controller-phase-2)
+  - [Proposed Changes: Multi-User ClusterRoles (Phase 3)](#proposed-changes-multi-user-clusterroles-phase-3)
   - [Proposed Changes: Per-Namespace Service Accounts (Phase 4)](#proposed-changes-per-namespace-service-accounts-phase-4)
   - [SDK and Backend Impact](#sdk-and-backend-impact)
   - [Backward Compatibility and Migration Strategy](#backward-compatibility-and-migration-strategy)
@@ -37,9 +38,9 @@
 
 ## Summary
 
-Kubeflow Pipelines currently grants overly broad RBAC permissions to several service accounts, most critically `pipeline-runner`, `ml-pipeline-viewer-crd-service-account`, and `application`. These service accounts use wildcard verbs (`*`) and wildcard resources (`*`) on multiple API groups, creating a significant attack surface. In multi-user mode, namespace-scoped Roles are promoted to ClusterRoles with identical rules, giving control-plane service accounts unrestricted cluster-wide access to resources like pods, workflows, and deployments across all namespaces.
+Kubeflow Pipelines currently grants overly broad RBAC permissions to several service accounts, most critically `pipeline-runner` and `ml-pipeline-viewer-crd-service-account`. These service accounts use wildcard verbs (`*`) and wildcard resources (`*`) on multiple API groups, creating a significant attack surface. In multi-user mode, namespace-scoped Roles are promoted to ClusterRoles with identical rules, giving control-plane service accounts unrestricted cluster-wide access to resources like pods, workflows, and deployments across all namespaces. Additionally, the `application` controller and its overly-broad service account should be removed from KFP core — it is a GCP-specific integration component that is not needed in platform-agnostic deployments. The `kubeflow-pipelines-cache-deployer-sa` and its associated cache webhook infrastructure are only used by v1 pipelines; with KFP v2 handling caching entirely in the driver, these components should be made optional and removable.
 
-This proposal introduces a phased approach to enforce the principle of least privilege across all KFP service accounts. The changes eliminate wildcards, scope permissions to the minimum required verbs and resources, introduce per-namespace service accounts for workload execution in multi-user mode, and harden third-party component roles. The goal is to reduce blast radius if any service account token is compromised, without breaking existing pipeline functionality.
+This proposal introduces a phased approach to enforce the principle of least privilege across all KFP service accounts. The changes eliminate wildcards, scope permissions to the minimum required verbs and resources, remove or make optional components that are no longer needed in v2, introduce per-namespace service accounts for workload execution in multi-user mode, and harden third-party component roles. The goal is to reduce blast radius if any service account token is compromised, without breaking existing pipeline functionality.
 
 ## Motivation
 
@@ -59,17 +60,20 @@ The service accounts below are the primary identities involved in this proposal.
 - **Current use:** viewer controller reconciles Viewer CRDs into a visualization Deployment/Service pair.
 - **Problem:** wildcard API groups can unintentionally extend write rights beyond apps/core resources it actually manages.
 
-**`application` manager role (application-controller identity):**
-- **Current use:** tracks and updates application resource status across app-managed objects.
-- **Problem:** broad read/update over `*/*` in namespace increases blast radius if token is misused.
+**`application` manager role (application-controller identity) — REMOVAL CANDIDATE:**
+- **Current use:** tracks and updates application resource status across app-managed objects. Deployed **only** in `env/dev` and `env/gcp` environments. The kustomization files explicitly state: *"Application controller is used to provide Google Cloud Console integration."* The controller image is GCP-hosted (`gcr.io/ml-pipeline/application-crd-controller`).
+- **Problem:** broad read/update over `*/*` in namespace increases blast radius if token is misused. More fundamentally, this is a GCP-specific component that should not be part of the KFP core manifests. Platform-agnostic, plain, and multi-user environments do not deploy the controller — they only carry the `application-crd-id: kubeflow-pipelines` label as metadata.
+- **Recommendation:** Remove the `application` controller, its service account, role, rolebinding, and deployment from KFP core manifests (`manifests/kustomize/third-party/application/`). Users who need GCP Console integration should define the Application controller and its RBAC in their own deployment overlay, scoped to their specific requirements. The `application-crd-id` label can remain as metadata without requiring the controller.
 
 **Multi-user control-plane service accounts (`ml-pipeline`, `ml-pipeline-scheduledworkflow`, `ml-pipeline-persistenceagent`, `kubeflow-pipelines-cache`, `kubeflow-pipelines-metadata-writer`, `ml-pipeline-ui`):**
 - **Current use:** API server and controllers operate over user namespaces to manage runs, schedules, cache, metadata, and UI artifact paths.
 - **Problem:** ClusterRoleBinding promotion can make permissions effectively cluster-wide.
 
-**`kubeflow-pipelines-cache-deployer-sa` (cache webhook bootstrap identity):**
-- **Current use:** bootstraps webhook TLS and mutating webhook config.
+**`kubeflow-pipelines-cache-deployer-sa` (cache webhook bootstrap identity) — REMOVAL CANDIDATE:**
+- **Current use:** bootstraps webhook TLS and mutating webhook config for the cache webhook server.
 - **Problem:** high-privilege rights remain active because deployer runs continuously instead of as one-shot bootstrap.
+- **v2 obsolescence:** The cache webhook is **only used by v1 pipelines**. KFP v2 handles caching entirely in the driver (`backend/src/v2/driver/cache.go`) via gRPC calls to the KFP API server's `TaskService`. The cache webhook server explicitly skips v2 pods (`backend/src/cache/server/mutation.go:97-100`: `if isV2Pod(&pod) { return nil, nil }`). Since KFP v2 is now the standard and there is no mixed v1/v2 environment, the entire cache webhook infrastructure — `kubeflow-pipelines-cache-deployer-sa`, its ClusterRole, the cache-deployer Deployment, the cache webhook server, and the MutatingWebhookConfiguration — is unused overhead carrying elevated cluster-scoped privileges.
+- **Recommendation:** Remove the cache-deployer and cache webhook server from the default deployment. Remove `kubeflow-pipelines-cache-deployer-sa`, its ClusterRole/ClusterRoleBinding, and the cache-deployer Deployment from core manifests.
 
 **`default-editor` -> `kfp-pipeline-runner` in multi-user workload execution:**
 - **Current use:** many user pipelines run with profile-provided `default-editor`.
@@ -90,7 +94,7 @@ This is the service account used by Argo Workflows to execute pipeline steps. It
 
 A compromised pipeline step can use the `pipeline-runner` token to exec into other pods, create backdoor deployments, exfiltrate secrets, or escalate privilege by manipulating Kubeflow resources.
 
-**2. `ml-pipeline-viewer-crd-service-account` (High)**
+**2. `ml-pipeline-viewer-crd-service-account` (High but impacts v1 only)** 
 
 | API Group | Resources | Verbs |
 |-----------|-----------|-------|
@@ -98,20 +102,20 @@ A compromised pipeline step can use the `pipeline-runner` token to exec into oth
 
 The `apiGroups: ['*']` means this service account can manage deployments and services across *every* API group, not just `apps` and core.
 
-**3. `application` Manager Role (High)**
+**3. `application` Manager Role — REMOVE FROM CORE**
 
 | API Group | Resources | Verbs |
 |-----------|-----------|-------|
 | `*` | `*` | get, list, update, patch, watch |
 | `app.k8s.io` | `*` | `*` |
 
-Read+update access to every resource in every API group in the namespace.
+Read+update access to every resource in every API group in the namespace. The application controller is a **GCP-specific component** used solely for Google Cloud Console integration. It is only deployed in `env/dev` and `env/gcp` environments — the controller image is hosted at `gcr.io/ml-pipeline/application-crd-controller`. Platform-agnostic, plain, and multi-user environments do not deploy the controller. This component should be removed from KFP core manifests and maintained by users who need GCP Console integration in their own deployment overlays.
 
 **4. Multi-User ClusterRole Promotion (Medium-High)**
 
 In multi-user mode, every namespace-scoped Role is promoted to a ClusterRole with a ClusterRoleBinding. This means `ml-pipeline` can create/delete Argo Workflows and `ml-pipeline-scheduledworkflow` can create events in *any* namespace, not just user namespaces managed by Kubeflow.
 
-**5. `kubeflow-pipelines-cache-deployer-sa` ClusterRole (Medium-High)**
+**5. `kubeflow-pipelines-cache-deployer-sa` ClusterRole — REMOVE (v1-only, obsolete in v2)**
 
 | API Group | Resources | Verbs |
 |-----------|-----------|-------|
@@ -119,7 +123,7 @@ In multi-user mode, every namespace-scoped Role is promoted to a ClusterRole wit
 | `certificates.k8s.io` | signers (`kubernetes.io/*`) | approve |
 | `admissionregistration.k8s.io` | mutatingwebhookconfigurations | create, delete, get, list, patch |
 
-The cache-deployer has cluster-wide CSR approval authority for **all** `kubernetes.io/*` signers and can create/delete MutatingWebhookConfigurations. This is a one-time bootstrap task (generates TLS certs for the cache webhook), yet the pod runs permanently (`sleep infinity`), leaving these elevated cluster-scoped permissions active indefinitely.
+The cache-deployer has cluster-wide CSR approval authority for **all** `kubernetes.io/*` signers and can create/delete MutatingWebhookConfigurations. This is a one-time bootstrap task (generates TLS certs for the cache webhook), yet the pod runs permanently (`sleep infinity`), leaving these elevated cluster-scoped permissions active indefinitely. **More importantly, the entire cache webhook infrastructure is obsolete in KFP v2.** The v2 driver handles caching via gRPC to the KFP API server (`backend/src/v2/cacheutils/cache.go`), and the cache webhook explicitly skips v2 pods (`backend/src/cache/server/mutation.go:97`). Since KFP v2 is now the standard, the cache-deployer, its ClusterRole, and the cache webhook server should be removed from the default deployment.
 
 **6. `aggregate-to-kubeflow-pipelines-edit` ClusterRole (Medium)**
 
@@ -173,7 +177,34 @@ flowchart LR
   D[Optional overlays for special workloads] --> B
 ```
 
-### Phase 2: Scope Multi-User ClusterRoles to Managed Namespaces
+### Phase 2: Remove Obsolete Components and Harden Remaining Roles
+
+**Impact: High security improvement, Low-Medium risk**
+
+This phase delivers quick security wins by removing components that are no longer needed in KFP v2 and hardening remaining roles. These are low-risk changes that eliminate unnecessary attack surface without affecting pipeline execution.
+
+- **Remove the `application` controller, service account, role, rolebinding, and deployment** from KFP core manifests (`manifests/kustomize/third-party/application/`). This is a GCP-specific component that should be defined by users who need it in their own deployment overlays.
+- **Remove the cache-deployer and cache webhook server** from the default deployment. The entire cache webhook infrastructure (`kubeflow-pipelines-cache-deployer-sa`, its ClusterRole/ClusterRoleBinding, the cache-deployer Deployment, the `kubeflow-pipelines-cache` webhook server, and the MutatingWebhookConfiguration) is only used by v1 pipelines. KFP v2 handles caching in the driver via the KFP API server. Remove from: `manifests/kustomize/base/cache-deployer/`, `manifests/kustomize/base/cache/`, and all associated cluster-scoped resources.
+- Replace `apiGroups: ['*']` with `['apps', '']` in the viewer controller role.
+- Scope the `aggregate-to-kubeflow-pipelines-edit` ClusterRole to use explicit verbs instead of `*` on Argo and ScheduledWorkflow resources.
+
+**Current workflow (before change):**
+
+```mermaid
+flowchart LR
+  A[Before: viewer/application/edit roles] --> B[Wildcard apiGroups/resources/verbs]
+  B --> C[Excess write surface]
+```
+
+**Proposed workflow (after change):**
+
+```mermaid
+flowchart LR
+  A[After: viewer/application/edit roles] --> B[Explicit groups/resources/verbs]
+  B --> C[Controller-specific permissions only]
+```
+
+### Phase 3: Scope Multi-User ClusterRoles to Managed Namespaces
 
 **Impact: Medium security improvement, Medium risk**
 
@@ -198,30 +229,6 @@ flowchart LR
   A[After: control-plane service accounts] --> B[Per-namespace RoleBindings]
   B --> C[Access only to bound namespaces]
   D[Option A: minimal watcher ClusterRoleBindings retained] --> A
-```
-
-### Phase 3: Harden Third-Party and Viewer Controller Roles
-
-**Impact: Medium security improvement, Low risk**
-
-- Replace `apiGroups: ['*']` with `['apps', '']` in the viewer controller role.
-- Restrict the application-manager role to specific resources it actually manages.
-- Scope the `aggregate-to-kubeflow-pipelines-edit` ClusterRole to use explicit verbs instead of `*` on Argo and ScheduledWorkflow resources.
-
-**Current workflow (before change):**
-
-```mermaid
-flowchart LR
-  A[Before: viewer/application/edit roles] --> B[Wildcard apiGroups/resources/verbs]
-  B --> C[Excess write surface]
-```
-
-**Proposed workflow (after change):**
-
-```mermaid
-flowchart LR
-  A[After: viewer/application/edit roles] --> B[Explicit groups/resources/verbs]
-  B --> C[Controller-specific permissions only]
 ```
 
 ### Phase 4: Introduce Per-Namespace Service Accounts in Multi-User Mode
@@ -286,16 +293,19 @@ Each phase is independently releasable only when it satisfies all of the followi
 - Rollback: enable legacy-permissive overlay.
 
 **Phase 2 DoD**:
+- `application` controller and all associated resources removed from KFP core manifests.
+- Cache-deployer, cache webhook server, and all associated resources removed from default deployment.
+- Viewer controller role hardened (wildcard API groups replaced with explicit groups).
+- `aggregate-to-kubeflow-pipelines-edit` ClusterRole hardened (wildcard verbs replaced).
+- V2 caching continues to work correctly without the cache webhook infrastructure.
+- Rollback: revert to previous manifests.
+
+**Phase 3 DoD**:
 - Per-namespace RoleBindings are generated for write-path service accounts.
 - For Option A: required minimal ClusterRoleBindings for watcher components remain and are explicitly listed.
 - For Option B: watcher components are namespace-scoped and associated ClusterRoleBindings are removed.
 - Multi-user cross-namespace negative tests pass for the write path (for example, workflow create/update denied in namespaces without RoleBinding).
 - Rollback: restore previous ClusterRoleBinding manifests.
-
-**Phase 3 DoD**:
-- Viewer/application/cache-deployer RBAC hardening merged.
-- Cache-deployer Job path plus TLS runbook is validated in CI/integration.
-- Rollback: revert to previous cache-deployer deployment and role manifests.
 
 **Phase 4 DoD**:
 - Per-namespace `kfp-pipeline-runner` SA provisioning works end-to-end.
@@ -304,6 +314,53 @@ Each phase is independently releasable only when it satisfies all of the followi
 - Rollback: revert to prior default service account and disable guardrail policy.
 
 ## Design Details
+
+### Multi-User Architecture Background
+
+Understanding the multi-user setup is essential for Phases 3 and 4. In multi-user mode, per-namespace resources and RBAC are provisioned by two separate controllers working together:
+
+#### Two Profile Controllers
+
+1. **Kubeflow Profile Controller** (upstream Kubeflow, not KFP-specific) — when an admin or the Kubeflow UI creates a `Profile` CRD (`kubeflow.org/v1beta1`), this controller:
+   - Creates a corresponding namespace (e.g., `kubeflow-user-example-com`)
+   - Creates per-namespace service accounts: `default-editor` and `default-viewer`
+   - Creates RoleBindings binding those SAs to Kubeflow's aggregated ClusterRoles (`kubeflow-edit`, `kubeflow-view`)
+   - Labels the namespace with `pipelines.kubeflow.org/enabled: "true"`
+
+2. **KFP Profile Controller** (`manifests/kustomize/base/installs/multi-user/pipelines-profile-controller/sync.py`) — a Python HTTP server that runs as a **Metacontroller DecoratorController** webhook. When Metacontroller detects a namespace labeled `pipelines.kubeflow.org/enabled: "true"`, it POSTs to `sync.py`, which returns KFP-specific resources to provision in that namespace:
+   - **Secret**: `mlpipeline-minio-artifact` — per-namespace S3/MinIO credentials with IAM policies scoped to `private-artifacts/{namespace}/*`
+   - **ConfigMaps**: `kfp-launcher` (pipeline root), `metadata-grpc-configmap`, `artifact-repositories` (Argo artifact config)
+   - **Deployment + Service**: `ml-pipeline-ui-artifact` — per-namespace artifact proxy (if enabled)
+
+The DecoratorController is defined in `manifests/kustomize/base/installs/multi-user/pipelines-profile-controller/decorator-controller.yaml` and re-syncs every 3600 seconds for drift detection.
+
+#### How `default-editor` Gets Pipeline Permissions
+
+The `default-editor` SA receives pipeline permissions through **Kubernetes RBAC aggregation**:
+
+```
+default-editor SA
+  → RoleBinding (created by Kubeflow Profile Controller)
+    → kubeflow-edit ClusterRole (aggregation rule: matchLabels)
+      → kubeflow-pipelines-edit ClusterRole (label: aggregate-to-kubeflow-edit)
+        → aggregate-to-kubeflow-pipelines-edit ClusterRole (actual rules)
+          → pipelines.kubeflow.org/*: create, delete, update, archive, retry, etc.
+          → kubeflow.org/scheduledworkflows: * (all verbs)
+          → argoproj.io/*: * (all verbs on workflows, cronworkflows, etc.)
+```
+
+The aggregation chain is defined in `manifests/kustomize/base/installs/multi-user/view-edit-cluster-roles.yaml`. This means `default-editor` inherits all pipeline edit permissions without a direct RoleBinding to a KFP-specific role.
+
+#### Control-Plane vs Workload Service Accounts
+
+| Category | Service Accounts | Namespace | Binding Type | Purpose |
+|----------|-----------------|-----------|-------------|---------|
+| **Control-plane** | `ml-pipeline`, `ml-pipeline-persistenceagent`, `ml-pipeline-scheduledworkflow`, `kubeflow-pipelines-metadata-writer`, `ml-pipeline-ui` | `kubeflow` | ClusterRoleBinding (current) | API server, controllers — operate across user namespaces |
+| **Workload** | `default-editor` (per user namespace) | User namespace | RoleBinding to aggregated ClusterRole | Pipeline step pods, artifact proxy |
+
+The key problem addressed by Phase 3 is that control-plane SAs currently have **ClusterRoleBindings**, giving them access to **all** namespaces — not just KFP-enabled ones. Phase 3 replaces these with per-namespace RoleBindings created by `sync.py`, so control-plane SAs can only access namespaces where they have been explicitly bound.
+
+Phase 4 addresses the workload side: `default-editor` is overly broad (it has full Kubeflow editor permissions, not just pipeline runner permissions). Phase 4 replaces it with a purpose-built `kfp-pipeline-runner` SA provisioned by `sync.py` in each user namespace.
 
 ### Current RBAC Inventory and Audit
 
@@ -314,13 +371,13 @@ The following table summarizes all KFP service accounts and their permission sev
 | `pipeline-runner` | Single-user | Role | `*` verbs on pods, deployments, PVs, kubeflow.org, batch, seldon | **Critical** |
 | `default-editor` | Multi-user | Role (per-namespace) | Inherited from Kubeflow profile | **High** |
 | `ml-pipeline-viewer-crd-service-account` | Both | Role/ClusterRole | `apiGroups: ['*']` on deployments, services | **High** |
-| `application` | Both | Role | `apiGroups: ['*'], resources: ['*']` for read+update | **High** |
-| `kubeflow-pipelines-cache-deployer-sa` | Both | ClusterRole | CSR approval for `kubernetes.io/*`, MutatingWebhookConfiguration CRUD | **Medium-High** |
+| `application` | GCP-only (dev, gcp) | Role | `apiGroups: ['*'], resources: ['*']` for read+update | **High — REMOVE from core** |
+| `kubeflow-pipelines-cache-deployer-sa` | Both | ClusterRole | CSR approval for `kubernetes.io/*`, MutatingWebhookConfiguration CRUD | **High — REMOVE (v1-only, obsolete in v2)** |
 | `aggregate-to-kubeflow-pipelines-edit` | Multi-user | ClusterRole | `*` verbs on Argo + ScheduledWorkflow | **Medium** |
 | `ml-pipeline` | Multi-user | ClusterRole | None (well-scoped) | Low |
 | `ml-pipeline-persistenceagent` | Multi-user | ClusterRole | None (read-only) | Low |
 | `ml-pipeline-scheduledworkflow` | Multi-user | ClusterRole | None (well-scoped) | Low |
-| `kubeflow-pipelines-cache` | Multi-user | ClusterRole | None (read + patch) | Low |
+| `kubeflow-pipelines-cache` | Multi-user | ClusterRole | None (read + patch) | **REMOVE (v1-only cache webhook server, obsolete in v2)** |
 | `kubeflow-pipelines-metadata-writer` | Multi-user | ClusterRole | None (read + patch) | Low |
 | `ml-pipeline-ui` | Multi-user | ClusterRole | None (read-only) | Low |
 
@@ -446,7 +503,105 @@ manifests/kustomize/base/pipeline/overlays/
   pipeline-runner-legacy-permissive.yaml  # All original permissions (migration aid)
 ```
 
-### Proposed Changes: Multi-User ClusterRoles (Phase 2)
+### Proposed Changes: Remove Cache-Deployer and Cache Webhook Server (Phase 2)
+
+The entire cache webhook infrastructure is obsolete in KFP v2. The v2 driver handles caching via gRPC calls to the KFP API server's `TaskService` (`backend/src/v2/cacheutils/cache.go`). The cache webhook server explicitly skips v2 pods (`backend/src/cache/server/mutation.go:97`: `if isV2Pod(&pod) { return nil, nil }`). Since KFP v2 is now the standard, these components serve no purpose and carry unnecessary elevated cluster-scoped privileges.
+
+**Components to remove:**
+
+| Component | Location |
+|-----------|----------|
+| `kubeflow-pipelines-cache-deployer-sa` ServiceAccount | `manifests/kustomize/base/cache-deployer/cluster-scoped/cache-deployer-sa.yaml` |
+| `kubeflow-pipelines-cache-deployer-clusterrole` ClusterRole | `manifests/kustomize/base/cache-deployer/cluster-scoped/cache-deployer-clusterrole.yaml` |
+| `kubeflow-pipelines-cache-deployer-clusterrolebinding` ClusterRoleBinding | `manifests/kustomize/base/cache-deployer/cluster-scoped/cache-deployer-clusterrolebinding.yaml` |
+| `kubeflow-pipelines-cache-deployer-role` Role | `manifests/kustomize/base/cache-deployer/cache-deployer-role.yaml` |
+| `kubeflow-pipelines-cache-deployer-rolebinding` RoleBinding | `manifests/kustomize/base/cache-deployer/cache-deployer-rolebinding.yaml` |
+| `cache-deployer-deployment` Deployment | `manifests/kustomize/base/cache-deployer/cache-deployer-deployment.yaml` |
+| `kubeflow-pipelines-cache` ServiceAccount (webhook server) | `manifests/kustomize/base/cache/cache-sa.yaml` |
+| `kubeflow-pipelines-cache-role` Role (webhook server) | `manifests/kustomize/base/cache/cache-role.yaml` |
+| `kubeflow-pipelines-cache-binding` RoleBinding (webhook server) | `manifests/kustomize/base/cache/cache-rolebinding.yaml` |
+| `cache-server` Deployment (webhook server) | `manifests/kustomize/base/cache/cache-deployment.yaml` |
+| MutatingWebhookConfiguration | Dynamically created by cache-deployer |
+| Cache deployer scripts | `backend/src/cache/deployer/` |
+| Cache webhook server source | `backend/src/cache/server/`, `backend/src/cache/main.go` |
+| Cert-manager cache-deployer deletion patches | `manifests/kustomize/env/cert-manager/*/patches/delete.*.cache-deployer.yaml` (no longer needed) |
+| OpenShift cache-deployer patch | `manifests/kustomize/env/openshift/base/patches/cache-deployer.yaml` (no longer needed) |
+| Multi-user cache ClusterRoleBinding | `manifests/kustomize/base/installs/multi-user/cache/cluster-role-binding.yaml` |
+
+**Kustomization references to update:** Remove `../../cache-deployer` and `../../cache` from `manifests/kustomize/base/installs/generic/kustomization.yaml`, `manifests/kustomize/base/installs/multi-user/kustomization.yaml`, and all environment-specific kustomization files.
+
+**Note:** The `kubeflow-pipelines-cache` ServiceAccount and Role in this context refer to the cache webhook server, not the v2 caching mechanism. V2 caching operates through the `ml-pipeline` API server service account and requires no additional cache-specific RBAC.
+
+### Proposed Changes: Remove Application Controller and Harden Viewer Controller (Phase 2)
+
+#### Remove Application Controller from Core
+
+The `application` controller, its service account, role, rolebinding, deployment, and service should be **removed entirely** from KFP core manifests. This component is GCP-specific (used for Google Cloud Console integration) and is only deployed in `env/dev` and `env/gcp` environments. The controller image is hosted at `gcr.io/ml-pipeline/application-crd-controller`.
+
+**Files to remove:**
+- `manifests/kustomize/third-party/application/application-controller-sa.yaml`
+- `manifests/kustomize/third-party/application/application-controller-role.yaml`
+- `manifests/kustomize/third-party/application/application-controller-rolebinding.yaml`
+- `manifests/kustomize/third-party/application/application-controller-deployment.yaml`
+- `manifests/kustomize/third-party/application/application-controller-service.yaml`
+- `manifests/kustomize/third-party/application/kustomization.yaml`
+- `manifests/kustomize/third-party/application/cluster-scoped/application-crd.yaml`
+- `manifests/kustomize/third-party/application/cluster-scoped/kustomization.yaml`
+
+**Kustomization references to remove:**
+- `../../third-party/application` from `env/dev/kustomization.yaml` and `env/gcp/kustomization.yaml`
+- `../../third-party/application/cluster-scoped` from `cluster-scoped-resources/kustomization.yaml`
+
+The `application-crd-id: kubeflow-pipelines` label used across environments is benign metadata and can remain, but users who need the Application CRD controller for GCP Console integration should define it in their own deployment overlay with appropriately scoped RBAC.
+
+#### Harden Viewer Controller Role
+
+**File**: `manifests/kustomize/base/pipeline/ml-pipeline-viewer-crd-role.yaml`
+
+The viewer controller manages Tensorboard visualization deployments and is actively used by the frontend across all pipeline versions. It cannot be removed but its wildcard API groups should be replaced with specific groups:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ml-pipeline-viewer-controller-role
+rules:
+- apiGroups: ["apps"]    # Was: ['*']
+  resources: [deployments]
+  verbs: [create, get, list, watch, update, patch, delete]
+- apiGroups: [""]        # Was: ['*']
+  resources: [services]
+  verbs: [create, get, list, watch, update, patch, delete]
+- apiGroups: [kubeflow.org]
+  resources: [viewers, viewers/finalizers]
+  verbs: [create, get, list, watch, update, patch, delete]
+```
+
+#### Harden aggregate-to-kubeflow-pipelines-edit ClusterRole
+
+**File**: `manifests/kustomize/base/installs/multi-user/view-edit-cluster-roles.yaml`
+
+Replace `*` verbs on Argo and ScheduledWorkflow resources:
+
+```yaml
+# In aggregate-to-kubeflow-pipelines-edit
+- apiGroups: [kubeflow.org]
+  resources: [scheduledworkflows]
+  verbs: [create, get, list, watch, update, patch, delete]  # Was: ['*']
+
+- apiGroups: [argoproj.io]
+  resources:
+  - cronworkflows
+  - cronworkflows/finalizers
+  - workflows
+  - workflows/finalizers
+  - workfloweventbindings
+  - workflowtemplates
+  - workflowtaskresults
+  verbs: [create, get, list, watch, update, patch, delete]  # Was: ['*']
+```
+
+### Proposed Changes: Multi-User ClusterRoles (Phase 3)
 
 **Current approach**: A single ClusterRoleBinding grants each control-plane service account cluster-wide access.
 
@@ -460,7 +615,7 @@ A cluster-wide `list`/`watch` requires a ClusterRoleBinding - per-namespace Role
 
 **Two approaches to resolve this:**
 
-**Option A (Preferred - No code changes):** Keep minimal ClusterRoleBindings for controllers that perform cluster-wide watches (persistence agent, scheduled workflow, cache, metadata-writer), but ensure the ClusterRole rules are tightly scoped to read-only on specific resources. This is acceptable because these controllers already have well-scoped permissions (no wildcards). The profile controller still creates per-namespace RoleBindings for `ml-pipeline` and `ml-pipeline-ui`, which are the service accounts with write operations.
+**Option A (Preferred - No code changes):** Keep minimal ClusterRoleBindings for controllers that perform cluster-wide watches (persistence agent, scheduled workflow, metadata-writer), but ensure the ClusterRole rules are tightly scoped to read-only on specific resources. This is acceptable because these controllers already have well-scoped permissions (no wildcards). The profile controller still creates per-namespace RoleBindings for `ml-pipeline` and `ml-pipeline-ui`, which are the service accounts with write operations.
 
 **Option B (More secure, requires deployment changes):** Configure the persistence agent and scheduled workflow controller with an explicit `--namespace` flag per user namespace. This requires either running one controller instance per namespace (wasteful) or enhancing the controllers to accept a comma-separated list of namespaces (code change). The infrastructure already supports namespace-scoped watches via the `--namespace` flag.
 
@@ -496,11 +651,6 @@ def get_desired_resources(namespace, ...):
             "sa_name": "ml-pipeline-scheduledworkflow",
             "role_name": "ml-pipeline-scheduledworkflow-role",
             "binding_name": "ml-pipeline-scheduledworkflow-binding",
-        },
-        {
-            "sa_name": "kubeflow-pipelines-cache",
-            "role_name": "kubeflow-pipelines-cache-role",
-            "binding_name": "kubeflow-pipelines-cache-binding",
         },
         {
             "sa_name": "kubeflow-pipelines-metadata-writer",
@@ -539,6 +689,8 @@ def get_desired_resources(namespace, ...):
 
 **Key change**: The ClusterRole definitions remain (they define the rules). ClusterRoleBindings are removed only for service accounts that no longer require cluster-wide watches; for watchers that remain cluster-scoped under Option A, keep minimal ClusterRoleBindings until those controllers are migrated.
 
+**Note:** The `kubeflow-pipelines-cache` binding has been removed from this list because the cache webhook server is removed in Phase 2.
+
 **Additional ClusterRole rules needed**: The control-plane service accounts still need minimal cluster-level access for:
 - `authorization.k8s.io/subjectaccessreviews: create` (ml-pipeline, for authorization)
 - `authentication.k8s.io/tokenreviews: create` (ml-pipeline, for authentication)
@@ -557,115 +709,6 @@ rules:
 - apiGroups: [authentication.k8s.io]
   resources: [tokenreviews]
   verbs: [create]
-```
-
-### Proposed Changes: Cache-Deployer ClusterRole (Phase 3)
-
-**File**: `manifests/kustomize/base/cache-deployer/cluster-scoped/cache-deployer-clusterrole.yaml`
-
-The cache-deployer runs as a one-time bootstrap task (generates TLS certificates for the cache webhook) but then runs `sleep infinity`, leaving its elevated ClusterRole active permanently. Two changes are proposed:
-
-**Change 1: Scope the CSR signer approval**
-
-Replace the broad `kubernetes.io/*` signer with the specific signer used:
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kubeflow-pipelines-cache-deployer-clusterrole
-rules:
-- apiGroups: [certificates.k8s.io]
-  resources: [certificatesigningrequests, certificatesigningrequests/approval]
-  verbs: [create, delete, get, update]
-- apiGroups: [certificates.k8s.io]
-  resources: [signers]
-  resourceNames: [kubernetes.io/kubelet-serving]  # Was: kubernetes.io/*
-  verbs: [approve]
-- apiGroups: [admissionregistration.k8s.io]
-  resources: [mutatingwebhookconfigurations]
-  resourceNames: [cache-webhook]  # Scope to specific webhook name
-  verbs: [create, get, patch]     # Was: create, delete, get, list, patch
-```
-
-**Change 2: Convert to a Kubernetes Job**
-
-Convert the cache-deployer from a Deployment (which runs indefinitely) to a Kubernetes `Job` with `ttlSecondsAfterFinished`. This ensures the pod and its service account token are cleaned up after the bootstrap task completes, eliminating the permanent attack surface. This is a deployment manifest change only.
-
-**Operational runbook requirements (must ship with this change):**
-
-1. Define a supported certificate lifecycle path (preferred: cert-manager overlays; fallback: documented manual rerun of the cache-deployer Job).
-2. Document how to trigger a safe redeploy when `webhook-server-tls` is missing, invalid, or near expiration.
-3. Add alerting guidance for webhook TLS failures and cache webhook admission errors, including rollback steps.
-
-### Proposed Changes: Viewer Controller and Application Manager (Phase 3)
-
-**File**: `manifests/kustomize/base/pipeline/ml-pipeline-viewer-crd-role.yaml`
-
-Replace `apiGroups: ['*']` with specific groups:
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: ml-pipeline-viewer-controller-role
-rules:
-- apiGroups: ["apps"]    # Was: ['*']
-  resources: [deployments]
-  verbs: [create, get, list, watch, update, patch, delete]
-- apiGroups: [""]        # Was: ['*']
-  resources: [services]
-  verbs: [create, get, list, watch, update, patch, delete]
-- apiGroups: [kubeflow.org]
-  resources: [viewers, viewers/finalizers]
-  verbs: [create, get, list, watch, update, patch, delete]
-```
-
-**File**: `manifests/kustomize/third-party/application/application-controller-role.yaml`
-
-Replace `apiGroups: ['*'], resources: ['*']` with specific resources the application controller actually monitors:
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: application-manager-role
-rules:
-- apiGroups: ["", "apps", "extensions"]
-  resources:
-  - configmaps
-  - deployments
-  - services
-  - statefulsets
-  - replicasets
-  - pods
-  - persistentvolumeclaims
-  verbs: [get, list, update, patch, watch]
-- apiGroups: [app.k8s.io]
-  resources: ['*']
-  verbs: ['*']
-```
-
-**File**: `manifests/kustomize/base/installs/multi-user/view-edit-cluster-roles.yaml`
-
-Replace `*` verbs on Argo and ScheduledWorkflow resources:
-
-```yaml
-# In aggregate-to-kubeflow-pipelines-edit
-- apiGroups: [kubeflow.org]
-  resources: [scheduledworkflows]
-  verbs: [create, get, list, watch, update, patch, delete]  # Was: ['*']
-
-- apiGroups: [argoproj.io]
-  resources:
-  - cronworkflows
-  - cronworkflows/finalizers
-  - workflows
-  - workflows/finalizers
-  - workfloweventbindings
-  - workflowtemplates
-  - workflowtaskresults
-  verbs: [create, get, list, watch, update, patch, delete]  # Was: ['*']
 ```
 
 ### Proposed Changes: Per-Namespace Service Accounts (Phase 4)
@@ -863,7 +906,7 @@ The following existing tests provide indirect coverage for the RBAC changes and 
    - Verify the pipeline completes successfully with the tightened `pipeline-runner` role
    - This is critical because PVC create/get/delete is one of the few write operations retained
 
-**Phase 2: Multi-User ClusterRole Scoping**
+**Phase 3: Multi-User ClusterRole Scoping**
 
 4. **Profile controller RoleBinding generation test** (extend `test_sync.py`):
    - Assert that `sync.py` generates RoleBinding resources for each control-plane SA (`ml-pipeline-binding`, `ml-pipeline-persistenceagent-binding`, etc.)
@@ -884,20 +927,25 @@ The following existing tests provide indirect coverage for the RBAC changes and 
    - Verify it only watches workflows in the specified namespace
    - Verify it does NOT see workflows in other namespaces
 
-**Phase 3: Viewer Controller and Cache-Deployer Hardening**
+**Phase 2: Remove Obsolete Components and Harden Remaining Roles**
 
 7. **Viewer controller deployment test** (extend existing E2E):
    - Create a Viewer CRD
    - Verify the viewer controller creates an `apps/v1 Deployment` and core `v1 Service`
    - Verify it does NOT attempt to create resources in other API groups (the `apiGroups: ['*']` removal validation)
 
-8. **Cache-deployer Job completion test** (new integration test):
-   - Deploy the cache-deployer as a Job instead of Deployment
-   - Verify the Job completes successfully (TLS certs generated, webhook configured)
-   - Verify the Job pod is cleaned up after `ttlSecondsAfterFinished`
-   - Verify the cache webhook still functions after the deployer pod is gone
+8. **Cache-deployer and webhook removal validation test** (new integration test):
+   - Deploy KFP without cache-deployer and cache webhook server components
+   - Verify v2 pipeline caching continues to work correctly (driver-based caching via API server)
+   - Verify no MutatingWebhookConfiguration for cache exists
+   - Verify no orphaned cache-deployer or cache-server pods/SAs remain
 
-**Phase 4: Per-Namespace Service Accounts**
+9. **Application controller removal validation test** (new manifest test):
+   - Verify `kustomize build` for all non-GCP environments succeeds without `third-party/application` resources
+   - Verify no references to `application` ServiceAccount remain in core manifests
+   - Verify `application-crd-id` label still works as metadata without the controller
+
+**Phase 3: Multi-User ClusterRole Scoping**
 
 9. **Profile controller SA provisioning test** (extend `test_sync.py`):
    - Assert `sync.py` generates a `kfp-pipeline-runner` ServiceAccount in each user namespace
@@ -932,11 +980,12 @@ The following GitHub Actions workflows need updates:
 | `e2e-test.yml` | Add E2E test for PVC create/mount/delete lifecycle (`pipeline_with_volume.yaml`) | 1 |
 | `e2e-test.yml` | Add negative permission E2E test (pipeline creating Deployment should fail 403) | 1 |
 | `e2e-test.yml` | Add matrix entry with `pipeline-runner-legacy-permissive` overlay | 1 |
-| `e2e-test.yml` (multi-user) | Integrate orphaned `test/seaweedfs/namespace_isolation_test.sh` into multi-user E2E job | 2 |
-| `e2e-test.yml` (multi-user) | Add second user namespace and cross-namespace write-path RBAC negative test | 2 |
-| `api-server-tests.yml` | Add multi-user matrix entry for Option A (per-namespace RoleBindings for write-path SAs + minimal watcher ClusterRoleBindings retained) | 2 |
-| `api-server-tests.yml` | Add conditional/optional matrix entry for Option B (watchers namespace-scoped; corresponding watcher ClusterRoleBindings removed) | 2 |
-| `kfp-webhooks.yml` | Add test for cache-deployer as Job (instead of Deployment) | 3 |
+| `kfp-webhooks.yml` | Validate cache webhook removal does not break v2 caching | 2 |
+| `kubeflow-pipelines-manifests.yml` | Validate kustomize build succeeds without `third-party/application` and `cache-deployer` resources | 2 |
+| `e2e-test.yml` (multi-user) | Integrate orphaned `test/seaweedfs/namespace_isolation_test.sh` into multi-user E2E job | 3 |
+| `e2e-test.yml` (multi-user) | Add second user namespace and cross-namespace write-path RBAC negative test | 3 |
+| `api-server-tests.yml` | Add multi-user matrix entry for Option A (per-namespace RoleBindings for write-path SAs + minimal watcher ClusterRoleBindings retained) | 3 |
+| `api-server-tests.yml` | Add conditional/optional matrix entry for Option B (watchers namespace-scoped; corresponding watcher ClusterRoleBindings removed) | 3 |
 | `e2e-test.yml` (multi-user) | Update `DEFAULTPIPELINERUNNERSERVICEACCOUNT` to `kfp-pipeline-runner` in multi-user overlay | 4 |
 | `api-server-tests.yml` | Add admission-policy guardrail negative/positive tests for service-account override | 4 |
 
@@ -948,22 +997,23 @@ The following GitHub Actions workflows need updates:
 | 2 | Pipeline with caching | Single-user | `e2e-test.yml` | 1 | Existing - regression gate |
 | 3 | V2 API CRUD operations | Single-user | `api-server-tests.yml` | 1 | Existing - regression gate |
 | 4 | Scheduled pipeline execution | Single-user | `api-server-tests.yml` | 1 | Existing - regression gate |
-| 5 | Multi-user pipeline execution (single namespace) | Multi-user | `e2e-test.yml` | 2 | Existing - regression gate |
-| 6 | Multi-user artifact proxy health | Multi-user | `e2e-test.yml` | 2 | Existing - regression gate |
+| 5 | Multi-user pipeline execution (single namespace) | Multi-user | `e2e-test.yml` | 3 | Existing - regression gate |
+| 6 | Multi-user artifact proxy health | Multi-user | `e2e-test.yml` | 3 | Existing - regression gate |
 | 7 | RBAC wildcard lint (all overlays) | N/A | `kubeflow-pipelines-manifests.yml` | 0 | **New** - guardrail |
 | 8 | Opt-in overlay kustomize build | N/A | `kubeflow-pipelines-manifests.yml` | 1 | **New** - build validation |
 | 9 | Pipeline creating Deployment (403) | Single-user | `e2e-test.yml` | 1 | **New** - negative test |
 | 10 | Pipeline with legacy-permissive overlay | Single-user | `e2e-test.yml` | 1 | **New** - backward compat |
 | 11 | PVC create/mount/delete lifecycle | Single-user | `e2e-test.yml` | 1 | **New** - currently only in V2 integration cache test |
 | 12 | Pipeline creating batch Job (overlay) | Single-user | `e2e-test.yml` | 1 | **New** - overlay validation |
-| 13 | Profile controller RoleBinding generation | Multi-user | Unit test | 2 | **New** - extend `test_sync.py` |
-| 14 | Cross-namespace write-path access denied (RBAC) | Multi-user | `e2e-test.yml` | 2 | **New** - negative test (integrate orphaned `namespace_isolation_test.sh`) |
-| 15 | Persistence agent scoped watch (Option B path) | Multi-user | `api-server-tests.yml` | 2 | **New** - namespace-scoped watch validation |
-| 16 | Cache webhook after Job cleanup | Single-user | `kfp-webhooks.yml` | 3 | **New** - Job conversion validation |
-| 17 | Profile controller SA provisioning | Multi-user | Unit test | 4 | **New** - extend `test_sync.py` |
-| 18 | Per-namespace SA pipeline run | Multi-user | `e2e-test.yml` | 4 | **New** - E2E with `kfp-pipeline-runner` SA |
-| 19 | SA override via SDK/API | Multi-user | `api-server-tests.yml` | 4 | **New** - extend `spec_patch_test.go` |
-| 20 | SA override guardrail enforcement (deny disallowed SA) | Multi-user | `api-server-tests.yml` | 4 | **New** - policy enforcement |
+| 13 | V2 caching works without cache webhook | Single-user | `kfp-webhooks.yml` | 2 | **New** - cache removal validation |
+| 14 | Application controller removal validation | N/A | `kubeflow-pipelines-manifests.yml` | 2 | **New** - manifest validation |
+| 15 | Profile controller RoleBinding generation | Multi-user | Unit test | 3 | **New** - extend `test_sync.py` |
+| 16 | Cross-namespace write-path access denied (RBAC) | Multi-user | `e2e-test.yml` | 3 | **New** - negative test (integrate orphaned `namespace_isolation_test.sh`) |
+| 17 | Persistence agent scoped watch (Option B path) | Multi-user | `api-server-tests.yml` | 3 | **New** - namespace-scoped watch validation |
+| 18 | Profile controller SA provisioning | Multi-user | Unit test | 4 | **New** - extend `test_sync.py` |
+| 19 | Per-namespace SA pipeline run | Multi-user | `e2e-test.yml` | 4 | **New** - E2E with `kfp-pipeline-runner` SA |
+| 20 | SA override via SDK/API | Multi-user | `api-server-tests.yml` | 4 | **New** - extend `spec_patch_test.go` |
+| 21 | SA override guardrail enforcement (deny disallowed SA) | Multi-user | `api-server-tests.yml` | 4 | **New** - policy enforcement |
 
 #### Current Test Coverage Gaps (Summary)
 
@@ -975,10 +1025,12 @@ The following gaps exist in the current test infrastructure that this proposal s
 | No E2E test for PVC create/delete lifecycle | Phase 1 can't verify PVC permissions work | 1 |
 | No E2E test for secret-as-volume (only secret-as-env is tested) | Phase 1 can't verify volume mount permissions | 1 |
 | No E2E test for ConfigMap-as-volume or ConfigMap-as-env | Phase 1 can't verify ConfigMap permissions | 1 |
-| No cross-namespace negative test in CI (orphaned `namespace_isolation_test.sh` exists) | Phase 2 can't verify isolation works | 2 |
-| Multi-user E2E only tests one namespace, one user | Phase 2/4 changes are untested end-to-end | 2, 4 |
 | Phase 1 `pipeline-runner-role.yaml` changes don't affect multi-user mode (uses `default-editor` + aggregated ClusterRoles) | Phase 1 security improvements are single-user only unless aggregated ClusterRoles are also updated | 1 |
-| No test for viewer controller API group restriction | Phase 3 viewer changes are untested | 3 |
+| No test for viewer controller API group restriction | Phase 2 viewer changes are untested | 2 |
+| No test validating v2 caching works without cache webhook infrastructure | Phase 2 cache removal is untested | 2 |
+| No test validating manifests build without application controller | Phase 2 application removal is untested | 2 |
+| No cross-namespace negative test in CI (orphaned `namespace_isolation_test.sh` exists) | Phase 3 can't verify isolation works | 3 |
+| Multi-user E2E only tests one namespace, one user | Phase 3/4 changes are untested end-to-end | 3, 4 |
 
 ## Implementation History
 
@@ -996,7 +1048,9 @@ The following gaps exist in the current test infrastructure that this proposal s
 
 5. **Flexibility trade-off**: Removing `kubeflow.org/*: *` from `pipeline-runner` means pipelines that directly interact with custom Kubeflow operators (TFJob, PyTorchJob) need explicit overlay configuration.
 
-6. **Cache-deployer Job conversion**: Converting the cache-deployer from a Deployment to a Job means the webhook TLS certificates are only generated once. If the certificate expires or the webhook-server-tls secret is deleted, re-running the Job is required. However, cert-manager overlays already exist (`manifests/kustomize/env/cert-manager/`) as an alternative certificate lifecycle management approach.
+6. **Cache-deployer and webhook removal**: Removing the cache webhook infrastructure means any future need for webhook-based caching (unlikely, given v2's driver-based approach) would require reintroducing these components. This is a low-risk drawback since KFP v2 is the standard and there is no mixed v1/v2 environment.
+
+7. **Application controller removal**: Users who rely on GCP Console integration via the Application CRD will need to deploy the controller themselves. This is a minimal burden since only `env/dev` and `env/gcp` environments currently use it, and GCP-specific deployment overlays are the expected pattern.
 
 ## Alternatives
 
